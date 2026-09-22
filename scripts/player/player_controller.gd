@@ -1,0 +1,232 @@
+extends CharacterBody3D
+## First-person player controller: movement, shooting, ammo, health,
+## perk (supplement) effects, and interacting with stations.
+
+signal health_changed(current: float, max_hp: float)
+signal ammo_changed(current_mag: int, reserve: int)
+signal interact_prompt_changed(text: String)
+
+const GRAVITY: float = 9.8
+const JUMP_VELOCITY: float = 4.5
+const MOUSE_SENSITIVITY: float = 0.0025
+
+@export var base_walk_speed: float = 5.0
+@export var base_sprint_multiplier: float = 1.6
+@export var base_max_health: float = 100.0
+@export var interact_range: float = 3.0
+
+@onready var camera: Camera3D = $Camera3D
+@onready var interact_ray: RayCast3D = $Camera3D/InteractRay
+@onready var muzzle_ray: RayCast3D = $Camera3D/MuzzleRay
+
+var max_health: float = base_max_health
+var current_health: float = base_max_health
+
+# --- Supplement (perk) state ---
+var damage_multiplier: float = 1.0      # TRT
+var speed_multiplier: float = 1.0       # Creatine
+var melee_multiplier: float = 1.0       # Creatine
+var reload_speed_multiplier: float = 1.0 # Pre-Workout
+var regen_per_second: float = 0.0       # Fish Oil
+var infinite_stamina: bool = false      # BCAAs
+
+# --- Weapon / ammo state ---
+@export var current_weapon: WeaponData  # assign a WeaponData .tres as the starting gun
+var current_mag_ammo: int = 0
+var current_reserve_ammo: int = 0
+var _fire_cooldown: float = 0.0
+var _regen_accum: float = 0.0
+
+
+func _ready() -> void:
+	add_to_group("player")
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	max_health = base_max_health
+	current_health = max_health
+	health_changed.emit(current_health, max_health)
+
+	interact_ray.collide_with_areas = true
+	interact_ray.collide_with_bodies = false
+	interact_ray.collision_mask = 2   # stations live on layer 2
+
+	muzzle_ray.collision_mask = 1 | 4  # world (layer 1) + zombies (layer 4)
+
+	if current_weapon:
+		current_mag_ammo = current_weapon.mag_size
+		current_reserve_ammo = current_weapon.max_reserve_ammo
+		ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
+		camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
+		camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
+
+	if event.is_action_pressed("interact"):
+		_try_interact()
+
+	if event.is_action_pressed("reload"):
+		_reload()
+
+
+func _physics_process(delta: float) -> void:
+	_handle_movement(delta)
+	_handle_shooting(delta)
+	_handle_regen(delta)
+	_update_interact_prompt()
+
+
+func _handle_movement(delta: float) -> void:
+	if not is_on_floor():
+		velocity.y -= GRAVITY * delta
+	elif Input.is_action_just_pressed("jump"):
+		velocity.y = JUMP_VELOCITY
+
+	var input_dir := Vector2(
+		Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
+		Input.get_action_strength("move_back") - Input.get_action_strength("move_forward")
+	)
+	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+
+	var speed := base_walk_speed * speed_multiplier
+	if Input.is_action_pressed("sprint"):
+		speed *= base_sprint_multiplier
+
+	if direction:
+		velocity.x = direction.x * speed
+		velocity.z = direction.z * speed
+	else:
+		velocity.x = move_toward(velocity.x, 0, speed)
+		velocity.z = move_toward(velocity.z, 0, speed)
+
+	move_and_slide()
+
+
+func _handle_shooting(delta: float) -> void:
+	if _fire_cooldown > 0.0:
+		_fire_cooldown -= delta
+
+	if not current_weapon:
+		return
+
+	if Input.is_action_pressed("shoot") and _fire_cooldown <= 0.0:
+		if current_mag_ammo > 0:
+			_fire_shot()
+			_fire_cooldown = current_weapon.fire_rate
+		else:
+			_reload()
+
+
+func _fire_shot() -> void:
+	current_mag_ammo -= 1
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+	muzzle_ray.force_raycast_update()
+	if muzzle_ray.is_colliding():
+		var target := muzzle_ray.get_collider()
+		if target and target.has_method("take_damage"):
+			target.take_damage(current_weapon.damage * damage_multiplier, self)
+
+
+func _reload() -> void:
+	if not current_weapon:
+		return
+	var needed := current_weapon.mag_size - current_mag_ammo
+	var available: int = min(needed, current_reserve_ammo)
+	current_mag_ammo += available
+	current_reserve_ammo -= available
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+func _handle_regen(delta: float) -> void:
+	if regen_per_second <= 0.0 or current_health >= max_health:
+		return
+	_regen_accum += regen_per_second * delta
+	if _regen_accum >= 1.0:
+		var whole: float = floor(_regen_accum)
+		heal(whole)
+		_regen_accum -= whole
+
+
+func take_damage(amount: float) -> void:
+	current_health = max(current_health - amount, 0.0)
+	health_changed.emit(current_health, max_health)
+	if current_health <= 0.0:
+		GameManager.report_player_death()
+
+
+func heal(amount: float) -> void:
+	current_health = min(current_health + amount, max_health)
+	health_changed.emit(current_health, max_health)
+
+
+func add_reserve_ammo(amount: int) -> void:
+	if not current_weapon:
+		return
+	current_reserve_ammo = min(current_reserve_ammo + amount, current_weapon.max_reserve_ammo)
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+func equip_weapon(weapon: WeaponData) -> void:
+	current_weapon = weapon
+	current_mag_ammo = weapon.mag_size
+	current_reserve_ammo = weapon.max_reserve_ammo
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+## Called by the PR Rack (Pack-a-Punch) station.
+func apply_pr_upgrade() -> void:
+	if current_weapon and not current_weapon.is_pr_upgraded:
+		equip_weapon(current_weapon.get_pr_upgraded_copy())
+
+
+func _try_interact() -> void:
+	interact_ray.force_raycast_update()
+	if interact_ray.is_colliding():
+		var target := interact_ray.get_collider()
+		if target and target.has_method("interact"):
+			target.interact(self)
+
+
+func _update_interact_prompt() -> void:
+	interact_ray.force_raycast_update()
+	if interact_ray.is_colliding():
+		var target := interact_ray.get_collider()
+		if target and target.has_method("get_prompt_text"):
+			interact_prompt_changed.emit(target.get_prompt_text())
+			return
+	interact_prompt_changed.emit("")
+
+
+# --- Supplement (perk-a-cola) effect hooks, called by SupplementStation ---
+func apply_supplement(id: String) -> void:
+	match id:
+		"trt":
+			damage_multiplier = 1.5
+		"creatine":
+			speed_multiplier = 1.25
+			melee_multiplier = 2.0
+		"whey":
+			max_health = base_max_health * 1.5
+			current_health = max_health
+			health_changed.emit(current_health, max_health)
+		"pre_workout":
+			reload_speed_multiplier = 1.5
+		"fish_oil":
+			regen_per_second = 2.0
+		"bcaas":
+			infinite_stamina = true
+
+
+## Called on death (or by a future "downed" system) to strip perks,
+## mirroring the classic "lose your perks when you go down" rule.
+func clear_supplements() -> void:
+	damage_multiplier = 1.0
+	speed_multiplier = 1.0
+	melee_multiplier = 1.0
+	reload_speed_multiplier = 1.0
+	regen_per_second = 0.0
+	infinite_stamina = false
+	max_health = base_max_health
+	current_health = max_health

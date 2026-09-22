@@ -1,0 +1,44 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="HealthLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = "HP: 100 / 100"
+
+[node name="AmmoLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = "Ammo: 0 / 0"
+
+[node name="GainsLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = "Gains: 500"
+
+[node name="RoundLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = "Round: 1"
+
+[node name="PromptLabel" type="Label" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+horizontal_alignment = 1
+visible = false
+text = ""
