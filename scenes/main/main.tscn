@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://scenes/main/hud.tscn" id="9"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/main/touch_controls.tscn" id="11"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(40, 1, 40)
@@ -54,6 +55,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 current_weapon = ExtResource("10")
 
 [node name="HUD" parent="." instance=ExtResource("9")]
+[node name="TouchControls" parent="." instance=ExtResource("11")]
 
 [node name="RoundManager" type="Node" parent="."]
 script = ExtResource("2")
