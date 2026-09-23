@@ -22,6 +22,10 @@ const MOUSE_SENSITIVITY: float = 0.0025
 var max_health: float = base_max_health
 var current_health: float = base_max_health
 
+# Set every frame by touch_controls.gd from the on-screen joystick.
+# Vector2.ZERO means "no touch joystick input" -- keyboard/gamepad is used instead.
+var touch_move_vector: Vector2 = Vector2.ZERO
+
 # --- Supplement (perk) state ---
 var damage_multiplier: float = 1.0      # TRT
 var speed_multiplier: float = 1.0       # Creatine
@@ -40,7 +44,8 @@ var _regen_accum: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if not OS.has_feature("mobile"):
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	max_health = base_max_health
 	current_health = max_health
 	health_changed.emit(current_health, max_health)
@@ -59,15 +64,19 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
-		camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
+		apply_look_delta(event.relative, MOUSE_SENSITIVITY)
 
 	if event.is_action_pressed("interact"):
 		_try_interact()
 
 	if event.is_action_pressed("reload"):
 		_reload()
+
+
+func apply_look_delta(delta: Vector2, sensitivity: float = MOUSE_SENSITIVITY) -> void:
+	rotate_y(-delta.x * sensitivity)
+	camera.rotate_x(-delta.y * sensitivity)
+	camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
 
 
 func _physics_process(delta: float) -> void:
@@ -87,8 +96,13 @@ func _handle_movement(delta: float) -> void:
 		Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
 		Input.get_action_strength("move_back") - Input.get_action_strength("move_forward")
 	)
-	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	if touch_move_vector.length() > 0.01:
+		input_dir = touch_move_vector
 
+	var raw_dir := Vector3(input_dir.x, 0, input_dir.y)
+	if raw_dir.length() > 1.0:
+		raw_dir = raw_dir.normalized()
+	var direction := transform.basis * raw_dir
 	var speed := base_walk_speed * speed_multiplier
 	if Input.is_action_pressed("sprint"):
 		speed *= base_sprint_multiplier
