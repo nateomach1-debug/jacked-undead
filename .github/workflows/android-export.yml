@@ -24,7 +24,15 @@ jobs:
         with:
           packages: "platform-tools build-tools;34.0.0 platforms;android-34"
 
+      - name: Cache debug keystore
+        id: keystore-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
       - name: Generate debug keystore
+        if: steps.keystore-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/.android
           keytool -genkeypair -v -keystore ~/.android/debug.keystore \
