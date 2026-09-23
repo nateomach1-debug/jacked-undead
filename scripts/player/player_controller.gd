@@ -13,7 +13,7 @@ const MOUSE_SENSITIVITY: float = 0.0025
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
 @export var base_max_health: float = 100.0
-@export var interact_range: float = 3.0
+@export var interact_range: float = 4.5
 
 @onready var camera: Camera3D = $Camera3D
 @onready var interact_ray: RayCast3D = $Camera3D/InteractRay
@@ -53,6 +53,7 @@ func _ready() -> void:
 	interact_ray.collide_with_areas = true
 	interact_ray.collide_with_bodies = false
 	interact_ray.collision_mask = 2   # stations live on layer 2
+	interact_ray.target_position = Vector3(0, 0, -interact_range)
 
 	muzzle_ray.collision_mask = 1 | 4  # world (layer 1) + zombies (layer 4)
 
