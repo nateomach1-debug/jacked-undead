@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/touch_controls.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/look_area.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/ui/touch_joystick.gd" id="3"]
 
 [node name="TouchControls" type="CanvasLayer"]
 script = ExtResource("1")
@@ -11,49 +12,14 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("2")
 
-[node name="DPad" type="Control" parent="."]
+[node name="Joystick" type="Control" parent="."]
 anchor_top = 1.0
 anchor_bottom = 1.0
-
-[node name="Up" type="Button" parent="DPad"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 100.0
-offset_top = -260.0
-offset_right = 190.0
-offset_bottom = -170.0
-focus_mode = 0
-text = "▲"
-
-[node name="Down" type="Button" parent="DPad"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 100.0
-offset_top = -80.0
-offset_right = 190.0
-offset_bottom = 10.0
-focus_mode = 0
-text = "▼"
-
-[node name="Left" type="Button" parent="DPad"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = -170.0
-offset_right = 100.0
-offset_bottom = -80.0
-focus_mode = 0
-text = "◀"
-
-[node name="Right" type="Button" parent="DPad"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 190.0
-offset_top = -170.0
-offset_right = 280.0
-offset_bottom = -80.0
-focus_mode = 0
-text = "▶"
+offset_left = 20.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = -20.0
+script = ExtResource("3")
 
 [node name="Actions" type="Control" parent="."]
 anchor_left = 1.0
