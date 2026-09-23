@@ -67,12 +67,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		apply_look_delta(event.relative, MOUSE_SENSITIVITY)
 
-	if event.is_action_pressed("interact"):
-		_try_interact()
-
-	if event.is_action_pressed("reload"):
-		_reload()
-
 
 func apply_look_delta(delta: Vector2, sensitivity: float = MOUSE_SENSITIVITY) -> void:
 	rotate_y(-delta.x * sensitivity)
@@ -85,6 +79,12 @@ func _physics_process(delta: float) -> void:
 	_handle_shooting(delta)
 	_handle_regen(delta)
 	_update_interact_prompt()
+
+	if Input.is_action_just_pressed("reload"):
+		_reload()
+
+	if Input.is_action_just_pressed("interact"):
+		_try_interact()
 
 
 func _handle_movement(delta: float) -> void:
