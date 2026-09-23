@@ -17,7 +17,7 @@ const GRAVITY: float = 9.8
 @export var attack_damage: float = 10.0
 @export var attack_range: float = 1.5
 @export var attack_cooldown: float = 1.0
-@export var gains_on_death: int = 10
+@export var gains_on_death: int = 100
 
 var current_health: float
 var _target: Node3D
