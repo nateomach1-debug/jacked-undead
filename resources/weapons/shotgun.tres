@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = "Shotgun"
+damage = 60.0
+fire_rate = 0.9
+mag_size = 6
+max_reserve_ammo = 48
+range = 20.0
+is_pr_upgraded = false
