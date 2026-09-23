@@ -9,6 +9,7 @@ signal interact_prompt_changed(text: String)
 const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
+const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -142,7 +143,8 @@ func _fire_shot() -> void:
 		var target := muzzle_ray.get_collider()
 		if target and target.has_method("take_damage"):
 			target.take_damage(current_weapon.damage * damage_multiplier, self)
-
+			if target.is_in_group("zombies"):
+				GameManager.add_gains(GAINS_PER_HIT)
 
 func _reload() -> void:
 	if not current_weapon:
