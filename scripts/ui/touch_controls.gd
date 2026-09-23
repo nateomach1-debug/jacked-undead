@@ -3,7 +3,7 @@ extends CanvasLayer
 @onready var joystick: Control = $Joystick
 @onready var btn_jump: Button = $Actions/Jump
 @onready var btn_sprint: Button = $Actions/Sprint
-@onready var btn_shoot: Button = $Actions/Shoot
+@onready var btn_shoot: Button = $Shoot
 @onready var btn_reload: Button = $Actions/Reload
 @onready var btn_interact: Button = $Interact
 
