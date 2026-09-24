@@ -5,6 +5,7 @@ extends CanvasLayer
 @onready var btn_sprint: Button = $Actions/Sprint
 @onready var btn_shoot: Button = $Shoot
 @onready var btn_reload: Button = $Actions/Reload
+@onready var btn_switch: Button = $Actions/Switch
 @onready var btn_interact: Button = $Interact
 
 var _player: Node
@@ -16,7 +17,13 @@ func _ready() -> void:
 	_bind(btn_shoot, "shoot")
 	_bind(btn_reload, "reload")
 	_bind(btn_interact, "interact")
+	btn_switch.pressed.connect(_on_switch_pressed)
 	_player = get_tree().get_first_node_in_group("player")
+
+
+func _on_switch_pressed() -> void:
+	if _player and _player.has_method("switch_weapon"):
+		_player.switch_weapon(1)
 
 
 func _process(_delta: float) -> void:
