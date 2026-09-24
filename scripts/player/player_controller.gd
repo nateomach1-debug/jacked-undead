@@ -5,6 +5,7 @@ extends CharacterBody3D
 signal health_changed(current: float, max_hp: float)
 signal ammo_changed(current_mag: int, reserve: int)
 signal interact_prompt_changed(text: String)
+signal perks_changed(owned: Array)
 
 const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
@@ -34,14 +35,18 @@ var melee_multiplier: float = 1.0       # Creatine
 var reload_speed_multiplier: float = 1.0 # Pre-Workout
 var regen_per_second: float = 0.0       # Fish Oil
 var infinite_stamina: bool = false      # BCAAs
+var owned_perks: Array = []             # supplement ids purchased so far, for the HUD perk bar
 
 # --- Weapon / ammo state ---
-@export var current_weapon: WeaponData  # assign a WeaponData .tres as the starting gun
+@export var current_weapon: WeaponData  # fallback single starting gun if weapon_loadout is empty
+@export var weapon_loadout: Array = []  # assign multiple WeaponData .tres here to enable weapon switching
+var current_weapon_index: int = 0
 var current_mag_ammo: int = 0
 var current_reserve_ammo: int = 0
+var _saved_mag_ammo: Array = []
+var _saved_reserve_ammo: Array = []
 var _fire_cooldown: float = 0.0
 var _regen_accum: float = 0.0
-
 
 func _ready() -> void:
 	add_to_group("player")
@@ -58,11 +63,21 @@ func _ready() -> void:
 
 	muzzle_ray.collision_mask = 1 | 4  # world (layer 1) + zombies (layer 4)
 
-	if current_weapon:
+	if not weapon_loadout.is_empty():
+		current_weapon_index = 0
+		current_weapon = weapon_loadout[0]
+		_saved_mag_ammo.clear()
+		_saved_reserve_ammo.clear()
+		for w in weapon_loadout:
+			_saved_mag_ammo.append(w.mag_size)
+			_saved_reserve_ammo.append(w.max_reserve_ammo)
 		current_mag_ammo = current_weapon.mag_size
 		current_reserve_ammo = current_weapon.max_reserve_ammo
 		ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
-
+	elif current_weapon:
+		current_mag_ammo = current_weapon.mag_size
+		current_reserve_ammo = current_weapon.max_reserve_ammo
+		ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -190,7 +205,29 @@ func equip_weapon(weapon: WeaponData) -> void:
 	current_mag_ammo = weapon.mag_size
 	current_reserve_ammo = weapon.max_reserve_ammo
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+	if current_weapon_index < weapon_loadout.size():
+		weapon_loadout[current_weapon_index] = weapon
+		if current_weapon_index < _saved_mag_ammo.size():
+			_saved_mag_ammo[current_weapon_index] = current_mag_ammo
+			_saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
 
+
+## Cycles to the next (or previous, with direction = -1) weapon in
+## weapon_loadout. Called by the on-screen SWAP button. Remembers each
+## weapon's own ammo counts across switches.
+func switch_weapon(direction: int = 1) -> void:
+	if weapon_loadout.size() < 2:
+		return
+
+	if current_weapon_index < _saved_mag_ammo.size():
+		_saved_mag_ammo[current_weapon_index] = current_mag_ammo
+		_saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
+
+	current_weapon_index = wrapi(current_weapon_index + direction, 0, weapon_loadout.size())
+	current_weapon = weapon_loadout[current_weapon_index]
+	current_mag_ammo = _saved_mag_ammo[current_weapon_index]
+	current_reserve_ammo = _saved_reserve_ammo[current_weapon_index]
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 
 ## Called by the PR Rack (Pack-a-Punch) station.
 func apply_pr_upgrade() -> void:
@@ -234,6 +271,10 @@ func apply_supplement(id: String) -> void:
 			regen_per_second = 2.0
 		"bcaas":
 			infinite_stamina = true
+
+	if id not in owned_perks:
+		owned_perks.append(id)
+		perks_changed.emit(owned_perks)
 
 
 ## Called on death (or by a future "downed" system) to strip perks,
