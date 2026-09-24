@@ -14,4 +14,4 @@ func interact(player: Node) -> void:
 
 
 func get_prompt_text() -> String:
-	return "Hold F to refill water (ammo) - %d Gains" % cost
+	return "Tap USE to refill water (ammo) - %d Gains" % cost
