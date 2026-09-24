@@ -1,4 +1,19 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/zombies/zombie.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/zombies/roid_rager.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/stations/supplement_station.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/stations/pr_rack.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/main/hud.tscn" id="9"]
+[ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/main/touch_controls.tscn" id="11"]
+[ext_resource type="Resource" path="res://resources/weapons/smg.tres" id="12"]
+[ext_resource type="Resource" path="res://resources/weapons/shotgun.tres" id="13"]
+[ext_resource type="Resource" path="res://resources/weapons/rifle.tres" id="14"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -18,6 +33,20 @@ size = Vector3(40, 1, 40)
 [sub_resource type="BoxMesh" id="BoxMesh_floor"]
 size = Vector3(40, 1, 40)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ns"]
+size = Vector3(42, 10, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_ns"]
+size = Vector3(42, 10, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_ew"]
+size = Vector3(1, 10, 42)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_ew"]
+size = Vector3(1, 10, 42)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wall"]
+albedo_color = Color(0.32, 0.32, 0.35, 1)
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
 [sub_resource type="Sky" id="Sky_1"]
@@ -50,9 +79,52 @@ shape = SubResource("BoxShape3D_floor")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 mesh = SubResource("BoxMesh_floor")
 
+[node name="Walls" type="Node3D" parent="."]
+
+[node name="WallNorth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -20.5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/WallNorth"]
+shape = SubResource("BoxShape3D_wall_ns")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/WallNorth"]
+mesh = SubResource("BoxMesh_wall_ns")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="WallSouth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 20.5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/WallSouth"]
+shape = SubResource("BoxShape3D_wall_ns")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/WallSouth"]
+mesh = SubResource("BoxMesh_wall_ns")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="WallEast" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.5, 5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/WallEast"]
+shape = SubResource("BoxShape3D_wall_ew")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/WallEast"]
+mesh = SubResource("BoxMesh_wall_ew")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="WallWest" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.5, 5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/WallWest"]
+shape = SubResource("BoxShape3D_wall_ew")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/WallWest"]
+mesh = SubResource("BoxMesh_wall_ew")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
 [node name="Player" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 current_weapon = ExtResource("10")
+weapon_loadout = [ExtResource("10"), ExtResource("12"), ExtResource("13"), ExtResource("14")]
 
 [node name="HUD" parent="." instance=ExtResource("9")]
 [node name="TouchControls" parent="." instance=ExtResource("11")]
