@@ -8,6 +8,7 @@ extends Area3D
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var sign_sprite: Sprite3D = $SignSprite3D
+@onready var name_label: Label3D = $Label3D
 
 var _purchased_by: Array = []
 
@@ -21,7 +22,7 @@ func _ready() -> void:
 	mesh_instance.set_surface_override_material(0, mat)
 	if icon_texture:
 		sign_sprite.texture = icon_texture
-
+	name_label.text = display_name
 
 func interact(player: Node) -> void:
 	if player in _purchased_by:
