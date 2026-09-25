@@ -2,6 +2,7 @@ extends Control
 
 @export var base_radius: float = 100.0
 @export var knob_radius: float = 45.0
+@export var fire_action: String = ""   # if set, this stick also presses/releases this Input action (e.g. "shoot")
 
 var value: Vector2 = Vector2.ZERO
 
@@ -21,11 +22,15 @@ func _gui_input(event: InputEvent) -> void:
 				_touch_index = event.index
 				_dragging = true
 				_update_from_position(event.position)
+				if fire_action != "":
+					Input.action_press(fire_action)
 		elif event.index == _touch_index:
 			_touch_index = -1
 			_dragging = false
 			value = Vector2.ZERO
 			queue_redraw()
+			if fire_action != "":
+				Input.action_release(fire_action)
 		accept_event()
 	elif event is InputEventScreenDrag and _dragging and event.index == _touch_index:
 		_update_from_position(event.position)
