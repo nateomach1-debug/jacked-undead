@@ -1,36 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/stations/pr_rack.gd" id="1"]
+[ext_resource type="PackedScene" path="res://resources/models/stations/Weight bench.gltf" id="2"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
 size = Vector3(2.4, 1.6, 1.0)
-
-[sub_resource type="BoxMesh" id="BoxMesh_post"]
-size = Vector3(0.12, 1.1, 0.12)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dark"]
-albedo_color = Color(0.08, 0.08, 0.08, 1)
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_bar"]
-top_radius = 0.04
-bottom_radius = 0.04
-height = 2.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_silver"]
-albedo_color = Color(0.75, 0.76, 0.78, 1)
-metallic = 0.6
-roughness = 0.3
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_plate"]
-top_radius = 0.22
-bottom_radius = 0.22
-height = 0.08
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate"]
-albedo_color = Color(0.1, 0.1, 0.1, 1)
-emission_enabled = true
-emission = Color(0.8, 0.1, 0.1, 1)
-emission_energy_multiplier = 0.4
 
 [node name="PRRack" type="Area3D"]
 collision_layer = 2
@@ -41,30 +15,7 @@ script = ExtResource("1")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
 shape = SubResource("BoxShape3D_1")
 
-[node name="PostLeft" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.55, 0)
-mesh = SubResource("BoxMesh_post")
-surface_material_override/0 = SubResource("StandardMaterial3D_dark")
-
-[node name="PostRight" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.55, 0)
-mesh = SubResource("BoxMesh_post")
-surface_material_override/0 = SubResource("StandardMaterial3D_dark")
-
-[node name="Bar" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 1.05, 0)
-mesh = SubResource("CylinderMesh_bar")
-surface_material_override/0 = SubResource("StandardMaterial3D_silver")
-
-[node name="PlateLeft" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, -0.85, 1.05, 0)
-mesh = SubResource("CylinderMesh_plate")
-surface_material_override/0 = SubResource("StandardMaterial3D_plate")
-
-[node name="PlateRight" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0.85, 1.05, 0)
-mesh = SubResource("CylinderMesh_plate")
-surface_material_override/0 = SubResource("StandardMaterial3D_plate")
+[node name="Model" parent="." instance=ExtResource("2")]
 
 [node name="Label3D" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
