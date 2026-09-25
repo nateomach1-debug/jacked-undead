@@ -11,6 +11,7 @@ const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
 const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
+const STICK_LOOK_SPEED: float = 120.0  # degrees/sec of turn at full shoot-stick deflection
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -30,6 +31,10 @@ var current_health: float = base_max_health
 # Set every frame by touch_controls.gd from the on-screen joystick.
 # Vector2.ZERO means "no touch joystick input" -- keyboard/gamepad is used instead.
 var touch_move_vector: Vector2 = Vector2.ZERO
+
+# Set every frame by touch_controls.gd from the shoot-stick. Vector2.ZERO
+# means the stick is centered/untouched -- drag-to-look still works normally.
+var stick_look_vector: Vector2 = Vector2.ZERO
 
 # --- Supplement (perk) state ---
 var damage_multiplier: float = 1.0      # TRT
@@ -100,6 +105,11 @@ func _physics_process(delta: float) -> void:
 	_handle_shooting(delta)
 	_handle_regen(delta)
 	_update_interact_prompt()
+
+	if stick_look_vector.length() > 0.01:
+		rotate_y(-stick_look_vector.x * deg_to_rad(STICK_LOOK_SPEED) * delta)
+		camera.rotate_x(-stick_look_vector.y * deg_to_rad(STICK_LOOK_SPEED) * delta)
+		camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
 
 	if Input.is_action_just_pressed("reload"):
 		_reload()
