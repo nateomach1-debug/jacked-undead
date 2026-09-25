@@ -18,6 +18,7 @@ func _ready() -> void:
 	_bind(btn_use, "interact")
 	btn_sprint.pressed.connect(_on_sprint_pressed)
 	btn_switch.pressed.connect(_on_switch_pressed)
+	shoot_stick.fire_pressed.connect(_on_shoot_stick_pressed)
 	_player = get_tree().get_first_node_in_group("player")
 
 
@@ -32,6 +33,11 @@ func _on_sprint_pressed() -> void:
 func _on_switch_pressed() -> void:
 	if _player and _player.has_method("switch_weapon"):
 		_player.switch_weapon(1)
+
+
+func _on_shoot_stick_pressed() -> void:
+	if _player and _player.has_method("fire_once_if_ready"):
+		_player.fire_once_if_ready()
 
 
 func _process(_delta: float) -> void:
