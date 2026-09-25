@@ -2,6 +2,7 @@ extends Control
 
 @export var base_radius: float = 100.0
 @export var knob_radius: float = 45.0
+@export var dead_zone: float = 0.12  # fraction of base_radius that counts as "centered"
 @export var fire_action: String = ""   # if set, this stick also presses/releases this Input action (e.g. "shoot")
 
 signal fire_pressed  # emitted the instant a fire_action touch begins, guaranteeing a tap always registers
@@ -44,7 +45,8 @@ func _update_from_position(pos: Vector2) -> void:
 	var offset := pos - _center
 	if offset.length() > base_radius:
 		offset = offset.normalized() * base_radius
-	value = offset / base_radius
+	var raw_value := offset / base_radius
+	value = Vector2.ZERO if raw_value.length() < dead_zone else raw_value
 	queue_redraw()
 
 
