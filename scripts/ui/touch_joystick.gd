@@ -2,7 +2,7 @@ extends Control
 
 @export var base_radius: float = 100.0
 @export var knob_radius: float = 45.0
-@export var dead_zone: float = 0.12  # fraction of base_radius that counts as "centered"
+@export var dead_zone: float = 0.20  # fraction of base_radius that counts as "centered"
 @export var fire_action: String = ""   # if set, this stick also presses/releases this Input action (e.g. "shoot")
 
 signal fire_pressed  # emitted the instant a fire_action touch begins, guaranteeing a tap always registers
