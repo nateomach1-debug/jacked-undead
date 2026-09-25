@@ -10,6 +10,7 @@ class_name WeaponData
 @export var max_reserve_ammo: int = 96
 @export var range: float = 60.0
 @export var is_pr_upgraded: bool = false  # true once run through the PR Rack
+@export var model_scene: PackedScene      # the .gltf viewmodel shown in the player's hands
 
 ## Returns a duplicated, upgraded copy of this weapon after a Pack-a-Punch
 ## ("hitting a PR") pass. Never mutates the original resource.
