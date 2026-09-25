@@ -1,24 +1,32 @@
 extends CanvasLayer
 
 @onready var joystick: Control = $Joystick
-@onready var btn_jump: Button = $Actions/Jump
-@onready var btn_sprint: Button = $Actions/Sprint
-@onready var btn_shoot: Button = $Shoot
-@onready var btn_reload: Button = $Actions/Reload
-@onready var btn_switch: Button = $Actions/Switch
-@onready var btn_interact: Button = $Interact
+@onready var shoot_stick: Control = $ShootStick
+@onready var btn_jump: Button = $Cluster/Jump
+@onready var btn_sprint: Button = $Cluster/Sprint
+@onready var btn_reload: Button = $Cluster/Reload
+@onready var btn_use: Button = $Cluster/Use
+@onready var btn_switch: Button = $Cluster/Switch
 
 var _player: Node
+var _sprint_on: bool = false
 
 
 func _ready() -> void:
 	_bind(btn_jump, "jump")
-	_bind(btn_sprint, "sprint")
-	_bind(btn_shoot, "shoot")
 	_bind(btn_reload, "reload")
-	_bind(btn_interact, "interact")
+	_bind(btn_use, "interact")
+	btn_sprint.pressed.connect(_on_sprint_pressed)
 	btn_switch.pressed.connect(_on_switch_pressed)
 	_player = get_tree().get_first_node_in_group("player")
+
+
+func _on_sprint_pressed() -> void:
+	_sprint_on = not _sprint_on
+	if _sprint_on:
+		Input.action_press("sprint")
+	else:
+		Input.action_release("sprint")
 
 
 func _on_switch_pressed() -> void:
@@ -31,6 +39,7 @@ func _process(_delta: float) -> void:
 		_player = get_tree().get_first_node_in_group("player")
 		return
 	_player.touch_move_vector = joystick.value
+	_player.stick_look_vector = shoot_stick.value
 
 
 func _bind(button: Button, action: String) -> void:
