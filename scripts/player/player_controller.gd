@@ -23,6 +23,7 @@ const HIT_MARKER_SCENE: PackedScene = preload("res://scenes/effects/hit_marker.t
 @onready var interact_ray: RayCast3D = $Camera3D/InteractRay
 @onready var muzzle_ray: RayCast3D = $Camera3D/MuzzleRay
 @onready var weapon_mount: Node3D = $Camera3D/WeaponMount
+@onready var fire_sound_player: AudioStreamPlayer = $FireSound
 
 var _current_model: Node3D
 
@@ -169,6 +170,9 @@ func _fire_shot() -> void:
 	current_mag_ammo -= 1
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 
+	if current_weapon.fire_sound:
+		fire_sound_player.stream = current_weapon.fire_sound
+		fire_sound_player.play()
 	muzzle_ray.force_raycast_update()
 	if muzzle_ray.is_colliding():
 		var target := muzzle_ray.get_collider()
