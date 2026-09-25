@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/effects/hit_marker.gd" id="1"]
+
+[node name="HitMarker" type="Label3D"]
+billboard = 1
+text = "✕"
+font_size = 48
+modulate = Color(1, 0.15, 0.15, 1)
+no_depth_test = true
+script = ExtResource("1")
