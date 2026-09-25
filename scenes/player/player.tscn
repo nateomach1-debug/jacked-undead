@@ -32,4 +32,6 @@ target_position = Vector3(0, 0, -3)
 target_position = Vector3(0, 0, -60)
 
 [node name="WeaponMount" type="Node3D" parent="Camera3D"]
-transform = Transform3D(0, 0, 0.5, 0, 0.5, 0, -0.5, 0, 0, 0.3, -0.35, -0.8)
+position = Vector3(0.3, -0.35, -0.8)
+rotation_degrees = Vector3(0, 90, 0)
+scale = Vector3(0.5, 0.5, 0.5)
