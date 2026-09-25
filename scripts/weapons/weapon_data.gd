@@ -11,6 +11,7 @@ class_name WeaponData
 @export var range: float = 60.0
 @export var is_pr_upgraded: bool = false  # true once run through the PR Rack
 @export var model_scene: PackedScene      # the .gltf viewmodel shown in the player's hands
+@export var fire_sound: AudioStream       # played each shot -- set once you've uploaded audio files
 
 ## Returns a duplicated, upgraded copy of this weapon after a Pack-a-Punch
 ## ("hitting a PR") pass. Never mutates the original resource.
