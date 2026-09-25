@@ -20,6 +20,9 @@ const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
 @onready var camera: Camera3D = $Camera3D
 @onready var interact_ray: RayCast3D = $Camera3D/InteractRay
 @onready var muzzle_ray: RayCast3D = $Camera3D/MuzzleRay
+@onready var weapon_mount: Node3D = $Camera3D/WeaponMount
+
+var _current_model: Node3D
 
 var max_health: float = base_max_health
 var current_health: float = base_max_health
@@ -74,11 +77,13 @@ func _ready() -> void:
 		current_mag_ammo = current_weapon.mag_size
 		current_reserve_ammo = current_weapon.max_reserve_ammo
 		ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+		_update_weapon_model()
 	elif current_weapon:
 		current_mag_ammo = current_weapon.mag_size
 		current_reserve_ammo = current_weapon.max_reserve_ammo
 		ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
-
+		_update_weapon_model()
+	
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		apply_look_delta(event.relative, MOUSE_SENSITIVITY)
@@ -205,6 +210,7 @@ func equip_weapon(weapon: WeaponData) -> void:
 	current_mag_ammo = weapon.mag_size
 	current_reserve_ammo = weapon.max_reserve_ammo
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+	_update_weapon_model()
 	if current_weapon_index < weapon_loadout.size():
 		weapon_loadout[current_weapon_index] = weapon
 		if current_weapon_index < _saved_mag_ammo.size():
@@ -228,11 +234,24 @@ func switch_weapon(direction: int = 1) -> void:
 	current_mag_ammo = _saved_mag_ammo[current_weapon_index]
 	current_reserve_ammo = _saved_reserve_ammo[current_weapon_index]
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+	_update_weapon_model()
+
 
 ## Called by the PR Rack (Pack-a-Punch) station.
 func apply_pr_upgrade() -> void:
 	if current_weapon and not current_weapon.is_pr_upgraded:
 		equip_weapon(current_weapon.get_pr_upgraded_copy())
+
+
+## Swaps the visible first-person model to match current_weapon. Call this
+## anywhere current_weapon changes (initial equip, PR upgrade, switching).
+func _update_weapon_model() -> void:
+	if _current_model:
+		_current_model.queue_free()
+		_current_model = null
+	if current_weapon and current_weapon.model_scene:
+		_current_model = current_weapon.model_scene.instantiate()
+		weapon_mount.add_child(_current_model)
 
 
 func _try_interact() -> void:
