@@ -11,7 +11,7 @@ const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
 const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
-const STICK_LOOK_SPEED: float = 260.0  # degrees/sec of turn at full shoot-stick deflection
+const STICK_LOOK_SPEED: float = 480.0  # degrees/sec of turn at full shoot-stick deflection
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
