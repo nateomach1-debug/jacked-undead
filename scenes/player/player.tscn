@@ -31,6 +31,8 @@ target_position = Vector3(0, 0, -3)
 [node name="MuzzleRay" type="RayCast3D" parent="Camera3D"]
 target_position = Vector3(0, 0, -60)
 
+[node name="FireSound" type="AudioStreamPlayer" parent="."]
+
 [node name="WeaponMount" type="Node3D" parent="Camera3D"]
 position = Vector3(0.3, -0.35, -0.8)
 rotation_degrees = Vector3(0, 90, 0)
