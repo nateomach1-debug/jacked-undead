@@ -11,7 +11,7 @@ const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
 const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
-const STICK_LOOK_SPEED: float = 120.0  # degrees/sec of turn at full shoot-stick deflection
+const STICK_LOOK_SPEED: float = 260.0  # degrees/sec of turn at full shoot-stick deflection
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -175,6 +175,19 @@ func _fire_shot() -> void:
 			target.take_damage(current_weapon.damage * damage_multiplier, self)
 			if target.is_in_group("zombies"):
 				GameManager.add_gains(GAINS_PER_HIT)
+
+## Fires a single shot right now if the weapon is ready, bypassing the
+## per-frame is_action_pressed() poll. Called directly on stick touch-down
+## so a fast tap can't land between two physics frames and get missed.
+func fire_once_if_ready() -> void:
+	if not current_weapon or _fire_cooldown > 0.0:
+		return
+	if current_mag_ammo > 0:
+		_fire_shot()
+		_fire_cooldown = current_weapon.fire_rate
+	else:
+		_reload()
+
 
 func _reload() -> void:
 	if not current_weapon:
