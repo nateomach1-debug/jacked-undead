@@ -16,7 +16,7 @@ shape = SubResource("BoxShape3D_1")
 
 [node name="Model" parent="." instance=ExtResource("2")]
 position = Vector3(0, 0, 0)
-scale = Vector3(0.045, 0.045, 0.045)
+scale = Vector3(0.045, 0.06, 0.06)
 
 [node name="Label3D" type="Label3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
