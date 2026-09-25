@@ -4,6 +4,8 @@ extends Control
 @export var knob_radius: float = 45.0
 @export var fire_action: String = ""   # if set, this stick also presses/releases this Input action (e.g. "shoot")
 
+signal fire_pressed  # emitted the instant a fire_action touch begins, guaranteeing a tap always registers
+
 var value: Vector2 = Vector2.ZERO
 
 var _dragging: bool = false
@@ -24,6 +26,7 @@ func _gui_input(event: InputEvent) -> void:
 				_update_from_position(event.position)
 				if fire_action != "":
 					Input.action_press(fire_action)
+					fire_pressed.emit()
 		elif event.index == _touch_index:
 			_touch_index = -1
 			_dragging = false
