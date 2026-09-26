@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -21,6 +21,9 @@
 [ext_resource type="Texture2D" path="res://resources/icons/fish_oil.svg" id="19"]
 [ext_resource type="Texture2D" path="res://resources/icons/bcaas.svg" id="20"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="21"]
+[ext_resource type="PackedScene" path="res://scenes/stations/gun_wall_buy.tscn" id="22"]
+[ext_resource type="PackedScene" path="res://resources/models/weapons/SMG_1.gltf" id="23"]
+[ext_resource type="PackedScene" path="res://resources/models/weapons/AR_1.gltf" id="24"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -137,7 +140,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 [node name="Player" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 current_weapon = ExtResource("10")
-weapon_loadout = [ExtResource("10"), ExtResource("12"), ExtResource("13"), ExtResource("14")]
+weapon_loadout = [ExtResource("10")]
 
 [node name="HUD" parent="." instance=ExtResource("9")]
 [node name="TouchControls" parent="." instance=ExtResource("11")]
@@ -220,4 +223,20 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 6)
 
 [node name="WaterStation2" parent="Stations" instance=ExtResource("8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, -6)
+
+[node name="SMGWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 6)
+weapon = ExtResource("12")
+display_model = ExtResource("23")
+display_name = "SMG"
+buy_cost = 3000
+ammo_cost = 500
+
+[node name="RifleWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 9)
+weapon = ExtResource("14")
+display_model = ExtResource("24")
+display_name = "Rifle"
+buy_cost = 4000
+ammo_cost = 600
