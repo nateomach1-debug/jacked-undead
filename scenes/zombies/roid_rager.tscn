@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/zombies/roid_rager.gd" id="1"]
 
@@ -33,6 +33,12 @@ height = 0.26
 [sub_resource type="BoxMesh" id="BoxMesh_wound"]
 size = Vector3(0.2, 0.24, 0.05)
 
+[sub_resource type="BoxMesh" id="BoxMesh_wound_inner"]
+size = Vector3(0.13, 0.16, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_gash"]
+size = Vector3(0.04, 0.17, 0.06)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
 albedo_color = Color(0.55, 0.16, 0.13, 1)
 roughness = 0.85
@@ -42,6 +48,10 @@ albedo_color = Color(0.05, 0.05, 0.05, 1)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wound"]
 albedo_color = Color(0.15, 0.02, 0.02, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wound_inner"]
+albedo_color = Color(0.35, 0.04, 0.04, 1)
 roughness = 1.0
 
 [node name="RoidRager" type="CharacterBody3D"]
@@ -79,23 +89,42 @@ mesh = SubResource("CapsuleMesh_torso")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
 [node name="Wound" type="MeshInstance3D" parent="Body/Torso"]
-position = Vector3(0.06, 0.18, 0.28)
+position = Vector3(0.06, 0.18, -0.31)
+rotation_degrees = Vector3(0, 8, 0)
 mesh = SubResource("BoxMesh_wound")
 surface_material_override/0 = SubResource("StandardMaterial3D_wound")
 
+[node name="WoundInner" type="MeshInstance3D" parent="Body/Torso"]
+position = Vector3(0.06, 0.18, -0.33)
+rotation_degrees = Vector3(0, 8, 12)
+mesh = SubResource("BoxMesh_wound_inner")
+surface_material_override/0 = SubResource("StandardMaterial3D_wound_inner")
+
+[node name="WoundGash1" type="MeshInstance3D" parent="Body/Torso"]
+position = Vector3(0.0, 0.26, -0.32)
+rotation_degrees = Vector3(0, 8, 35)
+mesh = SubResource("BoxMesh_gash")
+surface_material_override/0 = SubResource("StandardMaterial3D_wound")
+
+[node name="WoundGash2" type="MeshInstance3D" parent="Body/Torso"]
+position = Vector3(0.11, 0.1, -0.32)
+rotation_degrees = Vector3(0, 8, -25)
+mesh = SubResource("BoxMesh_gash")
+surface_material_override/0 = SubResource("StandardMaterial3D_wound")
+
 [node name="Head" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.1, 0.88, 0.1)
+position = Vector3(0.1, 0.88, -0.1)
 rotation_degrees = Vector3(6, 0, 8)
 mesh = SubResource("SphereMesh_head")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
 [node name="EyeLeft" type="MeshInstance3D" parent="Body/Head"]
-position = Vector3(0.08, 0.02, 0.16)
+position = Vector3(0.07, 0.02, -0.19)
 mesh = SubResource("SphereMesh_eye")
 surface_material_override/0 = SubResource("StandardMaterial3D_eye")
 
 [node name="EyeRight" type="MeshInstance3D" parent="Body/Head"]
-position = Vector3(-0.08, 0.02, 0.16)
+position = Vector3(-0.07, 0.02, -0.19)
 mesh = SubResource("SphereMesh_eye")
 surface_material_override/0 = SubResource("StandardMaterial3D_eye")
 
