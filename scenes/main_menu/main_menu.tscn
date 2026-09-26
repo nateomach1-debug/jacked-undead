@@ -1,0 +1,80 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/main_menu/main_menu.gd" id="1"]
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.08, 0.1, 1)
+
+[node name="TitleLabel" type="Label" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.18
+offset_left = -300.0
+offset_right = 300.0
+offset_top = -40.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 56
+horizontal_alignment = 1
+text = "JACKED UNDEAD"
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="StartButton" type="Button" parent="CenterContainer/VBox"]
+custom_minimum_size = Vector2(320, 90)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "START"
+
+[node name="OptionsButton" type="Button" parent="CenterContainer/VBox"]
+custom_minimum_size = Vector2(320, 90)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "OPTIONS"
+
+[node name="ExitButton" type="Button" parent="CenterContainer/VBox"]
+custom_minimum_size = Vector2(320, 90)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "EXIT GAME"
+
+[node name="OptionsPanel" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Dim" type="ColorRect" parent="OptionsPanel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.75)
+
+[node name="CenterContainer" type="CenterContainer" parent="OptionsPanel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="OptionsPanel/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Label" type="Label" parent="OptionsPanel/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+text = "Options coming soon"
+
+[node name="BackButton" type="Button" parent="OptionsPanel/CenterContainer/VBox"]
+custom_minimum_size = Vector2(240, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "BACK"
