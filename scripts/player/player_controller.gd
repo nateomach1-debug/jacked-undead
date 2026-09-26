@@ -11,6 +11,7 @@ const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
 const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
+const HEADSHOT_MULTIPLIER: float = 2.0
 const STICK_LOOK_SPEED: float = 480.0  # degrees/sec of turn at full shoot-stick deflection
 const HIT_MARKER_SCENE: PackedScene = preload("res://scenes/effects/hit_marker.tscn")
 
@@ -180,10 +181,14 @@ func _fire_shot() -> void:
 	if muzzle_ray.is_colliding():
 		var target := muzzle_ray.get_collider()
 		if target and target.has_method("take_damage"):
-			target.take_damage(current_weapon.damage * damage_multiplier, self)
+			var damage: float = current_weapon.damage * damage_multiplier
+			var is_head: bool = target.has_method("is_headshot") and target.is_headshot(muzzle_ray.get_collision_point())
+			if is_head:
+				damage *= HEADSHOT_MULTIPLIER
+			target.take_damage(damage, self)
 			if target.is_in_group("zombies"):
 				GameManager.add_gains(GAINS_PER_HIT)
-				_spawn_hit_marker(muzzle_ray.get_collision_point())
+				_spawn_hit_marker(muzzle_ray.get_collision_point(), is_head)
 
 ## Fires a single shot right now if the weapon is ready, bypassing the
 ## per-frame is_action_pressed() poll. Called directly on stick touch-down
@@ -198,8 +203,10 @@ func fire_once_if_ready() -> void:
 		_reload()
 
 
-func _spawn_hit_marker(at_position: Vector3) -> void:
+func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
 	var marker: Node3D = HIT_MARKER_SCENE.instantiate()
+	if is_headshot and marker.has_method("set_headshot"):
+		marker.set_headshot()
 	get_tree().current_scene.add_child(marker)
 	marker.global_position = at_position
 
