@@ -79,7 +79,7 @@ mesh = SubResource("CapsuleMesh_torso")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
 [node name="Wound" type="MeshInstance3D" parent="Body/Torso"]
-position = Vector3(0.05, 0.15, 0.22)
+position = Vector3(0.05, 0.15, 0.24)
 mesh = SubResource("BoxMesh_wound")
 surface_material_override/0 = SubResource("StandardMaterial3D_wound")
 
@@ -90,12 +90,12 @@ mesh = SubResource("SphereMesh_head")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
 [node name="EyeLeft" type="MeshInstance3D" parent="Body/Head"]
-position = Vector3(0.06, 0.02, 0.12)
+position = Vector3(0.05, 0.02, 0.15)
 mesh = SubResource("SphereMesh_eye")
 surface_material_override/0 = SubResource("StandardMaterial3D_eye")
 
 [node name="EyeRight" type="MeshInstance3D" parent="Body/Head"]
-position = Vector3(-0.06, 0.02, 0.12)
+position = Vector3(-0.05, 0.02, 0.15)
 mesh = SubResource("SphereMesh_eye")
 surface_material_override/0 = SubResource("StandardMaterial3D_eye")
 
