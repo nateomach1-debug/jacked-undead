@@ -226,7 +226,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 6)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, -6)
 
 [node name="SMGWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 6)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 6)
 weapon = ExtResource("12")
 display_model = ExtResource("23")
 display_name = "SMG"
@@ -234,7 +234,7 @@ buy_cost = 3000
 ammo_cost = 500
 
 [node name="RifleWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 9)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 9)
 weapon = ExtResource("14")
 display_model = ExtResource("24")
 display_name = "Rifle"
