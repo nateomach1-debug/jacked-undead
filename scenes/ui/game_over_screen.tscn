@@ -1,0 +1,55 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/game_over_screen.gd" id="1"]
+
+[node name="GameOverScreen" type="CanvasLayer"]
+script = ExtResource("1")
+
+[node name="Dim" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.8)
+
+[node name="CenterContainer" type="CenterContainer" parent="Dim"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="Dim/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="TitleLabel" type="Label" parent="Dim/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+horizontal_alignment = 1
+text = "YOU DIED"
+
+[node name="KillsLabel" type="Label" parent="Dim/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "Zombies Killed: 0"
+
+[node name="GainsLabel" type="Label" parent="Dim/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "Gains Earned: 0"
+
+[node name="RoundLabel" type="Label" parent="Dim/CenterContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+text = "Round Reached: 1"
+
+[node name="RetryButton" type="Button" parent="Dim/CenterContainer/VBox"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "RETRY"
+
+[node name="MenuButton" type="Button" parent="Dim/CenterContainer/VBox"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "MAIN MENU"
