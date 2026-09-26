@@ -18,6 +18,7 @@ const GRAVITY: float = 9.8
 @export var attack_range: float = 1.5
 @export var attack_cooldown: float = 1.0
 @export var gains_on_death: int = 100
+@export var head_height_threshold: float = 0.5  # local Y above which a hit counts as a headshot
 
 var current_health: float
 var _target: Node3D
@@ -69,6 +70,10 @@ func _try_attack() -> void:
 	if _attack_timer <= 0.0 and _target and _target.has_method("take_damage"):
 		_target.take_damage(attack_damage)
 		_attack_timer = attack_cooldown
+
+
+func is_headshot(world_hit_position: Vector3) -> bool:
+	return (world_hit_position.y - global_position.y) >= head_height_threshold
 
 
 func take_damage(amount: float, _source: Node = null) -> void:
