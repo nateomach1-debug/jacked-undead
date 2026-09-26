@@ -7,31 +7,31 @@ radius = 0.45
 height = 1.9
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_leg"]
-radius = 0.16
-height = 0.9
+radius = 0.15
+height = 0.7
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_torso"]
-radius = 0.26
-height = 0.75
+radius = 0.2
+height = 0.8
 
 [sub_resource type="SphereMesh" id="SphereMesh_head"]
-radius = 0.19
-height = 0.38
+radius = 0.15
+height = 0.3
 
 [sub_resource type="SphereMesh" id="SphereMesh_eye"]
-radius = 0.03
-height = 0.06
+radius = 0.018
+height = 0.036
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_arm"]
 radius = 0.09
-height = 0.65
+height = 0.55
 
 [sub_resource type="SphereMesh" id="SphereMesh_hand"]
-radius = 0.1
-height = 0.2
+radius = 0.095
+height = 0.19
 
 [sub_resource type="BoxMesh" id="BoxMesh_wound"]
-size = Vector3(0.18, 0.22, 0.04)
+size = Vector3(0.16, 0.2, 0.04)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
 albedo_color = Color(0.55, 0.6, 0.5, 1)
@@ -54,64 +54,75 @@ shape = SubResource("CapsuleShape3D_1")
 
 [node name="Body" type="Node3D" parent="."]
 
-[node name="LegLeft" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.13, -0.55, 0)
+[node name="HipPivotLeft" type="Node3D" parent="Body"]
+position = Vector3(0.13, -0.25, 0)
 rotation_degrees = Vector3(5, 0, -3)
+
+[node name="LegMesh" type="MeshInstance3D" parent="Body/HipPivotLeft"]
+position = Vector3(0, -0.35, 0)
 mesh = SubResource("CapsuleMesh_leg")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
-[node name="LegRight" type="MeshInstance3D" parent="Body"]
-position = Vector3(-0.13, -0.55, 0)
+[node name="HipPivotRight" type="Node3D" parent="Body"]
+position = Vector3(-0.13, -0.25, 0)
 rotation_degrees = Vector3(-8, 0, 4)
+
+[node name="LegMesh" type="MeshInstance3D" parent="Body/HipPivotRight"]
+position = Vector3(0, -0.35, 0)
 mesh = SubResource("CapsuleMesh_leg")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
 [node name="Torso" type="MeshInstance3D" parent="Body"]
 position = Vector3(0.02, 0.15, 0.02)
-rotation_degrees = Vector3(18, 5, -4)
+rotation_degrees = Vector3(12, 4, -3)
 mesh = SubResource("CapsuleMesh_torso")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
-[node name="Wound" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.05, 0.25, 0.27)
-rotation_degrees = Vector3(18, 5, -4)
+[node name="Wound" type="MeshInstance3D" parent="Body/Torso"]
+position = Vector3(0.05, 0.15, 0.22)
 mesh = SubResource("BoxMesh_wound")
 surface_material_override/0 = SubResource("StandardMaterial3D_wound")
 
 [node name="Head" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.1, 0.78, 0.12)
-rotation_degrees = Vector3(10, 0, 22)
+position = Vector3(0.08, 0.67, 0.08)
+rotation_degrees = Vector3(8, 0, 10)
 mesh = SubResource("SphereMesh_head")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
-[node name="EyeLeft" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.17, 0.8, 0.27)
+[node name="EyeLeft" type="MeshInstance3D" parent="Body/Head"]
+position = Vector3(0.06, 0.02, 0.12)
 mesh = SubResource("SphereMesh_eye")
 surface_material_override/0 = SubResource("StandardMaterial3D_eye")
 
-[node name="EyeRight" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.04, 0.79, 0.27)
+[node name="EyeRight" type="MeshInstance3D" parent="Body/Head"]
+position = Vector3(-0.06, 0.02, 0.12)
 mesh = SubResource("SphereMesh_eye")
 surface_material_override/0 = SubResource("StandardMaterial3D_eye")
 
-[node name="ArmLeft" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.38, 0.55, 0.15)
-rotation_degrees = Vector3(65, 0, 8)
+[node name="ShoulderPivotLeft" type="Node3D" parent="Body"]
+position = Vector3(0.3, 0.5, 0.05)
+rotation_degrees = Vector3(60, 0, 10)
+
+[node name="ArmMesh" type="MeshInstance3D" parent="Body/ShoulderPivotLeft"]
+position = Vector3(0, -0.275, 0)
 mesh = SubResource("CapsuleMesh_arm")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
-[node name="HandLeft" type="MeshInstance3D" parent="Body"]
-position = Vector3(0.42, 0.15, 0.55)
+[node name="HandMesh" type="MeshInstance3D" parent="Body/ShoulderPivotLeft"]
+position = Vector3(0, -0.55, 0)
 mesh = SubResource("SphereMesh_hand")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
-[node name="ArmRight" type="MeshInstance3D" parent="Body"]
-position = Vector3(-0.36, 0.42, -0.05)
-rotation_degrees = Vector3(100, 0, -15)
+[node name="ShoulderPivotRight" type="Node3D" parent="Body"]
+position = Vector3(-0.28, 0.42, -0.05)
+rotation_degrees = Vector3(95, 0, -12)
+
+[node name="ArmMesh" type="MeshInstance3D" parent="Body/ShoulderPivotRight"]
+position = Vector3(0, -0.275, 0)
 mesh = SubResource("CapsuleMesh_arm")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
 
-[node name="HandRight" type="MeshInstance3D" parent="Body"]
-position = Vector3(-0.5, 0.05, -0.15)
+[node name="HandMesh" type="MeshInstance3D" parent="Body/ShoulderPivotRight"]
+position = Vector3(0, -0.55, 0)
 mesh = SubResource("SphereMesh_hand")
 surface_material_override/0 = SubResource("StandardMaterial3D_skin")
