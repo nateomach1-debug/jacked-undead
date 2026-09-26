@@ -9,4 +9,5 @@ func _ready() -> void:
 	move_speed = 4.5
 	attack_damage = 25.0
 	gains_on_death = 100
+	head_height_threshold = 0.65
 	super._ready()
