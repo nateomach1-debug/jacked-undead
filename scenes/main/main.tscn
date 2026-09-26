@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -20,6 +20,7 @@
 [ext_resource type="Texture2D" path="res://resources/icons/pre_workout.svg" id="18"]
 [ext_resource type="Texture2D" path="res://resources/icons/fish_oil.svg" id="19"]
 [ext_resource type="Texture2D" path="res://resources/icons/bcaas.svg" id="20"]
+[ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="21"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -140,6 +141,8 @@ weapon_loadout = [ExtResource("10"), ExtResource("12"), ExtResource("13"), ExtRe
 
 [node name="HUD" parent="." instance=ExtResource("9")]
 [node name="TouchControls" parent="." instance=ExtResource("11")]
+
+[node name="GameOverScreen" parent="." instance=ExtResource("21")]
 
 [node name="RoundManager" type="Node" parent="."]
 script = ExtResource("2")
