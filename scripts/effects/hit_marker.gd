@@ -2,6 +2,11 @@ extends Label3D
 ## Brief red flash spawned at a bullet's impact point on a zombie.
 ## Pops in, holds briefly, fades out, then frees itself.
 
+func set_headshot() -> void:
+	modulate = Color(1, 0.85, 0.1, 1)
+	font_size = 64
+
+
 func _ready() -> void:
 	scale = Vector3(0.6, 0.6, 0.6)
 	var tween := create_tween()
