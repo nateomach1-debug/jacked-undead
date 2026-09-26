@@ -55,6 +55,7 @@ var current_mag_ammo: int = 0
 var current_reserve_ammo: int = 0
 var _saved_mag_ammo: Array = []
 var _saved_reserve_ammo: Array = []
+var owned_weapon_names: Array = []  # base weapon_name of each gun ever bought, for wall-buy stations
 var _fire_cooldown: float = 0.0
 var _regen_accum: float = 0.0
 
@@ -81,6 +82,8 @@ func _ready() -> void:
 		for w in weapon_loadout:
 			_saved_mag_ammo.append(w.mag_size)
 			_saved_reserve_ammo.append(w.max_reserve_ammo)
+			if w.weapon_name not in owned_weapon_names:
+				owned_weapon_names.append(w.weapon_name)
 		current_mag_ammo = current_weapon.mag_size
 		current_reserve_ammo = current_weapon.max_reserve_ammo
 		ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
@@ -276,6 +279,44 @@ func switch_weapon(direction: int = 1) -> void:
 func apply_pr_upgrade() -> void:
 	if current_weapon and not current_weapon.is_pr_upgraded:
 		equip_weapon(current_weapon.get_pr_upgraded_copy())
+
+
+## True once this weapon (by base name, so PR-upgraded copies still
+## count) has ever been bought. Used by wall-buy stations to decide
+## between "buy" and "refill ammo".
+func has_weapon(w: WeaponData) -> bool:
+	return w != null and w.weapon_name in owned_weapon_names
+
+
+## Called by a GunWallBuy station the first time that gun is purchased.
+## Adds it to the loadout and immediately equips it.
+func add_weapon_to_loadout(w: WeaponData) -> void:
+	if has_weapon(w):
+		return
+	owned_weapon_names.append(w.weapon_name)
+	weapon_loadout.append(w)
+	_saved_mag_ammo.append(w.mag_size)
+	_saved_reserve_ammo.append(w.max_reserve_ammo)
+	current_weapon_index = weapon_loadout.size() - 1
+	current_weapon = w
+	current_mag_ammo = w.mag_size
+	current_reserve_ammo = w.max_reserve_ammo
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+	_update_weapon_model()
+
+
+## Called by a GunWallBuy station on repeat visits to refill reserve
+## ammo for that specific gun, whichever weapon is currently equipped.
+func add_ammo_to_weapon(w: WeaponData, amount: int) -> void:
+	for i in range(weapon_loadout.size()):
+		var entry: WeaponData = weapon_loadout[i]
+		if entry.weapon_name == w.weapon_name or entry.weapon_name.begins_with(w.weapon_name + " -"):
+			if i == current_weapon_index:
+				current_reserve_ammo = min(current_reserve_ammo + amount, entry.max_reserve_ammo)
+				ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+			else:
+				_saved_reserve_ammo[i] = min(_saved_reserve_ammo[i] + amount, entry.max_reserve_ammo)
+			return
 
 
 ## Swaps the visible first-person model to match current_weapon. Call this
