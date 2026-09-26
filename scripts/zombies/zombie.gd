@@ -79,5 +79,6 @@ func take_damage(amount: float, _source: Node = null) -> void:
 
 func _die() -> void:
 	GameManager.add_gains(gains_on_death)
+	GameManager.add_kill()
 	died.emit(self)
 	queue_free()
