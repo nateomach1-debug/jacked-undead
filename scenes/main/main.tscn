@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3]
+[gd_scene load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -24,6 +24,10 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/gun_wall_buy.tscn" id="22"]
 [ext_resource type="PackedScene" path="res://resources/models/weapons/SMG_1.gltf" id="23"]
 [ext_resource type="PackedScene" path="res://resources/models/weapons/AR_1.gltf" id="24"]
+[ext_resource type="Resource" path="res://resources/weapons/crossbow.tres" id="25"]
+[ext_resource type="Resource" path="res://resources/weapons/sniper.tres" id="26"]
+[ext_resource type="PackedScene" path="res://resources/models/weapons/Crossbow_1.gltf" id="27"]
+[ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -240,3 +244,19 @@ display_model = ExtResource("24")
 display_name = "Rifle"
 buy_cost = 4000
 ammo_cost = 600
+
+[node name="CrossbowWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 12)
+weapon = ExtResource("25")
+display_model = ExtResource("27")
+display_name = "Crossbow"
+buy_cost = 4500
+ammo_cost = 400
+
+[node name="SniperWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 15)
+weapon = ExtResource("26")
+display_model = ExtResource("28")
+display_name = "Sniper"
+buy_cost = 5500
+ammo_cost = 450
