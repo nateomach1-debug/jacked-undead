@@ -21,8 +21,7 @@ func _on_arena_pressed() -> void:
 
 
 func _on_building_pressed() -> void:
-	placeholder_label.visible = true
-
+	get_tree().change_scene_to_file("res://scenes/main/building_map.tscn")
 
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
