@@ -11,6 +11,9 @@ class_name Zombie
 signal died(zombie: Zombie)
 
 const GRAVITY: float = 9.8
+const HEADSHOT_KILL_GAINS: int = 175  # awarded instead of gains_on_death when the killing shot was a headshot
+
+const GRAVITY: float = 9.8
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
@@ -76,14 +79,14 @@ func is_headshot(world_hit_position: Vector3) -> bool:
 	return (world_hit_position.y - global_position.y) >= head_height_threshold
 
 
-func take_damage(amount: float, _source: Node = null) -> void:
+func take_damage(amount: float, _source: Node = null, was_headshot: bool = false) -> void:
 	current_health -= amount
 	if current_health <= 0.0:
-		_die()
+		_die(was_headshot)
 
 
-func _die() -> void:
-	GameManager.add_gains(gains_on_death)
+func _die(was_headshot: bool = false) -> void:
+	GameManager.add_gains(HEADSHOT_KILL_GAINS if was_headshot else gains_on_death)
 	GameManager.add_kill()
 	died.emit(self)
 	queue_free()
