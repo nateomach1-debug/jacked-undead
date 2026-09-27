@@ -42,7 +42,7 @@ text = "GYM ARENA"
 custom_minimum_size = Vector2(340, 90)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
-text = "BUILDING (COMING SOON)"
+text = "BUILDING"
 
 [node name="PlaceholderLabel" type="Label" parent="CenterContainer/VBox"]
 layout_mode = 2
