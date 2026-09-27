@@ -295,15 +295,20 @@ func has_weapon(w: WeaponData) -> bool:
 	return w != null and w.weapon_name in owned_weapon_names
 
 
-## Called by a GunWallBuy station the first time that gun is purchased.
-## Adds it to the loadout and immediately equips it.
-func add_weapon_to_loadout(w: WeaponData) -> void:
-	if has_weapon(w):
+## True if w (by base name) is the weapon currently in the player's hands.
+func is_current_weapon(w: WeaponData) -> bool:
+	return w != null and current_weapon != null and current_weapon.weapon_name == w.weapon_name
+
+
+## Called by a GunWallBuy station on repeat visits. Only ever touches
+## the currently-equipped weapon's reserve ammo -- the station itself
+## checks is_current_weapon() first, so this should never be called
+## for a gun that isn't the one you're holding.
+func add_ammo_to_current_weapon(amount: int) -> void:
+	if not current_weapon:
 		return
-	owned_weapon_names.append(w.weapon_name)
-	weapon_loadout.append(w)
-	_saved_mag_ammo.append(w.mag_size)
-	_saved_reserve_ammo.append(w.max_reserve_ammo)
+	current_reserve_ammo = min(current_reserve_ammo + amount, current_weapon.max_reserve_ammo)
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 	current_weapon_index = weapon_loadout.size() - 1
 	current_weapon = w
 	current_mag_ammo = w.mag_size
