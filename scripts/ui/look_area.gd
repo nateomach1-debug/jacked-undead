@@ -3,6 +3,8 @@ extends Control
 const TOUCH_LOOK_SENSITIVITY: float = 0.006
 const STICK_VISUAL_RADIUS: float = 90.0
 const STICK_KNOB_RADIUS: float = 40.0
+const SHOOT_ZONE_LEFT_MARGIN: float = 164.0   # matches the perk bar's half-width in hud.tscn
+const SHOOT_ZONE_HEIGHT: float = 330.0        # matches the button cluster's height in touch_controls.tscn
 
 var _player: Node
 var _shoot_touch_index: int = -1
@@ -30,7 +32,7 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 	elif event is InputEventScreenTouch:
 		if event.pressed:
-			var in_shoot_zone: bool = event.position.x > size.x / 2.0 and event.position.y > size.y / 2.0
+			var in_shoot_zone: bool = event.position.x > (size.x / 2.0 + SHOOT_ZONE_LEFT_MARGIN) and event.position.y > (size.y - SHOOT_ZONE_HEIGHT)
 			if in_shoot_zone and _shoot_touch_index == -1:
 				_shoot_touch_index = event.index
 				_shoot_origin = event.position
