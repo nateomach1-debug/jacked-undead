@@ -185,7 +185,7 @@ func _fire_shot() -> void:
 			var is_head: bool = target.has_method("is_headshot") and target.is_headshot(muzzle_ray.get_collision_point())
 			if is_head:
 				damage *= HEADSHOT_MULTIPLIER
-			target.take_damage(damage, self)
+			target.take_damage(damage, self, is_head)
 			if target.is_in_group("zombies"):
 				GameManager.add_gains(GAINS_PER_HIT)
 				_spawn_hit_marker(muzzle_ray.get_collision_point(), is_head)
