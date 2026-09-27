@@ -13,8 +13,6 @@ signal died(zombie: Zombie)
 const GRAVITY: float = 9.8
 const HEADSHOT_KILL_GAINS: int = 175  # awarded instead of gains_on_death when the killing shot was a headshot
 
-const GRAVITY: float = 9.8
-
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
 @export var attack_damage: float = 10.0
