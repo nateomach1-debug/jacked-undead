@@ -14,6 +14,7 @@ const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
 const HEADSHOT_MULTIPLIER: float = 2.0
 const STICK_LOOK_SPEED: float = 480.0  # degrees/sec of turn at full shoot-stick deflection
 const HIT_MARKER_SCENE: PackedScene = preload("res://scenes/effects/hit_marker.tscn")
+const STEP_HEIGHT: float = 0.35  # max ledge height the player can walk straight up (real stairs)
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -153,7 +154,29 @@ func _handle_movement(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0, speed)
 		velocity.z = move_toward(velocity.z, 0, speed)
 
+	_step_up_if_blocked(delta)
 	move_and_slide()
+
+
+## CharacterBody3D has no built-in stair-climbing: a step taller than a
+## tiny lip acts like a wall. If moving forward this frame would hit
+## something, and stepping up by STEP_HEIGHT would clear it, nudge the
+## body up first so move_and_slide() carries it up and over instead of
+## stopping dead. Leaves genuine walls (still blocked even after the
+## step up) alone.
+func _step_up_if_blocked(delta: float) -> void:
+	if not is_on_floor():
+		return
+	var motion := Vector3(velocity.x, 0, velocity.z) * delta
+	if motion.length() < 0.001:
+		return
+	if not test_move(global_transform, motion):
+		return
+	var raised_transform := global_transform
+	raised_transform.origin += Vector3(0, STEP_HEIGHT, 0)
+	if test_move(raised_transform, motion):
+		return  # still blocked even raised -- a real wall, not a step
+	global_position.y += STEP_HEIGHT
 
 
 func _handle_shooting(delta: float) -> void:
