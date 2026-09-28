@@ -6,6 +6,7 @@ extends CanvasLayer
 @onready var gains_label: Label = $Margin/VBox/GainsLabel
 @onready var round_label: Label = $Margin/VBox/RoundLabel
 @onready var prompt_label: Label = $Margin/PromptLabel
+@onready var coords_label: Label = $CoordsLabel
 
 @onready var perk_trt: TextureRect = $PerkBar/TRT
 @onready var perk_creatine: TextureRect = $PerkBar/Creatine
@@ -41,6 +42,12 @@ func bind_player(player: Node) -> void:
 	player.interact_prompt_changed.connect(_on_prompt_changed)
 	player.perks_changed.connect(_on_perks_changed)
 	_on_perks_changed(player.owned_perks)
+
+
+func _process(_delta: float) -> void:
+	if _player:
+		var pos: Vector3 = _player.global_position
+		coords_label.text = "X: %.1f  Y: %.1f  Z: %.1f" % [pos.x, pos.y, pos.z]
 
 
 func _on_health_changed(current: float, max_hp: float) -> void:
