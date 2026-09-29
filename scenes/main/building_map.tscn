@@ -21,6 +21,7 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/supplement_station.tscn" id="30"]
 [ext_resource type="PackedScene" path="res://scenes/stations/pr_rack.tscn" id="31"]
 [ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="32"]
+[ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="33"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -152,3 +153,6 @@ display_name = "BCAAs"
 cost = 1500
 body_color = Color(0.2196, 0.6314, 0.4118, 1)
 icon_texture = ExtResource("20")
+
+[node name="NavBaker" type="NavigationRegion3D" parent="."]
+script = ExtResource("33")
