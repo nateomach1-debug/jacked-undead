@@ -384,6 +384,9 @@ func _update_weapon_model() -> void:
 		if model:
 			_current_model = model
 			weapon_mount.add_child(_current_model)
+			if not current_weapon.model_scene:
+				# Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
+				_current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
 
 func _try_interact() -> void:
 	interact_ray.force_raycast_update()
