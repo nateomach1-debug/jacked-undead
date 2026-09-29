@@ -275,4 +275,114 @@ static func _lmg(p: Node3D) -> void:
 	_box(p, Vector3(0.054, 0.1, 0.014), Vector3(0, 0.01, 0.485), GUNMETAL, Vector3(4, 0, 0))
 
 
-## Burst rifle: M16-style with
+## Burst rifle: M16-style with carry-handle sight, ribbed handguard, curved mag.
+static func _burst_rifle(p: Node3D) -> void:
+	# upper receiver, carry-handle sight, front sight tower
+	_box(p, Vector3(0.045, 0.055, 0.3), Vector3(0, 0.03, -0.04), GUNMETAL)
+	_box(p, Vector3(0.02, 0.03, 0.14), Vector3(0, 0.075, 0.02), GUNMETAL)
+	_box(p, Vector3(0.024, 0.014, 0.02), Vector3(0, 0.098, 0.075), BLACK)
+	_box(p, Vector3(0.012, 0.05, 0.012), Vector3(0, 0.06, -0.42), GUNMETAL)
+	_box(p, Vector3(0.004, 0.02, 0.004), Vector3(0, 0.1, -0.42), BLACK)
+	# ribbed handguard, barrel, flash hider
+	_cyl_z(p, 0.03, 0.03, 0.26, Vector3(0, 0.022, -0.31), BLACK)
+	for i in range(4):
+		_box(p, Vector3(0.062, 0.004, 0.012), Vector3(0, 0.022, -0.4 + i * 0.05), GUNMETAL)
+	_cyl_z(p, 0.011, 0.011, 0.14, Vector3(0, 0.022, -0.51), STEEL)
+	_cyl_z(p, 0.016, 0.016, 0.05, Vector3(0, 0.022, -0.59), BLACK)
+	# lower receiver, magazine, pistol grip, trigger guard
+	_box(p, Vector3(0.04, 0.055, 0.15), Vector3(0, -0.017, 0.0), GUNMETAL)
+	_box(p, Vector3(0.032, 0.12, 0.05), Vector3(0, -0.09, -0.03), BLACK, Vector3(8, 0, 0))
+	_box(p, Vector3(0.032, 0.09, 0.045), Vector3(0, -0.075, 0.09), BLACK, Vector3(-20, 0, 0))
+	_trigger_guard(p, Vector3(0, -0.04, 0.045))
+	# buffer tube, fixed stock, butt plate, charging handle, ejection cover
+	_box(p, Vector3(0.036, 0.06, 0.1), Vector3(0, 0.02, 0.13), BLACK)
+	_box(p, Vector3(0.04, 0.08, 0.26), Vector3(0, 0.005, 0.31), BLACK, Vector3(8, 0, 0))
+	_box(p, Vector3(0.044, 0.1, 0.014), Vector3(0, -0.005, 0.445), GUNMETAL, Vector3(8, 0, 0))
+	_box(p, Vector3(0.03, 0.01, 0.03), Vector3(0, 0.062, 0.12), STEEL)
+	_box(p, Vector3(0.047, 0.02, 0.05), Vector3(0, 0.035, -0.02), STEEL)
+
+
+## Flamethrower: brass-collared pipe gun, red fuel tank, pressure gauge, pilot light.
+static func _flamethrower(p: Node3D) -> void:
+	# main pipe, brass collars, nozzle
+	_cyl_z(p, 0.02, 0.02, 0.6, Vector3(0, 0.03, -0.3), STEEL)
+	for z in [-0.1, -0.3, -0.5]:
+		_cyl_z(p, 0.026, 0.026, 0.02, Vector3(0, 0.03, z), BRASS)
+	_cyl_z(p, 0.032, 0.02, 0.07, Vector3(0, 0.03, -0.635), GUNMETAL)
+	_cyl_z(p, 0.02, 0.02, 0.005, Vector3(0, 0.03, -0.672), BLACK)
+	# glowing pilot light at the muzzle
+	_sphere(p, 0.012, Vector3(0, 0.062, -0.66), ORANGE, true)
+	_sphere(p, 0.007, Vector3(0, 0.07, -0.66), Color(1.0, 0.85, 0.3), true)
+	# red fuel tank with straps and dark end caps
+	_cyl_z(p, 0.055, 0.055, 0.34, Vector3(0, -0.055, -0.1), RED)
+	for z in [-0.22, 0.02]:
+		_cyl_z(p, 0.058, 0.058, 0.014, Vector3(0, -0.055, z), GUNMETAL)
+	_cyl_z(p, 0.05, 0.05, 0.01, Vector3(0, -0.055, -0.275), GUNMETAL)
+	_cyl_z(p, 0.05, 0.05, 0.01, Vector3(0, -0.055, 0.075), GUNMETAL)
+	# fuel hose from tank to pipe
+	_box(p, Vector3(0.012, 0.012, 0.09), Vector3(0, -0.005, -0.3), BLACK, Vector3(-25, 0, 0))
+	# valve block with pressure gauge
+	_box(p, Vector3(0.05, 0.06, 0.1), Vector3(0, 0.02, 0.06), GUNMETAL)
+	_cyl_x(p, 0.02, 0.012, Vector3(0.028, 0.05, 0.06), Color(0.92, 0.92, 0.92))
+	_cyl_x(p, 0.008, 0.014, Vector3(0.031, 0.05, 0.06), ORANGE)
+	# pistol grip, trigger guard, short stock
+	_box(p, Vector3(0.035, 0.1, 0.05), Vector3(0, -0.07, 0.11), BLACK, Vector3(-10, 0, 0))
+	_trigger_guard(p, Vector3(0, -0.035, 0.05))
+	_box(p, Vector3(0.035, 0.06, 0.16), Vector3(0, 0.02, 0.22), GUNMETAL)
+
+
+## Grenade launcher: revolver-drum style with red-dot sight and foregrip.
+static func _grenade_launcher(p: Node3D) -> void:
+	# revolving drum with six chambers
+	_cyl_z(p, 0.058, 0.058, 0.13, Vector3(0, 0.02, -0.04), GUNMETAL)
+	_cyl_z(p, 0.06, 0.06, 0.01, Vector3(0, 0.02, -0.1), STEEL)
+	for i in range(6):
+		var a: float = TAU * i / 6.0
+		_cyl_z(p, 0.017, 0.017, 0.004, Vector3(cos(a) * 0.033, 0.02 + sin(a) * 0.033, -0.107), BLACK)
+	# barrel with muzzle ring and bore
+	_cyl_z(p, 0.026, 0.026, 0.2, Vector3(0, 0.02, -0.22), BLACK)
+	_cyl_z(p, 0.03, 0.03, 0.02, Vector3(0, 0.02, -0.33), STEEL)
+	_cyl_z(p, 0.018, 0.018, 0.002, Vector3(0, 0.02, -0.342), BLACK)
+	# frame, top rail, red-dot sight
+	_box(p, Vector3(0.05, 0.05, 0.16), Vector3(0, -0.035, 0.03), GUNMETAL)
+	_box(p, Vector3(0.02, 0.01, 0.34), Vector3(0, 0.085, -0.06), BLACK)
+	_box(p, Vector3(0.03, 0.03, 0.05), Vector3(0, 0.105, 0.0), BLACK)
+	_box(p, Vector3(0.026, 0.02, 0.003), Vector3(0, 0.108, -0.026), GLASS)
+	_sphere(p, 0.003, Vector3(0, 0.108, -0.024), RED, true)
+	# vertical foregrip on a bracket
+	_box(p, Vector3(0.03, 0.04, 0.08), Vector3(0, -0.025, -0.15), BLACK)
+	_cyl_y(p, 0.014, 0.09, Vector3(0, -0.085, -0.15), BLACK)
+	# pistol grip, trigger guard
+	_box(p, Vector3(0.036, 0.1, 0.05), Vector3(0, -0.095, 0.09), BLACK, Vector3(-15, 0, 0))
+	_trigger_guard(p, Vector3(0, -0.06, 0.03))
+	# telescoping stock
+	_box(p, Vector3(0.04, 0.06, 0.12), Vector3(0, 0.0, 0.17), GUNMETAL)
+	_box(p, Vector3(0.03, 0.05, 0.14), Vector3(0, 0.0, 0.29), STEEL)
+	_box(p, Vector3(0.04, 0.09, 0.014), Vector3(0, -0.01, 0.365), BLACK)
+
+
+## Rocket launcher: RPG-style tube with flared exhaust, wood heat shield, warhead.
+static func _rocket_launcher(p: Node3D) -> void:
+	# launch tube with flared rear exhaust
+	_cyl_z(p, 0.03, 0.03, 0.7, Vector3(0, 0.03, -0.1), OLIVE)
+	_cyl_z(p, 0.03, 0.05, 0.14, Vector3(0, 0.03, 0.32), GUNMETAL)
+	_cyl_z(p, 0.04, 0.04, 0.003, Vector3(0, 0.03, 0.391), BLACK)
+	# wooden heat shield with metal bands
+	_cyl_z(p, 0.04, 0.04, 0.22, Vector3(0, 0.03, -0.12), WOOD)
+	for z in [-0.22, -0.02]:
+		_cyl_z(p, 0.043, 0.043, 0.012, Vector3(0, 0.03, z), GUNMETAL)
+	# rocket warhead: body, orange band, nose cone, tip
+	_cyl_z(p, 0.045, 0.045, 0.1, Vector3(0, 0.03, -0.5), OLIVE)
+	_cyl_z(p, 0.046, 0.046, 0.02, Vector3(0, 0.03, -0.47), ORANGE)
+	_cyl_z(p, 0.012, 0.045, 0.16, Vector3(0, 0.03, -0.63), TAN)
+	_sphere(p, 0.012, Vector3(0, 0.03, -0.715), GUNMETAL)
+	# pistol grip, trigger guard, foregrip
+	_box(p, Vector3(0.035, 0.11, 0.05), Vector3(0, -0.07, 0.02), BLACK, Vector3(-15, 0, 0))
+	_trigger_guard(p, Vector3(0, -0.035, -0.02))
+	_box(p, Vector3(0.03, 0.09, 0.03), Vector3(0, -0.05, -0.2), BLACK)
+	# side-mounted optical sight and iron sights
+	_box(p, Vector3(0.03, 0.01, 0.04), Vector3(-0.03, 0.055, -0.05), GUNMETAL)
+	_box(p, Vector3(0.03, 0.04, 0.14), Vector3(-0.055, 0.075, -0.05), BLACK)
+	_box(p, Vector3(0.02, 0.02, 0.005), Vector3(-0.055, 0.075, -0.125), GLASS)
+	_box(p, Vector3(0.006, 0.03, 0.01), Vector3(0, 0.075, -0.3), BLACK)
+	_box(p, Vector3(0.006, 0.02, 0.008), Vector3(0, 0.07, 0.1), BLACK)
