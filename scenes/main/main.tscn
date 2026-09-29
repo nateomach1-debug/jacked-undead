@@ -228,7 +228,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 6)
 
 [node name="WaterStation2" parent="Stations" instance=ExtResource("8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1, 6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -6)
 
 [node name="SMGWallBuy" parent="Stations" instance=ExtResource("22")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 6)
