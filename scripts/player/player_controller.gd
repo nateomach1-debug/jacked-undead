@@ -70,6 +70,7 @@ var _reloading: bool = false
 var _reload_timer: float = 0.0
 var _burst_left: int = 0
 var _burst_timer: float = 0.0
+var _flame_marker_cooldown: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
@@ -192,6 +193,7 @@ func _step_up_if_blocked(delta: float) -> void:
 func _handle_shooting(delta: float) -> void:
 	if _fire_cooldown > 0.0:
 		_fire_cooldown -= delta
+	_flame_marker_cooldown = maxf(_flame_marker_cooldown - delta, 0.0)
 
 	# Timed reload: no shooting until it finishes.
 	if _reloading:
@@ -274,6 +276,9 @@ func _fire_shot() -> void:
 			info["head_hits"] = int(info["head_hits"]) + 1
 			info["point"] = point
 
+	var show_markers: bool = current_weapon.fire_mode != WeaponData.FireMode.FLAME or _flame_marker_cooldown <= 0.0
+	if show_markers and current_weapon.fire_mode == WeaponData.FireMode.FLAME:
+		_flame_marker_cooldown = 0.2
 	for victim in hits.keys():
 		if not is_instance_valid(victim):
 			continue
@@ -283,7 +288,7 @@ func _fire_shot() -> void:
 		victim.take_damage(float(victim_info["damage"]), self, is_head)
 		if victim.is_in_group("zombies"):
 			GameManager.add_gains(current_weapon.gains_per_hit)
-			if current_weapon.fire_mode != WeaponData.FireMode.FLAME:
+			if show_markers:
 				_spawn_hit_marker(victim_info["point"], is_head)
 			if current_weapon.burn_damage_per_second > 0.0 and is_instance_valid(victim):
 				_apply_burn(victim)
