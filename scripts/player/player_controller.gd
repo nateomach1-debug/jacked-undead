@@ -336,6 +336,27 @@ func add_weapon_to_loadout(w: WeaponData) -> void:
 	_update_weapon_model()
 
 
+## Called by the Loot Locker. A gun you don't own is added and equipped;
+## a gun you already own (including its PR-upgraded copy) gets a full refill.
+func grant_weapon(w: WeaponData) -> void:
+	if w == null:
+		return
+	if not has_weapon(w):
+		add_weapon_to_loadout(w)
+		return
+	for i in range(weapon_loadout.size()):
+		var owned: WeaponData = weapon_loadout[i]
+		if owned.weapon_name == w.weapon_name or owned.weapon_name == w.weapon_name + " - 1RM":
+			if i == current_weapon_index:
+				current_mag_ammo = owned.mag_size
+				current_reserve_ammo = owned.max_reserve_ammo
+				ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+			elif i < _saved_mag_ammo.size():
+				_saved_mag_ammo[i] = owned.mag_size
+				_saved_reserve_ammo[i] = owned.max_reserve_ammo
+			return
+
+
 ## True if w (by base name) is the weapon currently in the player's hands.
 func is_current_weapon(w: WeaponData) -> bool:
 	return w != null and current_weapon != null and current_weapon.weapon_name == w.weapon_name
@@ -358,10 +379,11 @@ func _update_weapon_model() -> void:
 	if _current_model:
 		_current_model.queue_free()
 		_current_model = null
-	if current_weapon and current_weapon.model_scene:
-		_current_model = current_weapon.model_scene.instantiate()
-		weapon_mount.add_child(_current_model)
-
+	if current_weapon:
+		var model: Node3D = current_weapon.create_model()
+		if model:
+			_current_model = model
+			weapon_mount.add_child(_current_model)
 
 func _try_interact() -> void:
 	interact_ray.force_raycast_update()
