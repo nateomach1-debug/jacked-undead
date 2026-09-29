@@ -10,17 +10,18 @@
 [ext_resource type="PackedScene" path="res://scenes/main/touch_controls.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="9"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="10"]
-[ext_resource type="PackedScene" path="res://resources/models/buildings/scene.gltf" id="11"]
-[ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
-[ext_resource type="PackedScene" path="res://scenes/stations/supplement_station.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://scenes/stations/pr_rack.tscn" id="7"]
-[ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="8"]
 [ext_resource type="Texture2D" path="res://resources/icons/trt.svg" id="15"]
 [ext_resource type="Texture2D" path="res://resources/icons/creatine.svg" id="16"]
 [ext_resource type="Texture2D" path="res://resources/icons/whey.svg" id="17"]
 [ext_resource type="Texture2D" path="res://resources/icons/pre_workout.svg" id="18"]
 [ext_resource type="Texture2D" path="res://resources/icons/fish_oil.svg" id="19"]
 [ext_resource type="Texture2D" path="res://resources/icons/bcaas.svg" id="20"]
+[ext_resource type="PackedScene" path="res://resources/models/buildings/scene.gltf" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
+[ext_resource type="PackedScene" path="res://scenes/stations/supplement_station.tscn" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/stations/pr_rack.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="8"]
+
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
