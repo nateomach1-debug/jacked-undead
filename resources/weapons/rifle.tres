@@ -13,5 +13,6 @@ mag_size = 20
 max_reserve_ammo = 120
 range = 80.0
 is_pr_upgraded = false
+reload_time = 1.8
 model_scene = ExtResource("2")
 fire_sound = ExtResource("3")
