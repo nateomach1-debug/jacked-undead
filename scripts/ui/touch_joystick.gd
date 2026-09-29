@@ -89,8 +89,8 @@ func _update_lock() -> void:
 				_locked = false
 				_lock_touch = false
 		else:
-			# A fresh touch while locked: pulling the stick back down cancels.
-			if _stick_value.y > 0.35:
+			# A fresh touch while locked: moving the stick at all cancels the lock.
+			if _stick_value != Vector2.ZERO:
 				_locked = false
 	else:
 		if _finger.distance_to(lock_center) <= lock_radius and _stick_value.y < -lock_show_threshold:
