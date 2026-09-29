@@ -47,6 +47,7 @@ static func _make(weapon_name: String, damage: float, fire_rate: float, mag: int
 	w.max_reserve_ammo = reserve
 	w.range = range_m
 	w.reload_time = reload
+	w.placeholder_kind = weapon_name
 	w.placeholder_size = size
 	w.placeholder_color = color
 	w.fire_sound = load(FIRE_SOUND_PATH)
