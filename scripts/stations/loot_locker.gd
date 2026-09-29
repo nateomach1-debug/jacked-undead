@@ -127,7 +127,8 @@ func _finish_roll() -> void:
 	_set_door_open(true)
 	_state = State.READY
 	_timer = take_window
-	_label.text = _rolled.weapon_name if _rolled else "Empty"
+	var kind_note: String = _rolled.placeholder_kind if _rolled else ""
+	_label.text = ("%s\n[model: %s]" % [_rolled.weapon_name, kind_note]) if _rolled else "Empty"
 
 
 func _close_locker() -> void:
@@ -140,7 +141,8 @@ func _close_locker() -> void:
 
 
 func _set_idle_label() -> void:
-	_label.text = "LOOT LOCKER\n%d Gains" % cost
+	var gm_ok: bool = load("res://scripts/weapons/gun_models.gd") != null
+	_label.text = "LOOT LOCKER\n%d Gains\n[gun_models: %s]" % [cost, "ok" if gm_ok else "FAILED"]
 
 
 func _set_door_open(open: bool) -> void:
