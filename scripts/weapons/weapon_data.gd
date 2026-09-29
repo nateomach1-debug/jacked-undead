@@ -6,7 +6,7 @@ class_name WeaponData
 
 enum FireMode { HITSCAN, FLAME, EXPLOSIVE }
 
-@export var weapon_name: String = "Pistol"
+@export var weapon_name: String = "pistol"
 @export var damage: float = 20.0
 @export var fire_rate: float = 0.25
 @export var mag_size: int = 12
