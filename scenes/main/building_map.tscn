@@ -66,11 +66,6 @@ shape = SubResource("BoxShape3D_safety")
 script = ExtResource("3")
 target_path = NodePath("../BuildingModel")
 
-[node name="Player" parent="." instance=ExtResource("4")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.9, -16.4, 15.7)
-current_weapon = ExtResource("10")
-weapon_loadout = [ExtResource("10")]
-
 [node name="SpawnPoints" type="Node3D" parent="."]
 
 [node name="SpawnPoint1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
