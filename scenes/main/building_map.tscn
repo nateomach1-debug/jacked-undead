@@ -11,7 +11,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="9"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="10"]
 [ext_resource type="PackedScene" path="res://resources/models/buildings/scene.gltf" id="11"]
-[ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -86,7 +85,3 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, -16.4, 12)
 
 [node name="SpawnPoint4" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, -16.4, 25)
-
-[node name="LootLocker" parent="Stations" instance=ExtResource("29")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.6, 0, -16.4, 19.3)
-cost = 0
