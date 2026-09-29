@@ -5,6 +5,7 @@ extends Area3D
 ## the locker closes and you lose it. Built entirely in code.
 
 const LockerWeapons = preload("res://scripts/weapons/locker_weapons.gd")
+const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to this length (meters)
 
 enum State { IDLE, ROLLING, READY }
 
@@ -157,7 +158,43 @@ func _show_model(w: WeaponData) -> void:
 	var model: Node3D = w.create_model()
 	if model:
 		_display_model = model
+		if not w.model_scene:
+			model.rotation_degrees.y = -90.0  # turn built-in guns side-on, like the asset guns
 		_display_mount.add_child(model)
+		_fit_model(model)
+
+
+func _collect_meshes(node: Node, out: Array) -> void:
+	if node is MeshInstance3D:
+		out.append(node)
+	for child in node.get_children():
+		_collect_meshes(child, out)
+
+
+## Scales the shown gun so its longest side is DISPLAY_LENGTH, and centers it
+## on the mount so it spins around its middle.
+func _fit_model(model: Node3D) -> void:
+	var meshes: Array = []
+	_collect_meshes(model, meshes)
+	var to_mount: Transform3D = _display_mount.global_transform.affine_inverse()
+	var box := AABB()
+	var found: bool = false
+	for m in meshes:
+		var mi: MeshInstance3D = m
+		var local_box: AABB = (to_mount * mi.global_transform) * mi.get_aabb()
+		if found:
+			box = box.merge(local_box)
+		else:
+			box = local_box
+			found = true
+	if not found:
+		return
+	var longest: float = maxf(box.size.x, maxf(box.size.y, box.size.z))
+	if longest <= 0.0001:
+		return
+	var factor: float = DISPLAY_LENGTH / longest
+	model.scale = Vector3.ONE * factor
+	model.position = -box.get_center() * factor
 
 
 func _clear_model() -> void:
