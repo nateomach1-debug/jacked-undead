@@ -1,9 +1,9 @@
 extends CharacterBody3D
 class_name Zombie
 ## Base "Gym Rat" zombie. Chases the player, follows the navigation mesh
-## around walls when the map has one, climbs stairs, and attacks on contact.
-## Subclass (e.g. RoidRager) can override stats in _ready() or via exported
-## values on a variant scene.
+## around walls when the map has one, climbs stairs, slides off corners when
+## stuck, and attacks on contact. Subclass (e.g. RoidRager) can override stats
+## in _ready() or via exported values on a variant scene.
 ##
 ## Pathfinding: maps with a NavigationRegion3D (the Building map, via
 ## nav_baker.gd) give zombies a route around obstacles. On maps without one
@@ -14,6 +14,9 @@ signal died(zombie: Zombie)
 const GRAVITY: float = 9.8
 const HEADSHOT_KILL_GAINS: int = 175  # awarded instead of gains_on_death when the killing shot was a headshot
 const MAX_ATTACK_HEIGHT_GAP: float = 2.2  # can't hit you through a floor or ceiling
+const STUCK_CHECK_INTERVAL: float = 0.5   # how often to check whether we're making progress
+const STUCK_MOVE_THRESHOLD: float = 0.25  # moved less than this (meters) in that time = stuck
+const DETOUR_DURATION: float = 0.9        # seconds spent sliding sideways off a corner
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
@@ -24,7 +27,7 @@ const MAX_ATTACK_HEIGHT_GAP: float = 2.2  # can't hit you through a floor or cei
 @export var head_height_threshold: float = 0.5  # local Y above which a hit counts as a headshot
 @export var step_height: float = 0.55           # tallest stair step a zombie can walk straight up
 @export var repath_interval: float = 0.5        # seconds between path refreshes
-@export var waypoint_reach_distance: float = 0.7
+@export var waypoint_reach_distance: float = 0.4
 
 var current_health: float
 var _target: Node3D
@@ -33,6 +36,10 @@ var _is_dead: bool = false
 var _path: PackedVector3Array = PackedVector3Array()
 var _path_index: int = 0
 var _repath_timer: float = 0.0
+var _stuck_timer: float = 0.0
+var _last_check_position: Vector3 = Vector3.ZERO
+var _detour_time: float = 0.0
+var _detour_direction: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -63,6 +70,7 @@ func _physics_process(delta: float) -> void:
 
 		if distance > attack_range or vertical_gap > MAX_ATTACK_HEIGHT_GAP:
 			var direction := _get_move_direction(to_target, delta)
+			direction = _apply_unstuck(direction, delta)
 			velocity.x = direction.x * move_speed
 			velocity.z = direction.z * move_speed
 			if direction.length() > 0.01:
@@ -70,6 +78,8 @@ func _physics_process(delta: float) -> void:
 		else:
 			velocity.x = 0.0
 			velocity.z = 0.0
+			_stuck_timer = 0.0
+			_detour_time = 0.0
 			if distance > 0.01:
 				look_at(Vector3(_target.global_position.x, global_position.y, _target.global_position.z), Vector3.UP)
 			_try_attack()
@@ -112,6 +122,48 @@ func _refresh_path() -> void:
 	if NavigationServer3D.map_get_iteration_id(nav_map) == 0:
 		return  # navigation mesh not ready yet
 	_path = NavigationServer3D.map_get_path(nav_map, global_position, _target.global_position, true)
+
+
+## If we've barely moved for half a second while trying to chase, get a fresh
+## route and slide sideways along the wall for a moment to clear the corner.
+func _apply_unstuck(direction: Vector3, delta: float) -> Vector3:
+	_stuck_timer += delta
+	if _stuck_timer >= STUCK_CHECK_INTERVAL:
+		_stuck_timer = 0.0
+		var moved: float = global_position.distance_to(_last_check_position)
+		_last_check_position = global_position
+		if moved < STUCK_MOVE_THRESHOLD and _detour_time <= 0.0:
+			_refresh_path()
+			_start_detour(direction)
+
+	if _detour_time > 0.0:
+		_detour_time -= delta
+		return _detour_direction
+	return direction
+
+
+func _start_detour(direction: Vector3) -> void:
+	var tangent: Vector3 = Vector3.ZERO
+	var away: Vector3 = Vector3.ZERO
+	if is_on_wall():
+		var normal: Vector3 = get_wall_normal()
+		normal.y = 0.0
+		if normal.length() > 0.01:
+			normal = normal.normalized()
+			tangent = normal.cross(Vector3.UP).normalized()
+			var side: float = tangent.dot(direction)
+			if absf(side) < 0.1:
+				if randf() < 0.5:
+					tangent = -tangent
+			elif side < 0.0:
+				tangent = -tangent
+			away = normal * 0.3  # a little push off the wall so we clear the corner
+	if tangent.length() < 0.01:
+		tangent = Vector3(-direction.z, 0.0, direction.x)
+		if randf() < 0.5:
+			tangent = -tangent
+	_detour_direction = (tangent + away).normalized()
+	_detour_time = DETOUR_DURATION
 
 
 ## Same trick as the player: CharacterBody3D can't climb steps on its own, so
