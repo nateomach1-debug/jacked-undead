@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="9"]
 [ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="10"]
 [ext_resource type="PackedScene" path="res://resources/models/buildings/scene.gltf" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
