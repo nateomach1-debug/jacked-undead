@@ -19,6 +19,7 @@ const SHOT_MASK: int = 1 | 4     # world + zombies, same as the old muzzle ray
 # Loaded only when needed, so a problem in these can never break the player itself.
 const BURN_EFFECT_PATH: String = "res://scripts/effects/burn_effect.gd"
 const PROJECTILE_PATH: String = "res://scripts/weapons/projectile.gd"
+const DAMAGE_INDICATOR_PATH: String = "res://scripts/ui/damage_indicator.gd"
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -70,10 +71,16 @@ var _reloading: bool = false
 var _reload_timer: float = 0.0
 var _burst_left: int = 0
 var _burst_timer: float = 0.0
+var _damage_indicator: Node = null
 var _flame_marker_cooldown: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
+	var indicator_script = load(DAMAGE_INDICATOR_PATH)
+	if indicator_script:
+		_damage_indicator = indicator_script.new()
+		if _damage_indicator:
+			add_child(_damage_indicator)
 	if not OS.has_feature("mobile"):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	max_health = base_max_health
@@ -407,11 +414,37 @@ func _handle_regen(delta: float) -> void:
 		_regen_accum -= whole
 
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
+	_show_damage_indicator(amount, from_position)
 	current_health = max(current_health - amount, 0.0)
 	health_changed.emit(current_health, max_health)
 	if current_health <= 0.0:
 		GameManager.report_player_death()
+
+
+## Tells the red damage indicator which way the hit came from. If the
+## attacker's position isn't passed in, the closest zombie counts as the source.
+func _show_damage_indicator(amount: float, from_position: Vector3) -> void:
+	if _damage_indicator == null or amount <= 0.0:
+		return
+	var source: Vector3 = from_position
+	var has_source: bool = from_position.is_finite()
+	if not has_source:
+		var best_dist: float = 4.5
+		for z in get_tree().get_nodes_in_group("zombies"):
+			var zombie := z as Node3D
+			if zombie == null or not is_instance_valid(zombie):
+				continue
+			var d: float = zombie.global_position.distance_to(global_position)
+			if d < best_dist:
+				best_dist = d
+				source = zombie.global_position
+				has_source = true
+	var angle: float = 0.0
+	if has_source:
+		var local_pos: Vector3 = global_transform.affine_inverse() * source
+		angle = atan2(local_pos.x, -local_pos.z)
+	_damage_indicator.show_hit(angle, has_source)
 
 
 func heal(amount: float) -> void:
