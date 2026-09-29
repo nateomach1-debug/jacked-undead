@@ -38,6 +38,8 @@ enum FireMode { HITSCAN, FLAME, EXPLOSIVE }
 func create_model() -> Node3D:
 	if model_scene:
 		return model_scene.instantiate() as Node3D
+	if placeholder_kind == "":
+		placeholder_kind = weapon_name.replace(" - 1RM", "")
 	if placeholder_kind != "":
 		# Loaded on demand so a problem in gun_models.gd can never break WeaponData itself.
 		var gun_models = load("res://scripts/weapons/gun_models.gd")
