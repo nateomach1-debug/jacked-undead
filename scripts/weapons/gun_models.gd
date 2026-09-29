@@ -16,9 +16,24 @@ const RED: Color = Color(0.7, 0.12, 0.1)
 const ORANGE: Color = Color(1.0, 0.45, 0.05)
 const GLASS: Color = Color(0.6, 0.85, 1.0)
 
+## Size multiplier per gun. Raise a number to make that gun bigger.
+const SCALE_BY_KIND: Dictionary = {
+	"Revolver": 2.2,
+	"Magnum": 2.2,
+	"Pump Shotgun": 1.5,
+	"Double-Barrel": 1.5,
+	"Burst Rifle": 1.5,
+	"LMG": 1.4,
+	"Flamethrower": 1.4,
+	"Grenade Launcher": 1.5,
+	"Rocket Launcher": 1.3,
+}
 
 static func build(kind: String) -> Node3D:
+	var outer := Node3D.new()
 	var root := Node3D.new()
+	root.scale = Vector3.ONE * float(SCALE_BY_KIND.get(kind, 1.5))
+	outer.add_child(root)
 	match kind:
 		"Revolver":
 			_revolver(root)
@@ -40,8 +55,7 @@ static func build(kind: String) -> Node3D:
 			_rocket_launcher(root)
 		_:
 			_box(root, Vector3(0.06, 0.1, 0.5), Vector3.ZERO, GUNMETAL)
-	return root
-
+	return outer
 
 # ---------------------------------------------------------------- helpers
 
