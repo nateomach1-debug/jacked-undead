@@ -7,8 +7,8 @@ extends NavigationRegion3D
 @export var show_debug_label: bool = true
 @export var cell_size: float = 0.25
 @export var cell_height: float = 0.25
-@export var agent_radius: float = 0.5
-@export var agent_height: float = 2.0
+@export var agent_radius: float = 0.7      # keeps paths this far from walls (Roid Rager is 0.6 wide)
+@export var agent_height: float = 2.5
 @export var agent_max_climb: float = 0.5   # tallest stair step the path may cross
 @export var agent_max_slope: float = 45.0
 
@@ -47,7 +47,6 @@ func _on_bake_finished() -> void:
 		return
 	if polygons > 0:
 		_label.text = "NAV: ready (%d polygons)" % polygons
-		get_tree().create_timer(10.0).timeout.connect(func(): _label.hide())
 	else:
 		_label.text = "NAV: FAILED (0 polygons)"
 
