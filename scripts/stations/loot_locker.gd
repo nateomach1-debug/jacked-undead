@@ -8,7 +8,7 @@ const LockerWeapons = preload("res://scripts/weapons/locker_weapons.gd")
 
 enum State { IDLE, ROLLING, READY }
 
-@export var cost: int = 950
+@export var cost: int = 0
 @export var roll_time: float = 2.5
 @export var take_window: float = 8.0
 
