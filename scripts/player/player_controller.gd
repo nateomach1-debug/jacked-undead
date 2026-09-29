@@ -10,11 +10,15 @@ signal perks_changed(owned: Array)
 const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
-const GAINS_PER_HIT: int = 10  # awarded for every bullet that hits a zombie
+const GAINS_PER_HIT: int = 10  # default; each WeaponData now has its own gains_per_hit
 const HEADSHOT_MULTIPLIER: float = 2.0
 const STICK_LOOK_SPEED: float = 480.0  # degrees/sec of turn at full shoot-stick deflection
 const HIT_MARKER_SCENE: PackedScene = preload("res://scenes/effects/hit_marker.tscn")
 const STEP_HEIGHT: float = 0.35  # max ledge height the player can walk straight up (real stairs)
+const SHOT_MASK: int = 1 | 4     # world + zombies, same as the old muzzle ray
+# Loaded only when needed, so a problem in these can never break the player itself.
+const BURN_EFFECT_PATH: String = "res://scripts/effects/burn_effect.gd"
+const PROJECTILE_PATH: String = "res://scripts/weapons/projectile.gd"
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -60,6 +64,12 @@ var _saved_reserve_ammo: Array = []
 var owned_weapon_names: Array = []  # base weapon_name of each gun ever bought, for wall-buy stations
 var _fire_cooldown: float = 0.0
 var _regen_accum: float = 0.0
+
+# Timed reload + burst state
+var _reloading: bool = false
+var _reload_timer: float = 0.0
+var _burst_left: int = 0
+var _burst_timer: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
@@ -183,15 +193,47 @@ func _handle_shooting(delta: float) -> void:
 	if _fire_cooldown > 0.0:
 		_fire_cooldown -= delta
 
+	# Timed reload: no shooting until it finishes.
+	if _reloading:
+		_reload_timer -= delta
+		if _reload_timer <= 0.0:
+			_finish_reload()
+		return
+
 	if not current_weapon:
 		return
 
+	# Rounds 2..N of a burst fire on their own, no input needed.
+	if _burst_left > 0:
+		_burst_timer -= delta
+		if _burst_timer <= 0.0:
+			if current_mag_ammo > 0:
+				_fire_shot()
+				_burst_left -= 1
+				_burst_timer = current_weapon.burst_interval
+				if _burst_left == 0:
+					_fire_cooldown = current_weapon.fire_rate
+			else:
+				_burst_left = 0
+				_fire_cooldown = current_weapon.fire_rate
+		return
+
 	if Input.is_action_pressed("shoot") and _fire_cooldown <= 0.0:
-		if current_mag_ammo > 0:
-			_fire_shot()
-			_fire_cooldown = current_weapon.fire_rate
+		_try_trigger()
+
+
+## One trigger pull: fires the first (or only) round, sets up the rest of
+## a burst if the weapon has one, or auto-reloads if the mag is empty.
+func _try_trigger() -> void:
+	if current_mag_ammo > 0:
+		_fire_shot()
+		if current_weapon.burst_count > 1:
+			_burst_left = current_weapon.burst_count - 1
+			_burst_timer = current_weapon.burst_interval
 		else:
-			_reload()
+			_fire_cooldown = current_weapon.fire_rate
+	else:
+		_reload()
 
 
 func _fire_shot() -> void:
@@ -201,30 +243,113 @@ func _fire_shot() -> void:
 	if current_weapon.fire_sound:
 		fire_sound_player.stream = current_weapon.fire_sound
 		fire_sound_player.play()
-	muzzle_ray.force_raycast_update()
-	if muzzle_ray.is_colliding():
-		var target := muzzle_ray.get_collider()
-		if target and target.has_method("take_damage"):
-			var damage: float = current_weapon.damage * damage_multiplier
-			var is_head: bool = target.has_method("is_headshot") and target.is_headshot(muzzle_ray.get_collision_point())
-			if is_head:
-				damage *= HEADSHOT_MULTIPLIER
-			target.take_damage(damage, self, is_head)
-			if target.is_in_group("zombies"):
-				GameManager.add_gains(GAINS_PER_HIT)
-				_spawn_hit_marker(muzzle_ray.get_collision_point(), is_head)
+
+	if current_weapon.fire_mode == WeaponData.FireMode.EXPLOSIVE:
+		_launch_projectile()
+		return
+
+	# Cast every pellet, then add the damage up per target so each zombie
+	# takes ONE take_damage() call per shot (no double-kill / double-pay).
+	var base_damage: float = current_weapon.damage * damage_multiplier
+	var hits: Dictionary = {}
+	for i in range(maxi(current_weapon.pellets, 1)):
+		var direction: Vector3 = _spread_direction(current_weapon.spread_degrees)
+		var result: Dictionary = _cast_ray(direction, current_weapon.range)
+		if result.is_empty():
+			continue
+		var target = result["collider"]
+		if target == null or not target.has_method("take_damage"):
+			continue
+		var point: Vector3 = result["position"]
+		var pellet_head: bool = target.has_method("is_headshot") and target.is_headshot(point)
+		var pellet_damage: float = base_damage
+		if pellet_head:
+			pellet_damage *= HEADSHOT_MULTIPLIER
+		if not hits.has(target):
+			hits[target] = {"damage": 0.0, "hits": 0, "head_hits": 0, "point": point}
+		var info: Dictionary = hits[target]
+		info["damage"] = float(info["damage"]) + pellet_damage
+		info["hits"] = int(info["hits"]) + 1
+		if pellet_head:
+			info["head_hits"] = int(info["head_hits"]) + 1
+			info["point"] = point
+
+	for victim in hits.keys():
+		if not is_instance_valid(victim):
+			continue
+		var victim_info: Dictionary = hits[victim]
+		# Counts as a headshot if at least half the pellets that landed were head hits.
+		var is_head: bool = int(victim_info["head_hits"]) * 2 >= int(victim_info["hits"])
+		victim.take_damage(float(victim_info["damage"]), self, is_head)
+		if victim.is_in_group("zombies"):
+			GameManager.add_gains(current_weapon.gains_per_hit)
+			if current_weapon.fire_mode != WeaponData.FireMode.FLAME:
+				_spawn_hit_marker(victim_info["point"], is_head)
+			if current_weapon.burn_damage_per_second > 0.0 and is_instance_valid(victim):
+				_apply_burn(victim)
+
+
+## Random direction inside a cone around where the camera is looking.
+func _spread_direction(spread_deg: float) -> Vector3:
+	var b: Basis = camera.global_transform.basis
+	var forward: Vector3 = -b.z
+	if spread_deg <= 0.0:
+		return forward
+	var spread: float = deg_to_rad(spread_deg)
+	forward = forward.rotated(b.y, randf_range(-spread, spread))
+	forward = forward.rotated(b.x, randf_range(-spread, spread))
+	return forward.normalized()
+
+
+## Straight ray from the camera; respects the weapon's range.
+func _cast_ray(direction: Vector3, max_range: float) -> Dictionary:
+	var from: Vector3 = camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from + direction * max_range, SHOT_MASK)
+	query.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+func _apply_burn(target: Node) -> void:
+	var burn_dps: float = current_weapon.burn_damage_per_second * damage_multiplier
+	var existing = target.get_node_or_null("BurnEffect")
+	if existing:
+		existing.refresh(burn_dps, current_weapon.burn_duration)
+		return
+	var burn_script = load(BURN_EFFECT_PATH)
+	if burn_script == null:
+		return
+	var burn = burn_script.new()
+	burn.name = "BurnEffect"
+	target.add_child(burn)
+	burn.setup(self, burn_dps, current_weapon.burn_duration)
+
+
+func _launch_projectile() -> void:
+	var projectile_script = load(PROJECTILE_PATH)
+	if projectile_script == null:
+		return
+	var forward: Vector3 = _spread_direction(current_weapon.spread_degrees)
+	var proj = projectile_script.new()
+	get_tree().current_scene.add_child(proj)
+	proj.global_position = camera.global_position + forward * 0.3
+	proj.launch(
+		self,
+		forward * current_weapon.projectile_speed,
+		current_weapon.projectile_gravity,
+		current_weapon.damage * damage_multiplier,
+		current_weapon.splash_radius,
+		current_weapon.self_damage_multiplier,
+		current_weapon.gains_per_hit
+	)
+
 
 ## Fires a single shot right now if the weapon is ready, bypassing the
 ## per-frame is_action_pressed() poll. Called directly on stick touch-down
 ## so a fast tap can't land between two physics frames and get missed.
 func fire_once_if_ready() -> void:
-	if not current_weapon or _fire_cooldown > 0.0:
+	if not current_weapon or _fire_cooldown > 0.0 or _reloading or _burst_left > 0:
 		return
-	if current_mag_ammo > 0:
-		_fire_shot()
-		_fire_cooldown = current_weapon.fire_rate
-	else:
-		_reload()
+	_try_trigger()
 
 
 func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
@@ -235,14 +360,36 @@ func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
 	marker.global_position = at_position
 
 
+## Starts a reload. Guns with reload_time = 0 refill instantly (the old
+## behaviour); others take reload_time seconds (faster with Pre-Workout).
 func _reload() -> void:
+	if not current_weapon or _reloading:
+		return
+	var needed: int = current_weapon.mag_size - current_mag_ammo
+	if needed <= 0 or current_reserve_ammo <= 0:
+		return
+	if current_weapon.reload_time <= 0.0:
+		_finish_reload()
+		return
+	_reloading = true
+	_reload_timer = current_weapon.reload_time / maxf(reload_speed_multiplier, 0.1)
+
+
+func _finish_reload() -> void:
+	_reloading = false
 	if not current_weapon:
 		return
-	var needed := current_weapon.mag_size - current_mag_ammo
+	var needed: int = current_weapon.mag_size - current_mag_ammo
 	var available: int = min(needed, current_reserve_ammo)
 	current_mag_ammo += available
 	current_reserve_ammo -= available
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+## Stops any in-progress reload or burst (weapon swapped, new gun, etc).
+func _cancel_actions() -> void:
+	_reloading = false
+	_burst_left = 0
 
 
 func _handle_regen(delta: float) -> void:
@@ -275,6 +422,7 @@ func add_reserve_ammo(amount: int) -> void:
 
 
 func equip_weapon(weapon: WeaponData) -> void:
+	_cancel_actions()
 	current_weapon = weapon
 	current_mag_ammo = weapon.mag_size
 	current_reserve_ammo = weapon.max_reserve_ammo
@@ -293,6 +441,8 @@ func equip_weapon(weapon: WeaponData) -> void:
 func switch_weapon(direction: int = 1) -> void:
 	if weapon_loadout.size() < 2:
 		return
+
+	_cancel_actions()
 
 	if current_weapon_index < _saved_mag_ammo.size():
 		_saved_mag_ammo[current_weapon_index] = current_mag_ammo
@@ -324,6 +474,7 @@ func has_weapon(w: WeaponData) -> bool:
 func add_weapon_to_loadout(w: WeaponData) -> void:
 	if has_weapon(w):
 		return
+	_cancel_actions()
 	owned_weapon_names.append(w.weapon_name)
 	weapon_loadout.append(w)
 	_saved_mag_ammo.append(w.mag_size)
@@ -387,6 +538,7 @@ func _update_weapon_model() -> void:
 			if not current_weapon.model_scene:
 				# Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
 				_current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
+
 
 func _try_interact() -> void:
 	interact_ray.force_raycast_update()
