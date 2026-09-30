@@ -17,10 +17,15 @@ extends CanvasLayer
 
 var _player: Node
 var _perk_icons: Dictionary = {}
+var zombie_label: Label
 
 
 func _ready() -> void:
-	for label in [health_label, ammo_label, weapon_label, gains_label, round_label]:
+	zombie_label = Label.new()
+	zombie_label.text = "Zombies: 0 / 0"
+	$Margin/VBox.add_child(zombie_label)
+
+	for label in [health_label, ammo_label, weapon_label, gains_label, round_label, zombie_label]:
 		label.add_theme_font_size_override("font_size", 32)
 	prompt_label.add_theme_font_size_override("font_size", 38)
 	prompt_label.add_theme_constant_override("outline_size", 8)
@@ -49,6 +54,13 @@ func bind_player(player: Node) -> void:
 	player.interact_prompt_changed.connect(_on_prompt_changed)
 	player.perks_changed.connect(_on_perks_changed)
 	_on_perks_changed(player.owned_perks)
+
+
+func bind_round_manager(round_manager: Node) -> void:
+	if round_manager == null or not round_manager.has_signal("zombies_changed"):
+		return
+	round_manager.zombies_changed.connect(_on_zombies_changed)
+	_on_zombies_changed(round_manager.get_zombies_remaining(), round_manager.get_zombies_total())
 
 
 func _process(_delta: float) -> void:
@@ -97,6 +109,10 @@ func _on_gains_changed(amount: int) -> void:
 
 func _on_round_changed(round_number: int) -> void:
 	round_label.text = "Round: %d" % round_number
+
+
+func _on_zombies_changed(remaining: int, total: int) -> void:
+	zombie_label.text = "Zombies: %d / %d" % [remaining, total]
 
 
 func _on_prompt_changed(text: String) -> void:
