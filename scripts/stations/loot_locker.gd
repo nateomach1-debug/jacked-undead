@@ -9,7 +9,7 @@ const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to 
 
 enum State { IDLE, ROLLING, READY }
 
-@export var cost: int = 0
+@export var cost: int = 950
 @export var roll_time: float = 2.5
 @export var take_window: float = 8.0
 
