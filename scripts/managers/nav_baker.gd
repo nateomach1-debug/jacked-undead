@@ -1,18 +1,21 @@
 extends NavigationRegion3D
 ## Builds the zombie navigation mesh at runtime from the building model,
 ## since there's no editor to bake it in. Add this as a node to a map.
-## A small label at the top of the screen shows whether it worked.
+## A label at the top of the screen shows whether it worked, plus how many
+## path points the nearest zombie currently has (0 = it's walking blind).
 
 @export var source_path: NodePath = NodePath("../BuildingModel")
 @export var show_debug_label: bool = true
 @export var cell_size: float = 0.25
 @export var cell_height: float = 0.25
-@export var agent_radius: float = 0.7      # keeps paths this far from walls (Roid Rager is 0.6 wide)
-@export var agent_height: float = 2.5
+@export var agent_radius: float = 0.5      # keeps paths this far from walls; bigger erases narrow stairs
+@export var agent_height: float = 2.0
 @export var agent_max_climb: float = 0.5   # tallest stair step the path may cross
-@export var agent_max_slope: float = 45.0
+@export var agent_max_slope: float = 60.0
 
 var _label: Label
+var _base_text: String = "NAV: baking..."
+var _debug_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -34,7 +37,7 @@ func _ready() -> void:
 		source.add_to_group("navmesh_source")
 
 	bake_finished.connect(_on_bake_finished)
-	_make_debug_label("NAV: baking...")
+	_make_debug_label()
 	bake_navigation_mesh(true)
 
 
@@ -43,21 +46,49 @@ func _on_bake_finished() -> void:
 	if navigation_mesh:
 		polygons = navigation_mesh.get_polygon_count()
 	print("NavBaker: bake finished, polygons = ", polygons)
+	if polygons > 0:
+		_base_text = "NAV: ready (%d polygons)" % polygons
+	else:
+		_base_text = "NAV: FAILED (0 polygons)"
+
+
+func _process(delta: float) -> void:
 	if _label == null:
 		return
-	if polygons > 0:
-		_label.text = "NAV: ready (%d polygons)" % polygons
-	else:
-		_label.text = "NAV: FAILED (0 polygons)"
+	_debug_timer -= delta
+	if _debug_timer > 0.0:
+		return
+	_debug_timer = 0.5
+
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var nearest = null
+	var best: float = INF
+	for z in get_tree().get_nodes_in_group("zombies"):
+		var zn := z as Node3D
+		if zn == null or player == null:
+			continue
+		var d: float = zn.global_position.distance_to(player.global_position)
+		if d < best:
+			best = d
+			nearest = zn
+
+	var line2: String = "no zombies"
+	if nearest != null:
+		var path = nearest.get("_path")
+		var pts: int = -1
+		if path != null:
+			pts = path.size()
+		line2 = "nearest zombie %.0fm away, path points: %d" % [best, pts]
+	_label.text = _base_text + "\n" + line2
 
 
-func _make_debug_label(text: String) -> void:
+func _make_debug_label() -> void:
 	if not show_debug_label:
 		return
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_label = Label.new()
-	_label.text = text
-	_label.position = Vector2(1000.0, 6.0)
-	_label.add_theme_font_size_override("font_size", 16)
+	_label.text = _base_text
+	_label.position = Vector2(900.0, 6.0)
+	_label.add_theme_font_size_override("font_size", 20)
 	layer.add_child(_label)
