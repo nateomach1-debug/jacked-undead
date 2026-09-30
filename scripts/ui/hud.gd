@@ -20,6 +20,13 @@ var _perk_icons: Dictionary = {}
 
 
 func _ready() -> void:
+	for label in [health_label, ammo_label, weapon_label, gains_label, round_label]:
+		label.add_theme_font_size_override("font_size", 32)
+	prompt_label.add_theme_font_size_override("font_size", 38)
+	prompt_label.add_theme_constant_override("outline_size", 8)
+	prompt_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	coords_label.add_theme_font_size_override("font_size", 24)
+	call_deferred("_enlarge_world_labels")
 	GameManager.gains_changed.connect(_on_gains_changed)
 	GameManager.round_changed.connect(_on_round_changed)
 	_on_gains_changed(GameManager.gains)
@@ -48,6 +55,30 @@ func _process(_delta: float) -> void:
 	if _player:
 		var pos: Vector3 = _player.global_position
 		coords_label.text = "X: %.1f  Y: %.1f  Z: %.1f" % [pos.x, pos.y, pos.z]
+		_update_prompt_color()
+
+
+## Colors the "Tap USE to..." prompt to match whatever station you're looking at
+## (stations that have a get_prompt_color() method). Everything else stays white.
+func _update_prompt_color() -> void:
+	var color := Color(1, 1, 1, 1)
+	if _player and _player.interact_ray and _player.interact_ray.is_colliding():
+		var target = _player.interact_ray.get_collider()
+		if target and target.has_method("get_prompt_color"):
+			color = target.get_prompt_color()
+	prompt_label.add_theme_color_override("font_color", color)
+
+
+## Makes every floating 3D label in the level (station names, the locker sign) bigger.
+func _enlarge_world_labels() -> void:
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	var grow: float = 1.6
+	for node in scene.find_children("*", "Label3D", true, false):
+		var label3d := node as Label3D
+		if label3d:
+			label3d.pixel_size *= grow
 
 
 func _on_health_changed(current: float, max_hp: float) -> void:
