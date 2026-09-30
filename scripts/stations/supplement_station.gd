@@ -34,6 +34,7 @@ func _ready() -> void:
 	if icon_texture:
 		sign_sprite.texture = icon_texture
 	name_label.text = display_name
+	name_label.modulate = body_color.lightened(0.25)
 
 
 func interact(player: Node) -> void:
@@ -42,6 +43,10 @@ func interact(player: Node) -> void:
 	if GameManager.try_spend_gains(cost):
 		player.apply_supplement(supplement_id)
 		_purchased_by.append(player)
+
+
+func get_prompt_color() -> Color:
+	return body_color.lightened(0.25)
 
 
 func _get_description() -> String:
