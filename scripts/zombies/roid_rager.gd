@@ -7,7 +7,7 @@ extends Zombie
 func _ready() -> void:
 	max_health = 300.0
 	move_speed = 3.0
-	attack_damage = 35.0
+	attack_damage = 0.0
 	gains_on_death = 100
 	head_height_threshold = 0.65
 	super._ready()
