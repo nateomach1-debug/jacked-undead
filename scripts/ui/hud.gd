@@ -17,15 +17,14 @@ extends CanvasLayer
 
 var _player: Node
 var _perk_icons: Dictionary = {}
-var zombie_label: Label
+var _blood_counter = null   # blood_counter.gd instance (untyped on purpose)
+var _fallback_zombie_label: Label = null
 
 
 func _ready() -> void:
-	zombie_label = Label.new()
-	zombie_label.text = "Zombies: 0 / 0"
-	$Margin/VBox.add_child(zombie_label)
+	_build_top_center()
 
-	for label in [health_label, ammo_label, weapon_label, gains_label, round_label, zombie_label]:
+	for label in [health_label, ammo_label, weapon_label, gains_label, round_label]:
 		label.add_theme_font_size_override("font_size", 32)
 	prompt_label.add_theme_font_size_override("font_size", 38)
 	prompt_label.add_theme_constant_override("outline_size", 8)
@@ -45,6 +44,42 @@ func _ready() -> void:
 		"fish_oil": perk_fish_oil,
 		"bcaas": perk_bcaas,
 	}
+
+
+## Round counter + zombie counter, centered at the top of the screen.
+func _build_top_center() -> void:
+	var top_box := VBoxContainer.new()
+	top_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	add_child(top_box)
+
+	# Move the existing round label out of the top-left stack.
+	round_label.get_parent().remove_child(round_label)
+	round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	round_label.add_theme_color_override("font_color", Color(0.93, 0.93, 0.88, 1.0))
+	round_label.add_theme_color_override("font_outline_color", Color(0.06, 0.02, 0.02, 1.0))
+	round_label.add_theme_constant_override("outline_size", 8)
+	top_box.add_child(round_label)
+
+	# Blood-drip counter; if the script is missing, fall back to a plain red number.
+	var counter_script = load("res://scripts/ui/blood_counter.gd")
+	if counter_script:
+		var counter := Control.new()
+		counter.set_script(counter_script)
+		top_box.add_child(counter)
+		_blood_counter = counter
+	else:
+		_fallback_zombie_label = Label.new()
+		_fallback_zombie_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_fallback_zombie_label.add_theme_font_size_override("font_size", 64)
+		_fallback_zombie_label.add_theme_color_override("font_color", Color(0.74, 0.03, 0.06, 1.0))
+		_fallback_zombie_label.add_theme_color_override("font_outline_color", Color(0.06, 0.02, 0.02, 1.0))
+		_fallback_zombie_label.add_theme_constant_override("outline_size", 10)
+		_fallback_zombie_label.text = "0"
+		top_box.add_child(_fallback_zombie_label)
+
+	top_box.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 12)
+	top_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 
 func bind_player(player: Node) -> void:
@@ -111,8 +146,11 @@ func _on_round_changed(round_number: int) -> void:
 	round_label.text = "Round: %d" % round_number
 
 
-func _on_zombies_changed(remaining: int, total: int) -> void:
-	zombie_label.text = "Zombies: %d / %d" % [remaining, total]
+func _on_zombies_changed(remaining: int, _total: int) -> void:
+	if _blood_counter != null:
+		_blood_counter.set_value(remaining)
+	elif _fallback_zombie_label != null:
+		_fallback_zombie_label.text = str(remaining)
 
 
 func _on_prompt_changed(text: String) -> void:
