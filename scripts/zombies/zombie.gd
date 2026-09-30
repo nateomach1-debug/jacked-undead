@@ -20,7 +20,7 @@ const DETOUR_DURATION: float = 0.9        # seconds spent sliding sideways off a
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
-@export var attack_damage: float = 10.0
+@export var attack_damage: float = 0.0
 @export var attack_range: float = 1.5
 @export var attack_cooldown: float = 1.0
 @export var gains_on_death: int = 100
