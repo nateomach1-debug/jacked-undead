@@ -101,7 +101,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, -16.4, 25)
 
 [node name="LootLocker" parent="Stations" instance=ExtResource("29")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 43.6, -17.2, 19.3)
-cost = 0
+cost = 950
 
 [node name="PRRack" parent="Stations" instance=ExtResource("31")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -21, -17.2, 8)
