@@ -103,12 +103,20 @@ func _get_move_direction(to_target: Vector3, delta: float) -> Vector3:
 	while _path_index < _path.size():
 		var point := _path[_path_index]
 		var flat := Vector3(point.x - global_position.x, 0.0, point.z - global_position.z)
-		if flat.length() < waypoint_reach_distance:
+		if flat.length() < waypoint_reach_distance and absf(point.y - _feet_y()) < 1.0:
 			_path_index += 1
 		else:
 			return flat.normalized()
 
 	return to_target.normalized()
+
+
+## World Y of this zombie's feet (the body origin is the middle of its capsule).
+func _feet_y() -> float:
+	var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if shape_node and shape_node.shape is CapsuleShape3D:
+		return global_position.y - (shape_node.shape as CapsuleShape3D).height * 0.5
+	return global_position.y - 0.95
 
 
 func _refresh_path() -> void:
@@ -121,8 +129,9 @@ func _refresh_path() -> void:
 		return  # this map has no navigation mesh: walk straight at the player
 	if NavigationServer3D.map_get_iteration_id(nav_map) == 0:
 		return  # navigation mesh not ready yet
-	_path = NavigationServer3D.map_get_path(nav_map, global_position, _target.global_position, true)
-
+	var from_pos := Vector3(global_position.x, _feet_y(), global_position.z)
+	var to_pos := Vector3(_target.global_position.x, _target.global_position.y - 0.9, _target.global_position.z)
+	_path = NavigationServer3D.map_get_path(nav_map, from_pos, to_pos, true)
 
 ## If we've barely moved for half a second while trying to chase, get a fresh
 ## route and slide sideways along the wall for a moment to clear the corner.
