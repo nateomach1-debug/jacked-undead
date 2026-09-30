@@ -37,7 +37,17 @@ func _ready() -> void:
 		source.add_to_group("navmesh_source")
 
 	bake_finished.connect(_on_bake_finished)
+	GameManager.barrier_opened.connect(_on_barrier_opened)
 	_make_debug_label()
+	bake_navigation_mesh(true)
+
+
+## A bought door frees itself: wait for that to finish, then rebake so the
+## opening becomes walkable for zombies.
+func _on_barrier_opened() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_base_text = "NAV: rebaking..."
 	bake_navigation_mesh(true)
 
 
