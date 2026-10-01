@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3]
+[gd_scene load_steps=45 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -48,6 +48,18 @@ size = Vector3(1, 10, 20)
 
 [sub_resource type="BoxMesh" id="BoxMesh_wall"]
 size = Vector3(1, 10, 20)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_south"]
+size = Vector3(1, 10, 10)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall_south"]
+size = Vector3(1, 10, 10)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ramp"]
+size = Vector3(4, 0.5, 12.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ramp"]
+size = Vector3(4, 0.5, 12.5)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wall"]
 albedo_color = Color(0.28, 0.28, 0.32, 1)
@@ -99,43 +111,63 @@ shape = SubResource("BoxShape3D_upper_floor")
 mesh = SubResource("BoxMesh_upper_floor")
 
 [node name="WestRamp" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, -18, 2.3, -5)
+transform = Transform3D(1, 0, 0, 0, 0.894427, 0.447214, 0, -0.447214, 0.894427, -18, 2.5, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WestRamp"]
-shape = SubResource("BoxShape3D_upper_floor")
+shape = SubResource("BoxShape3D_ramp")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="WestRamp"]
-mesh = SubResource("BoxMesh_upper_floor")
+mesh = SubResource("BoxMesh_ramp")
 
 [node name="EastStairs" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 18, 2.3, -5)
+transform = Transform3D(1, 0, 0, 0, 0.894427, 0.447214, 0, -0.447214, 0.894427, 18, 2.5, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EastStairs"]
-shape = SubResource("BoxShape3D_upper_floor")
+shape = SubResource("BoxShape3D_ramp")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="EastStairs"]
-mesh = SubResource("BoxMesh_upper_floor")
+mesh = SubResource("BoxMesh_ramp")
 
 [node name="Walls" type="Node3D" parent="."]
 
-[node name="DividerWest" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 5, 10)
+[node name="DividerWestNorth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 5, 5)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DividerWest"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DividerWestNorth"]
 shape = SubResource("BoxShape3D_wall")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerWest"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerWestNorth"]
 mesh = SubResource("BoxMesh_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
-[node name="DividerEast" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 5, 10)
+[node name="DividerEastNorth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 5, 5)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DividerEast"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DividerEastNorth"]
 shape = SubResource("BoxShape3D_wall")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerEast"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerEastNorth"]
 mesh = SubResource("BoxMesh_wall")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="DividerWestSouth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 5, 25)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DividerWestSouth"]
+shape = SubResource("BoxShape3D_wall_south")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerWestSouth"]
+mesh = SubResource("BoxMesh_wall_south")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="DividerEastSouth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 5, 25)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DividerEastSouth"]
+shape = SubResource("BoxShape3D_wall_south")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerEastSouth"]
+mesh = SubResource("BoxMesh_wall_south")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="Player" parent="." instance=ExtResource("3")]
@@ -181,24 +213,32 @@ metadata/zone = "upstairs"
 [node name="BuyableDoors" type="Node3D" parent="."]
 
 [node name="DoorWestWing" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 0)
-size = Vector3(0.4, 3, 6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 5, 17.5)
+size = Vector3(0.4, 10, 5)
 cost = 1250
 display_name = "West Wing"
 unlocks_zones = PackedStringArray("west")
 
 [node name="DoorEastWing" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
-size = Vector3(0.4, 3, 6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 5, 17.5)
+size = Vector3(0.4, 10, 5)
 cost = 1250
 display_name = "East Wing"
 unlocks_zones = PackedStringArray("east")
 
 [node name="DebrisWestStairs" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -2)
-size = Vector3(4, 3, 0.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 5, 5)
+size = Vector3(4, 10, 0.4)
 cost = 2000
 display_name = "West Stairs Debris"
+unlocks_zones = PackedStringArray("upstairs")
+color = Color(0.35, 0.3, 0.25, 1)
+
+[node name="DebrisEastStairs" parent="BuyableDoors" instance=ExtResource("30")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 5, 5)
+size = Vector3(4, 10, 0.4)
+cost = 2000
+display_name = "East Stairs Debris"
 unlocks_zones = PackedStringArray("upstairs")
 color = Color(0.35, 0.3, 0.25, 1)
 
