@@ -6,6 +6,7 @@ signal status_changed(text: String)
 
 const PORT: int = 7777
 const MAX_CLIENTS: int = 3
+const GAME_MAP: String = "res://scenes/main/main.tscn"
 
 var is_online: bool = false
 var is_host: bool = false
@@ -29,7 +30,7 @@ func host_game() -> bool:
 	multiplayer.multiplayer_peer = peer
 	is_online = true
 	is_host = true
-	status_changed.emit("Hosting. Tell friends to join: %s" % get_local_ip())
+	status_changed.emit("Hosting.\n" + _address_text())
 	return true
 
 
@@ -60,29 +61,70 @@ func leave() -> void:
 	is_host = false
 
 
-## First private-network IPv4 address of this phone (what friends type to join).
-func get_local_ip() -> String:
+## Every private IPv4 address on this phone (Wi-Fi, mobile data, VPN...).
+func get_all_local_ips() -> Array:
+	var found: Array = []
 	for addr in IP.get_local_addresses():
 		var a: String = str(addr)
 		if a.contains(":"):
 			continue
-		if a.begins_with("192.168.") or a.begins_with("10.") or a.begins_with("172."):
-			return a
+		if a.begins_with("192.168.") or a.begins_with("10.") or _is_172_private(a):
+			found.append(a)
+	return found
+
+
+## Best guess at the Wi-Fi address: 192.168.x.x first, then 10.x, then 172.x.
+func get_local_ip() -> String:
+	var all_ips: Array = get_all_local_ips()
+	for prefix in ["192.168.", "10.", "172."]:
+		for a in all_ips:
+			if str(a).begins_with(prefix):
+				return str(a)
 	return "unknown"
+
+
+func _is_172_private(a: String) -> bool:
+	if not a.begins_with("172."):
+		return false
+	var parts: PackedStringArray = a.split(".")
+	if parts.size() != 4:
+		return false
+	var second: int = int(parts[1])
+	return second >= 16 and second <= 31
+
+
+func _address_text() -> String:
+	var all_ips: Array = get_all_local_ips()
+	var best: String = get_local_ip()
+	if all_ips.size() <= 1:
+		return "Join IP: %s" % best
+	return "Join IP: %s\nAll addresses: %s" % [best, ", ".join(PackedStringArray(all_ips))]
 
 
 func _player_count() -> int:
 	return multiplayer.get_peers().size() + 1
 
 
+## Host only: loads the map on every phone at once.
+func start_game() -> void:
+	if not is_host:
+		return
+	_load_map.rpc(GAME_MAP)
+
+
+@rpc("authority", "call_local", "reliable")
+func _load_map(path: String) -> void:
+	get_tree().change_scene_to_file(path)
+
+
 func _on_peer_connected(id: int) -> void:
 	if is_host:
-		status_changed.emit("Player %d joined. Players: %d\nJoin IP: %s" % [id, _player_count(), get_local_ip()])
+		status_changed.emit("Player %d joined. Players: %d\n%s" % [id, _player_count(), _address_text()])
 
 
 func _on_peer_disconnected(id: int) -> void:
 	if is_host:
-		status_changed.emit("Player %d left. Players: %d\nJoin IP: %s" % [id, _player_count(), get_local_ip()])
+		status_changed.emit("Player %d left. Players: %d\n%s" % [id, _player_count(), _address_text()])
 
 
 func _on_connected_to_server() -> void:
@@ -97,17 +139,3 @@ func _on_connection_failed() -> void:
 func _on_server_disconnected() -> void:
 	is_online = false
 	status_changed.emit("Host disconnected")
-
-const GAME_MAP: String = "res://scenes/main/main.tscn"
-
-
-## Host only: loads the map on every phone at once.
-func start_game() -> void:
-	if not is_host:
-		return
-	_load_map.rpc(GAME_MAP)
-
-
-@rpc("authority", "call_local", "reliable")
-func _load_map(path: String) -> void:
-	get_tree().change_scene_to_file(path)
