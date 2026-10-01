@@ -1,4 +1,4 @@
-[gd_scene load_steps=57 format=3]
+[gd_scene load_steps=58 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -30,6 +30,7 @@
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 [ext_resource type="PackedScene" path="res://scenes/stations/buy_door.tscn" id="30"]
+[ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="31"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor_main"]
 size = Vector3(60, 1, 60)
@@ -424,7 +425,7 @@ icon_texture = ExtResource("18")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 5)
 
 [node name="RifleWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -29.5, 1, 10)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -28.8, 1, 20)
 weapon = ExtResource("14")
 display_model = ExtResource("24")
 display_name = "Rifle"
@@ -451,7 +452,7 @@ icon_texture = ExtResource("20")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 5)
 
 [node name="CrossbowWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 29.5, 1, 10)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 28.8, 1, 20)
 weapon = ExtResource("25")
 display_model = ExtResource("27")
 display_name = "Crossbow"
@@ -484,3 +485,7 @@ display_model = ExtResource("28")
 display_name = "Sniper"
 buy_cost = 5000
 ammo_cost = 500
+
+[node name="NavBaker" type="NavigationRegion3D" parent="."]
+script = ExtResource("31")
+source_path = NodePath("..")
