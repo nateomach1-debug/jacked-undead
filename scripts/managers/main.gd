@@ -20,10 +20,10 @@ func _ready() -> void:
 		_setup_coop()
 
 
-## Co-op step 2 test: no zombies yet (step 4 makes them host-owned), and each
-## phone's player starts in its own spot so they don't overlap.
+## Co-op: only the host runs zombies and rounds; other phones show copies.
+## Each phone's player starts in its own spot so they don't overlap.
 func _setup_coop() -> void:
-	if round_manager:
+	if round_manager and not NetManager.is_host:
 		round_manager.zombie_scene = null
 		round_manager.roid_rager_scene = null
 
@@ -44,4 +44,4 @@ func _setup_coop() -> void:
 	coop.set_script(coop_script)
 	coop.name = "CoopSync"
 	add_child(coop)
-	coop.setup(player)
+	coop.setup(player, round_manager)
