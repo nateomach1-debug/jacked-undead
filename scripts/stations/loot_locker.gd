@@ -98,7 +98,7 @@ func _process(delta: float) -> void:
 
 func interact(player: Node) -> void:
 	if _state == State.IDLE:
-		if GameManager.try_spend_gains(cost):
+		if GameManager.try_spend_gains(GameManager.loot_locker_cost(cost)):
 			_start_roll()
 	elif _state == State.READY:
 		if _rolled and player.has_method("grant_weapon"):
@@ -110,7 +110,7 @@ func get_prompt_text() -> String:
 	if _state == State.IDLE:
 		return "Tap USE to open Loot Locker - %d Gains" % cost
 	if _state == State.READY and _rolled:
-		return "Tap USE to grab %s" % _rolled.weapon_name
+		return "Tap USE to open Loot Locker - %d Gains" % GameManager.loot_locker_cost(cost)
 	return ""
 
 
@@ -143,7 +143,7 @@ func _close_locker() -> void:
 
 func _set_idle_label() -> void:
 	var gm_ok: bool = load("res://scripts/weapons/gun_models.gd") != null
-	_label.text = "LOOT LOCKER\n%d Gains\n[gun_models: %s]" % [cost, "ok" if gm_ok else "FAILED"]
+	_label.text = "LOOT LOCKER\n%d Gains\n[gun_models: %s]" % [GameManager.loot_locker_cost(cost), "ok" if gm_ok else "FAILED"]
 
 
 func _set_door_open(open: bool) -> void:
