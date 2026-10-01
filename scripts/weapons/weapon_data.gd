@@ -6,6 +6,16 @@ class_name WeaponData
 
 enum FireMode { HITSCAN, FLAME, EXPLOSIVE }
 
+# PR Rack upgrade levels. Each list holds the TOTAL bonus at that level
+# (index 0 = level 1), applied to the gun's original stats.
+const PR_MAX_LEVEL: int = 3
+const PR_SUFFIXES: Array = [" - 1RM", " - 2RM", " - 3RM"]
+const PR_DAMAGE: Array = [2.2, 3.2, 4.5]
+const PR_FIRE_RATE: Array = [1.15, 1.3, 1.5]     # shots-per-second multiplier
+const PR_RELOAD_SPEED: Array = [1.2, 1.4, 1.7]   # reload time is divided by this
+const PR_MAG: Array = [1.5, 1.75, 2.0]
+const PR_RESERVE: Array = [2.0, 2.5, 3.0]
+
 @export var weapon_name: String = "Pistol"
 @export var damage: float = 20.0
 @export var fire_rate: float = 0.25
@@ -34,6 +44,10 @@ enum FireMode { HITSCAN, FLAME, EXPLOSIVE }
 @export var placeholder_size: Vector3 = Vector3.ZERO
 @export var placeholder_color: Color = Color(0.3, 0.3, 0.3)
 
+# Set on PR-upgraded copies (not saved in .tres files).
+var pr_level: int = 0
+var pr_base: WeaponData = null
+
 
 func create_model() -> Node3D:
 	if model_scene:
@@ -57,12 +71,28 @@ func create_model() -> Node3D:
 	return null
 
 
+## The gun's name without any PR suffix ("Pistol" for "Pistol - 2RM").
+func get_base_name() -> String:
+	return pr_base.weapon_name if pr_base != null else weapon_name
+
+
+## Returns the next PR level of this gun, built from its ORIGINAL stats so
+## the bonuses never compound. Capped at PR_MAX_LEVEL.
 func get_pr_upgraded_copy() -> WeaponData:
-	var upgraded: WeaponData = duplicate()
-	upgraded.weapon_name = weapon_name + " - 1RM"
-	upgraded.damage *= 2.2
-	upgraded.burn_damage_per_second *= 2.2
-	upgraded.mag_size = int(mag_size * 1.5)
-	upgraded.max_reserve_ammo = int(max_reserve_ammo * 2)
-	upgraded.is_pr_upgraded = true
-	return upgraded
+	var base: WeaponData = pr_base if pr_base != null else self
+	var level: int = mini(pr_level + 1, PR_MAX_LEVEL)
+	var i: int = level - 1
+	var up: WeaponData = base.duplicate()
+	up.pr_base = base
+	up.pr_level = level
+	up.weapon_name = base.weapon_name + PR_SUFFIXES[i]
+	up.placeholder_kind = base.placeholder_kind if base.placeholder_kind != "" else base.weapon_name
+	up.damage = base.damage * PR_DAMAGE[i]
+	up.burn_damage_per_second = base.burn_damage_per_second * PR_DAMAGE[i]
+	up.fire_rate = base.fire_rate / PR_FIRE_RATE[i]
+	up.burst_interval = base.burst_interval / PR_FIRE_RATE[i]
+	up.reload_time = base.reload_time / PR_RELOAD_SPEED[i]
+	up.mag_size = int(base.mag_size * PR_MAG[i])
+	up.max_reserve_ammo = int(base.max_reserve_ammo * PR_RESERVE[i])
+	up.is_pr_upgraded = true
+	return up
