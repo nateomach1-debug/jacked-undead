@@ -8,9 +8,9 @@ extends Area3D
 func interact(player: Node) -> void:
 	if not player.current_weapon or player.current_weapon.is_pr_upgraded:
 		return
-	if GameManager.try_spend_gains(cost):
+	if GameManager.try_spend_gains(GameManager.pr_rack_cost(cost)):
 		player.apply_pr_upgrade()
 
 
 func get_prompt_text() -> String:
-	return "Tap USE to rack a PR - %d Gains" % cost
+	return "Tap USE to rack a PR - %d Gains" % GameManager.pr_rack_cost(cost)
