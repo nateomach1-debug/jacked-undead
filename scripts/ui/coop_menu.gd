@@ -1,9 +1,10 @@
 extends Control
-## Co-op test screen (step 1): host or join a LAN game and show the status.
+## Co-op screen: host or join a LAN game. The host also gets a START button.
 ## Uses an on-screen number pad because the phone keyboard won't open here.
 
 var _status: Label
 var _ip_label: Label
+var _start_button: Button
 var _ip: String = ""
 
 
@@ -46,7 +47,7 @@ func _ready() -> void:
 		b.pressed.connect(_on_key.bind(key))
 		grid.add_child(b)
 
-	# Right side: status + host / join / back
+	# Right side: status + host / join / start / back
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 14)
 	row.add_child(right)
@@ -61,6 +62,11 @@ func _ready() -> void:
 
 	right.add_child(_make_button("HOST GAME", _on_host))
 	right.add_child(_make_button("JOIN GAME", _on_join))
+
+	_start_button = _make_button("START GAME (Gym Arena)", _on_start)
+	_start_button.visible = false
+	right.add_child(_start_button)
+
 	right.add_child(_make_button("BACK", _on_back))
 
 	# Pre-fill the first three numbers from this phone's own Wi-Fi address.
@@ -95,11 +101,17 @@ func _refresh_ip() -> void:
 
 
 func _on_host() -> void:
-	NetManager.host_game()
+	if NetManager.host_game():
+		_start_button.visible = true
 
 
 func _on_join() -> void:
+	_start_button.visible = false
 	NetManager.join_game(_ip)
+
+
+func _on_start() -> void:
+	NetManager.start_game()
 
 
 func _on_back() -> void:
