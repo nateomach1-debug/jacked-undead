@@ -152,3 +152,14 @@ func _take_hit(amount: float) -> void:
 	var local_player := get_tree().get_first_node_in_group("player")
 	if local_player != null and local_player.has_method("take_damage"):
 		local_player.take_damage(amount)
+
+## Host only: pays a kill reward to the phone that earned it.
+func reward_peer(peer_id: int, amount: int) -> void:
+	if not is_online or not is_host:
+		return
+	_get_reward.rpc_id(peer_id, amount)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _get_reward(amount: int) -> void:
+	GameManager.add_gains(amount)
