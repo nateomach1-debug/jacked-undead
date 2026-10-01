@@ -213,21 +213,21 @@ metadata/zone = "upstairs"
 [node name="BuyableDoors" type="Node3D" parent="."]
 
 [node name="DoorWestWing" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 5, 17.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 17.5)
 size = Vector3(0.4, 10, 5)
 cost = 1250
 display_name = "West Wing"
 unlocks_zones = PackedStringArray("west")
 
 [node name="DoorEastWing" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 5, 17.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 17.5)
 size = Vector3(0.4, 10, 5)
 cost = 1250
 display_name = "East Wing"
 unlocks_zones = PackedStringArray("east")
 
 [node name="DebrisWestStairs" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 5, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, 5)
 size = Vector3(4, 10, 0.4)
 cost = 2000
 display_name = "West Stairs Debris"
@@ -235,7 +235,7 @@ unlocks_zones = PackedStringArray("upstairs")
 color = Color(0.35, 0.3, 0.25, 1)
 
 [node name="DebrisEastStairs" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 5, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 5)
 size = Vector3(4, 10, 0.4)
 cost = 2000
 display_name = "East Stairs Debris"
