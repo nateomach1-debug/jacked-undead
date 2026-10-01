@@ -194,7 +194,7 @@ func _step_up_if_blocked(delta: float) -> void:
 
 func _try_attack() -> void:
 	if _attack_timer <= 0.0 and _target and _target.has_method("take_damage"):
-		_target.take_damage(attack_damage)
+		_target.take_damage(GameManager.get_zombie_damage(attack_damage))
 		_attack_timer = attack_cooldown
 
 
