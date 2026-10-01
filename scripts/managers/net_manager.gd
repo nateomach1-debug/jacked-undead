@@ -139,3 +139,16 @@ func _on_connection_failed() -> void:
 func _on_server_disconnected() -> void:
 	is_online = false
 	status_changed.emit("Host disconnected")
+
+## Host only: sends damage to the phone that owns this player.
+func damage_peer(peer_id: int, amount: float) -> void:
+	if not is_online or not is_host:
+		return
+	_take_hit.rpc_id(peer_id, amount)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _take_hit(amount: float) -> void:
+	var local_player := get_tree().get_first_node_in_group("player")
+	if local_player != null and local_player.has_method("take_damage"):
+		local_player.take_damage(amount)
