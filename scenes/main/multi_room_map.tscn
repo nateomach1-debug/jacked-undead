@@ -425,7 +425,7 @@ icon_texture = ExtResource("18")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 5)
 
 [node name="RifleWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -28.8, 1, 20)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -28.8, 1, 20)
 weapon = ExtResource("14")
 display_model = ExtResource("24")
 display_name = "Rifle"
@@ -452,7 +452,7 @@ icon_texture = ExtResource("20")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 5)
 
 [node name="CrossbowWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 28.8, 1, 20)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 28.8, 1, 20)
 weapon = ExtResource("25")
 display_model = ExtResource("27")
 display_name = "Crossbow"
