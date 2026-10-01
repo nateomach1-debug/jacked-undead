@@ -1,4 +1,4 @@
-[gd_scene load_steps=55 format=3]
+[gd_scene load_steps=57 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -38,10 +38,10 @@ size = Vector3(60, 1, 60)
 size = Vector3(60, 1, 60)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_upper_floor"]
-size = Vector3(50, 0.5, 20)
+size = Vector3(50, 0.5, 24.5)
 
 [sub_resource type="BoxMesh" id="BoxMesh_upper_floor"]
-size = Vector3(50, 0.5, 20)
+size = Vector3(50, 0.5, 24.5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_wall"]
 size = Vector3(1, 10, 20)
@@ -91,6 +91,12 @@ size = Vector3(32, 1.5, 0.2)
 [sub_resource type="BoxMesh" id="BoxMesh_cw_ledge_mid"]
 size = Vector3(32, 1.5, 0.2)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_catwalk_wall"]
+size = Vector3(60, 5, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_catwalk_wall"]
+size = Vector3(60, 5, 1)
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wall"]
 albedo_color = Color(0.28, 0.28, 0.32, 1)
 
@@ -132,7 +138,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 mesh = SubResource("BoxMesh_floor_main")
 
 [node name="UpperCatwalk" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -17.25)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="UpperCatwalk"]
 shape = SubResource("BoxShape3D_upper_floor")
@@ -141,29 +147,29 @@ shape = SubResource("BoxShape3D_upper_floor")
 mesh = SubResource("BoxMesh_upper_floor")
 
 [node name="LedgeLeftCol" type="CollisionShape3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.5, 1, 9.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.5, 1, 12.15)
 shape = SubResource("BoxShape3D_cw_ledge_side")
 
 [node name="LedgeLeftMesh" type="MeshInstance3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.5, 1, 9.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.5, 1, 12.15)
 mesh = SubResource("BoxMesh_cw_ledge_side")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="LedgeMidCol" type="CollisionShape3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 12.15)
 shape = SubResource("BoxShape3D_cw_ledge_mid")
 
 [node name="LedgeMidMesh" type="MeshInstance3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 12.15)
 mesh = SubResource("BoxMesh_cw_ledge_mid")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="LedgeRightCol" type="CollisionShape3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.5, 1, 9.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.5, 1, 12.15)
 shape = SubResource("BoxShape3D_cw_ledge_side")
 
 [node name="LedgeRightMesh" type="MeshInstance3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.5, 1, 9.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.5, 1, 12.15)
 mesh = SubResource("BoxMesh_cw_ledge_side")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
@@ -261,6 +267,16 @@ shape = SubResource("BoxShape3D_wall_south")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerEastSouth"]
 mesh = SubResource("BoxMesh_wall_south")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="UnderCatwalkWall" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/UnderCatwalkWall"]
+shape = SubResource("BoxShape3D_catwalk_wall")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/UnderCatwalkWall"]
+mesh = SubResource("BoxMesh_catwalk_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="PerimeterNorth" type="StaticBody3D" parent="Walls"]
@@ -462,7 +478,7 @@ icon_texture = ExtResource("19")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -15)
 
 [node name="SniperWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -24.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -29.0)
 weapon = ExtResource("26")
 display_model = ExtResource("28")
 display_name = "Sniper"
