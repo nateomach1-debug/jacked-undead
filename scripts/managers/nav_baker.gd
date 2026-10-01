@@ -38,6 +38,7 @@ func _ready() -> void:
 
 	bake_finished.connect(_on_bake_finished)
 	GameManager.barrier_opened.connect(_on_barrier_opened)
+	GameManager.dev_settings_changed.connect(_on_dev_settings_changed)
 	_make_debug_label()
 	bake_navigation_mesh(true)
 
@@ -49,6 +50,12 @@ func _on_barrier_opened() -> void:
 	await get_tree().process_frame
 	_base_text = "NAV: rebaking..."
 	bake_navigation_mesh(true)
+
+
+## Dev menu toggle: the NAV label only shows when "Nav data" is on.
+func _on_dev_settings_changed() -> void:
+	if _label:
+		_label.visible = GameManager.dev_show_nav()
 
 
 func _on_bake_finished() -> void:
@@ -101,4 +108,5 @@ func _make_debug_label() -> void:
 	_label.text = _base_text
 	_label.position = Vector2(900.0, 6.0)
 	_label.add_theme_font_size_override("font_size", 20)
+	_label.visible = GameManager.dev_show_nav()
 	layer.add_child(_label)
