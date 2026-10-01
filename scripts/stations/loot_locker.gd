@@ -108,7 +108,7 @@ func interact(player: Node) -> void:
 
 func get_prompt_text() -> String:
 	if _state == State.IDLE:
-		return "Tap USE to open Loot Locker - %d Gains" % cost
+		open Loot Locker - %d Gains" % GameManager.loot_locker_cost(cost)
 	if _state == State.READY and _rolled:
 		return "Tap USE to open Loot Locker - %d Gains" % GameManager.loot_locker_cost(cost)
 	return ""
