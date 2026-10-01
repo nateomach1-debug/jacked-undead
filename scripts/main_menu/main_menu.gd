@@ -16,6 +16,7 @@ func _ready() -> void:
 	exit_button.pressed.connect(_on_exit_pressed)
 	options_back_button.pressed.connect(_on_options_back_pressed)
 	_add_dev_button()
+	_add_coop_button()
 
 
 ## Adds a DEVELOPER button to the options panel, just above BACK.
@@ -28,6 +29,28 @@ func _add_dev_button() -> void:
 	dev_button.pressed.connect(_on_dev_pressed)
 	vbox.add_child(dev_button)
 	vbox.move_child(dev_button, options_back_button.get_index())
+
+
+## Adds a CO-OP button to the main menu, just below START.
+func _add_coop_button() -> void:
+	var vbox: Node = start_button.get_parent()
+	var coop_button := Button.new()
+	coop_button.text = "CO-OP"
+	coop_button.custom_minimum_size = start_button.custom_minimum_size
+	coop_button.add_theme_font_size_override("font_size", 26)
+	coop_button.pressed.connect(_on_coop_pressed)
+	vbox.add_child(coop_button)
+	vbox.move_child(coop_button, start_button.get_index() + 1)
+
+
+func _on_coop_pressed() -> void:
+	var menu_script = load("res://scripts/ui/coop_menu.gd")
+	if menu_script == null:
+		push_warning("coop_menu.gd is missing or broken.")
+		return
+	var menu := Control.new()
+	menu.set_script(menu_script)
+	add_child(menu)
 
 
 func _on_dev_pressed() -> void:
