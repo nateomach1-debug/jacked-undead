@@ -40,7 +40,7 @@ func _ready() -> void:
 func interact(player: Node) -> void:
 	if player in _purchased_by:
 		return
-	if GameManager.try_spend_gains(cost):
+	if GameManager.try_spend_gains(GameManager.supplement_cost(cost)):
 		player.apply_supplement(supplement_id)
 		_purchased_by.append(player)
 
@@ -58,7 +58,7 @@ func _get_description() -> String:
 func get_prompt_text() -> String:
 	if _purchased_by.size() > 0:
 		return "%s (already stacked)" % display_name
-	var buy_line: String = "Tap USE to buy %s - %d Gains" % [display_name, cost]
+	var buy_line: String = "Tap USE to buy %s - %d Gains" % [display_name, GameManager.supplement_cost(cost)]
 	var desc: String = _get_description()
 	if desc == "":
 		return buy_line
