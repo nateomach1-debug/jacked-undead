@@ -238,17 +238,33 @@ func is_headshot(world_hit_position: Vector3) -> bool:
 	return (world_hit_position.y - global_position.y) >= head_height_threshold
 
 
-func take_damage(amount: float, _source: Node = null, was_headshot: bool = false) -> void:
-	if _is_dead or is_puppet:
+func take_damage(amount: float, source: Node = null, was_headshot: bool = false) -> void:
+	if _is_dead:
 		return
+	if is_puppet:
+		_forward_hit_to_host(amount, was_headshot)
+		return
+	_last_source = source
 	current_health -= amount
 	if current_health <= 0.0:
 		_die(was_headshot)
 
 
+## Co-op: a puppet can't die on its own, so it tells the host it was hit.
+func _forward_hit_to_host(amount: float, was_headshot: bool) -> void:
+	var coop = get_tree().current_scene.get_node_or_null("CoopSync")
+	if coop != null and coop.has_method("send_hit") and has_meta("net_id"):
+		coop.send_hit(int(get_meta("net_id")), amount, was_headshot)
+
+
 func _die(was_headshot: bool = false) -> void:
 	_is_dead = true
-	GameManager.add_gains(HEADSHOT_KILL_GAINS if was_headshot else gains_on_death)
+	var reward: int = HEADSHOT_KILL_GAINS if was_headshot else gains_on_death
+	# A kill by a co-op player pays that player's phone; otherwise it pays the host.
+	if _last_source != null and is_instance_valid(_last_source) and _last_source.has_meta("peer_id"):
+		NetManager.reward_peer(int(_last_source.get_meta("peer_id")), reward)
+	else:
+		GameManager.add_gains(reward)
 	GameManager.add_kill()
 	died.emit(self)
 	queue_free()
