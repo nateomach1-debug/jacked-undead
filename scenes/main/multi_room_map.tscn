@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -29,7 +29,7 @@
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Crossbow_1.gltf" id="27"]
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
-[ext_resource type="PackedScene" path="res://scenes/stations/buyable_door.tscn" id="30"]
+[ext_resource type="PackedScene" path="res://scenes/stations/buy_door.tscn" id="30"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor_main"]
 size = Vector3(60, 1, 60)
@@ -79,7 +79,6 @@ environment = SubResource("Environment_1")
 transform = Transform3D(0.8, -0.4, 0.45, 0, 0.75, 0.66, -0.6, -0.53, 0.6, 0, 15, 0)
 shadow_enabled = true
 
-<!-- FLOORS -->
 [node name="GroundFloor" type="StaticBody3D" parent="."]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="GroundFloor"]
@@ -99,7 +98,6 @@ shape = SubResource("BoxShape3D_upper_floor")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="UpperCatwalk"]
 mesh = SubResource("BoxMesh_upper_floor")
 
-<!-- UPSTAIRS ACCESS ACCESS (STAIRS & RAMPS) -->
 [node name="WestRamp" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, -18, 2.3, -5)
 
@@ -118,7 +116,6 @@ shape = SubResource("BoxShape3D_upper_floor")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="EastStairs"]
 mesh = SubResource("BoxMesh_upper_floor")
 
-<!-- INTERIOR ROOM DIVIDERS & WALLS -->
 [node name="Walls" type="Node3D" parent="."]
 
 [node name="DividerWest" type="StaticBody3D" parent="Walls"]
@@ -141,14 +138,15 @@ shape = SubResource("BoxShape3D_wall")
 mesh = SubResource("BoxMesh_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
-<!-- PLAYER & MANAGERS -->
 [node name="Player" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
 current_weapon = ExtResource("10")
 weapon_loadout = [ExtResource("10")]
 
 [node name="HUD" parent="." instance=ExtResource("9")]
+
 [node name="TouchControls" parent="." instance=ExtResource("11")]
+
 [node name="GameOverScreen" parent="." instance=ExtResource("21")]
 
 [node name="RoundManager" type="Node" parent="."]
@@ -156,47 +154,56 @@ script = ExtResource("2")
 zombie_scene = ExtResource("4")
 roid_rager_scene = ExtResource("5")
 
-<!-- MULTI-ROOM SPAWN POINTS -->
 [node name="SpawnPoints" type="Node3D" parent="."]
 
-<!-- Courtyard Spawns -->
 [node name="SpawnSpawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1, 15)
 
 [node name="SpawnSpawn2" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, 15)
 
-<!-- West Gym Spawns -->
 [node name="WestSpawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 1, 15)
+metadata/zone = "west"
 
-<!-- East Locker Room Spawns -->
 [node name="EastSpawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 1, 15)
+metadata/zone = "east"
 
-<!-- Upstairs Balcony Spawns -->
 [node name="UpstairsSpawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 6, -20)
+metadata/zone = "upstairs"
 
 [node name="UpstairsSpawn2" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 6, -20)
+metadata/zone = "upstairs"
 
-<!-- BUYABLE DOORS & CLEARABLE DEBRIS -->
 [node name="BuyableDoors" type="Node3D" parent="."]
 
 [node name="DoorWestWing" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 0)
+size = Vector3(0.4, 3, 6)
+cost = 1250
+display_name = "West Wing"
+unlocks_zones = PackedStringArray("west")
 
 [node name="DoorEastWing" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
+size = Vector3(0.4, 3, 6)
+cost = 1250
+display_name = "East Wing"
+unlocks_zones = PackedStringArray("east")
 
 [node name="DebrisWestStairs" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 1, -2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -2)
+size = Vector3(4, 3, 0.4)
+cost = 2000
+display_name = "West Stairs Debris"
+unlocks_zones = PackedStringArray("upstairs")
+color = Color(0.35, 0.3, 0.25, 1)
 
-<!-- STATIONS & PURCHASABLES -->
 [node name="Stations" type="Node3D" parent="."]
 
-<!-- Ground Floor Center (Spawn Area) -->
 [node name="WaterStation1" parent="Stations" instance=ExtResource("8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 2)
 
@@ -208,7 +215,6 @@ display_name = "SMG"
 buy_cost = 1000
 ammo_cost = 500
 
-<!-- West Room (Gym Area) -->
 [node name="CreatineStation" parent="Stations" instance=ExtResource("6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0.9, 10)
 supplement_id = "creatine"
@@ -236,7 +242,6 @@ display_name = "Rifle"
 buy_cost = 3000
 ammo_cost = 600
 
-<!-- East Room (Locker Room Area) -->
 [node name="WheyStation" parent="Stations" instance=ExtResource("6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0.9, 10)
 supplement_id = "whey"
@@ -264,7 +269,6 @@ display_name = "Crossbow"
 buy_cost = 3500
 ammo_cost = 400
 
-<!-- Upstairs Catwalk Level -->
 [node name="TRTStation" parent="Stations" instance=ExtResource("6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 5.9, -15)
 supplement_id = "trt"
