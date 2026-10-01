@@ -1,7 +1,8 @@
 extends Node
 ## Co-op sync. Everyone shares their position (capsules for the other players).
 ## The host also shares every zombie plus the round info; the other phones
-## show "puppet" zombies that copy the host's. Created by main.gd online only.
+## show "puppet" zombies that copy the host's, and report their hits back to
+## the host. Created by main.gd online only.
 
 const SEND_INTERVAL: float = 1.0 / 15.0
 const ZOMBIE_INTERVAL: float = 1.0 / 10.0
@@ -149,7 +150,7 @@ func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions:
 		alive[id] = true
 		var puppet = _puppets.get(id)
 		if puppet == null or not is_instance_valid(puppet):
-			puppet = _make_puppet(kinds[i], positions[i])
+			puppet = _make_puppet(kinds[i], positions[i], id)
 			if puppet == null:
 				continue
 			_puppets[id] = puppet
@@ -164,18 +165,39 @@ func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions:
 			_puppet_targets.erase(id)
 
 
-func _make_puppet(kind: int, at: Vector3):
+func _make_puppet(kind: int, at: Vector3, net_id: int):
 	var scene = load(RAGER_SCENE if kind == 1 else ZOMBIE_SCENE)
 	if scene == null:
 		return null
 	var z = scene.instantiate()
 	z.is_puppet = true
-	z.collision_layer = 0
+	z.set_meta("net_id", net_id)
+	z.collision_layer = 4  # shootable: shots at it are forwarded to the host
 	z.collision_mask = 0
 	z.set_physics_process(false)
 	get_parent().add_child(z)
 	z.global_position = at
 	return z
+
+
+# ---------- shooting ----------
+
+## Called by a puppet zombie on a non-host phone when this player hits it.
+func send_hit(net_id: int, amount: float, headshot: bool) -> void:
+	if NetManager.is_online and not NetManager.is_host:
+		_zombie_hit.rpc_id(1, net_id, amount, headshot)
+
+
+## Host: applies a hit reported by another phone to the real zombie.
+@rpc("any_peer", "call_remote", "reliable")
+func _zombie_hit(net_id: int, amount: float, headshot: bool) -> void:
+	if not NetManager.is_host:
+		return
+	var shooter = _remotes.get(multiplayer.get_remote_sender_id())
+	for n in get_tree().get_nodes_in_group("zombies"):
+		if is_instance_valid(n) and n.has_meta("net_id") and int(n.get_meta("net_id")) == net_id:
+			n.take_damage(amount, shooter, headshot)
+			return
 
 
 # ---------- smoothing ----------
