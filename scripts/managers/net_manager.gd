@@ -97,3 +97,17 @@ func _on_connection_failed() -> void:
 func _on_server_disconnected() -> void:
 	is_online = false
 	status_changed.emit("Host disconnected")
+
+const GAME_MAP: String = "res://scenes/main/main.tscn"
+
+
+## Host only: loads the map on every phone at once.
+func start_game() -> void:
+	if not is_host:
+		return
+	_load_map.rpc(GAME_MAP)
+
+
+@rpc("authority", "call_local", "reliable")
+func _load_map(path: String) -> void:
+	get_tree().change_scene_to_file(path)
