@@ -4,7 +4,6 @@ extends Area3D
 ## gun floats out. Tap USE again within take_window seconds to grab it, or
 ## the locker closes and you lose it. Built entirely in code.
 
-const LockerWeapons = preload("res://scripts/weapons/locker_weapons.gd")
 const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to this length (meters)
 
 enum State { IDLE, ROLLING, READY }
@@ -28,11 +27,15 @@ var _display_model: Node3D = null
 
 
 func _ready() -> void:
-	_pool = LockerWeapons.build_pool()
+	_build_visuals()
+	var locker_weapons = load("res://scripts/weapons/locker_weapons.gd")
+	if locker_weapons:
+		_pool = locker_weapons.build_pool()
 	for entry in _pool:
 		_total_weight += int(entry["weight"])
-	_build_visuals()
 	_set_idle_label()
+	if _pool.is_empty():
+		_label.text += "\n[weapon pool: EMPTY]"
 
 
 func _build_visuals() -> void:
