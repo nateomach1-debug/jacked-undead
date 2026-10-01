@@ -1,6 +1,6 @@
 extends CharacterBody3D
 class_name Zombie
-## Base "Gym Rat" zombie. Chases the player, follows the navigation mesh
+## Base "Gym Rat" zombie. Chases the nearest player, follows the navigation mesh
 ## around walls when the map has one, climbs stairs, slides off corners when
 ## stuck, and attacks on contact. Subclass (e.g. RoidRager) can override stats
 ## in _ready() or via exported values on a variant scene.
@@ -8,6 +8,9 @@ class_name Zombie
 ## Pathfinding: maps with a NavigationRegion3D (the Building map, via
 ## nav_baker.gd) give zombies a route around obstacles. On maps without one
 ## (the Gym Arena) they fall back to walking straight at the player.
+##
+## Co-op: the host runs the real zombies. Other phones get "puppet" copies
+## (is_puppet = true) that do nothing but show where the host's zombie is.
 
 signal died(zombie: Zombie)
 
@@ -17,6 +20,7 @@ const MAX_ATTACK_HEIGHT_GAP: float = 2.2  # can't hit you through a floor or cei
 const STUCK_CHECK_INTERVAL: float = 0.5   # how often to check whether we're making progress
 const STUCK_MOVE_THRESHOLD: float = 0.25  # moved less than this (meters) in that time = stuck
 const DETOUR_DURATION: float = 0.9        # seconds spent sliding sideways off a corner
+const RETARGET_INTERVAL: float = 1.0      # how often to re-pick the nearest player
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
@@ -29,6 +33,8 @@ const DETOUR_DURATION: float = 0.9        # seconds spent sliding sideways off a
 @export var repath_interval: float = 0.5        # seconds between path refreshes
 @export var waypoint_reach_distance: float = 0.4
 
+var is_puppet: bool = false  # co-op copy of the host's zombie: no AI, takes no damage
+
 var current_health: float
 var _target: Node3D
 var _attack_timer: float = 0.0
@@ -36,6 +42,7 @@ var _is_dead: bool = false
 var _path: PackedVector3Array = PackedVector3Array()
 var _path_index: int = 0
 var _repath_timer: float = 0.0
+var _retarget_timer: float = 0.0
 var _stuck_timer: float = 0.0
 var _last_check_position: Vector3 = Vector3.ZERO
 var _detour_time: float = 0.0
@@ -49,13 +56,32 @@ func _ready() -> void:
 	_find_target()
 
 
+## Picks the nearest player: this phone's player plus any co-op players.
 func _find_target() -> void:
-	var players := get_tree().get_nodes_in_group("player")
-	if players.size() > 0:
-		_target = players[0]
+	var best: Node3D = null
+	var best_dist: float = INF
+	for group_name in ["player", "remote_players"]:
+		for n in get_tree().get_nodes_in_group(group_name):
+			var p := n as Node3D
+			if p == null or not is_instance_valid(p):
+				continue
+			var d: float = p.global_position.distance_squared_to(global_position)
+			if d < best_dist:
+				best_dist = d
+				best = p
+	if best != null:
+		_target = best
 
 
 func _physics_process(delta: float) -> void:
+	if is_puppet:
+		return
+
+	_retarget_timer -= delta
+	if _retarget_timer <= 0.0:
+		_retarget_timer = RETARGET_INTERVAL
+		_find_target()
+
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 
@@ -192,10 +218,19 @@ func _step_up_if_blocked(delta: float) -> void:
 	global_position.y += step_height
 
 
+## Hits whoever we're chasing. A co-op player on another phone is a capsule
+## here, so the damage is sent over the network to that phone.
 func _try_attack() -> void:
-	if _attack_timer <= 0.0 and _target and _target.has_method("take_damage"):
-		_target.take_damage(GameManager.get_zombie_damage(attack_damage))
-		_attack_timer = attack_cooldown
+	if _attack_timer > 0.0 or _target == null:
+		return
+	var dmg: float = GameManager.get_zombie_damage(attack_damage)
+	if _target.has_method("take_damage"):
+		_target.take_damage(dmg)
+	elif _target.has_meta("peer_id"):
+		NetManager.damage_peer(int(_target.get_meta("peer_id")), dmg)
+	else:
+		return
+	_attack_timer = attack_cooldown
 
 
 func is_headshot(world_hit_position: Vector3) -> bool:
@@ -203,7 +238,7 @@ func is_headshot(world_hit_position: Vector3) -> bool:
 
 
 func take_damage(amount: float, _source: Node = null, was_headshot: bool = false) -> void:
-	if _is_dead:
+	if _is_dead or is_puppet:
 		return
 	current_health -= amount
 	if current_health <= 0.0:
