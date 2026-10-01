@@ -496,7 +496,7 @@ func switch_weapon(direction: int = 1) -> void:
 
 ## Called by the PR Rack (Pack-a-Punch) station.
 func apply_pr_upgrade() -> void:
-	if current_weapon and not current_weapon.is_pr_upgraded:
+	if current_weapon and current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
 		equip_weapon(current_weapon.get_pr_upgraded_copy())
 
 
@@ -535,7 +535,7 @@ func grant_weapon(w: WeaponData) -> void:
 		return
 	for i in range(weapon_loadout.size()):
 		var owned: WeaponData = weapon_loadout[i]
-		if owned.weapon_name == w.weapon_name or owned.weapon_name == w.weapon_name + " - 1RM":
+		if owned.get_base_name() == w.get_base_name():
 			if i == current_weapon_index:
 				current_mag_ammo = owned.mag_size
 				current_reserve_ammo = owned.max_reserve_ammo
@@ -548,7 +548,7 @@ func grant_weapon(w: WeaponData) -> void:
 
 ## True if w (by base name) is the weapon currently in the player's hands.
 func is_current_weapon(w: WeaponData) -> bool:
-	return w != null and current_weapon != null and current_weapon.weapon_name == w.weapon_name
+	return w != null and current_weapon != null and current_weapon.get_base_name() == w.get_base_name()
 
 
 ## Called by a GunWallBuy station on repeat visits. Only ever touches
