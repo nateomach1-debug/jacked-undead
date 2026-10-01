@@ -39,6 +39,7 @@ var current_health: float
 var _target: Node3D
 var _attack_timer: float = 0.0
 var _is_dead: bool = false
+var _last_source: Node = null  # who last hurt this zombie (decides who gets the kill reward)
 var _path: PackedVector3Array = PackedVector3Array()
 var _path_index: int = 0
 var _repath_timer: float = 0.0
