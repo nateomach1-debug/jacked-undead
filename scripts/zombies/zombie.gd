@@ -264,12 +264,13 @@ func _die(was_headshot: bool = false) -> void:
 	var reward: int = HEADSHOT_KILL_GAINS if was_headshot else gains_on_death
 	# A kill by a co-op player pays that player's phone; otherwise it pays the host.
 	if _last_source != null and is_instance_valid(_last_source) and _last_source.has_meta("peer_id"):
-		NetManager.reward_peer(int(_last_source.get_meta("peer_id")), reward)
+		NetManager.reward_kill(int(_last_source.get_meta("peer_id")), reward, was_headshot)
 	else:
 		GameManager.add_gains(reward)
-	GameManager.add_kill()
+		GameManager.add_kill(was_headshot)
 	died.emit(self)
 	queue_free()
+
 
 ## True for a co-op player who is downed or dead: zombies ignore them.
 func _is_out(p: Node) -> bool:
