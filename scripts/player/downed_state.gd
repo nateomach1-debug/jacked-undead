@@ -16,7 +16,7 @@ const REVIVE_HEALTH_FRACTION: float = 0.5
 const BONUS_AFTER_ROUND: int = 5
 const BONUS_FRACTION: float = 0.2
 const STAND_CAMERA_Y: float = 0.7
-const CRAWL_CAMERA_Y: float = 0.15
+const CRAWL_CAMERA_Y: float = -0.7
 const SPECTATE_HEIGHT: float = 1.5
 
 var _player = null
