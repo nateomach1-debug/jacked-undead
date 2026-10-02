@@ -66,6 +66,8 @@ func _find_target() -> void:
 			var p := n as Node3D
 			if p == null or not is_instance_valid(p):
 				continue
+			if _is_out(p):
+				continue
 			var d: float = p.global_position.distance_squared_to(global_position)
 			if d < best_dist:
 				best_dist = d
@@ -268,3 +270,7 @@ func _die(was_headshot: bool = false) -> void:
 	GameManager.add_kill()
 	died.emit(self)
 	queue_free()
+
+## True for a co-op player who is downed or dead: zombies ignore them.
+func _is_out(p: Node) -> bool:
+	return bool(p.get("is_downed")) or bool(p.get("is_dead")) or bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false))
