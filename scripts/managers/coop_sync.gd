@@ -1,8 +1,9 @@
 extends Node
-## Co-op sync. Everyone shares their position (capsules for the other players).
-## The host also shares every zombie plus the round info; the other phones
-## show "puppet" zombies that copy the host's, and report their hits back to
-## the host. Created by main.gd online only.
+## Co-op sync. Everyone shares their position and downed state (capsules for
+## the other players, lying flat when downed). The host also shares every
+## zombie plus the round info; the other phones show "puppet" zombies that copy
+## the host's, and report their hits back to the host. When every player is
+## downed or dead, game over triggers on all phones. Created by net_manager.gd.
 
 const SEND_INTERVAL: float = 1.0 / 15.0
 const ZOMBIE_INTERVAL: float = 1.0 / 10.0
@@ -12,7 +13,7 @@ const RAGER_SCENE: String = "res://scenes/zombies/roid_rager.tscn"
 var _local_player: Node3D
 var _round_manager = null
 var _remotes: Dictionary = {}         # peer id -> player capsule
-var _targets: Dictionary = {}         # peer id -> {"pos", "yaw"}
+var _targets: Dictionary = {}         # peer id -> {"pos", "yaw", "state", "bleed", "progress"}
 var _puppets: Dictionary = {}         # zombie net id -> puppet zombie (non-host phones)
 var _puppet_targets: Dictionary = {}  # zombie net id -> {"pos", "yaw"}
 var _timer: float = 0.0
@@ -36,7 +37,14 @@ func _physics_process(delta: float) -> void:
 		_timer -= delta
 		if _timer <= 0.0:
 			_timer = SEND_INTERVAL
-			_receive_state.rpc(_local_player.global_position, _local_player.rotation.y)
+			_receive_state.rpc(
+				_local_player.global_position,
+				_local_player.rotation.y,
+				_local_state(),
+				float(_local_player.get("downed_bleed_left")),
+				float(_local_player.get("downed_revive_progress"))
+			)
+		_check_everyone_out()
 	if NetManager.is_host:
 		_zombie_timer -= delta
 		if _zombie_timer <= 0.0:
@@ -46,15 +54,40 @@ func _physics_process(delta: float) -> void:
 
 # ---------- players ----------
 
+## 0 = up, 1 = downed, 2 = dead (bled out).
+func _local_state() -> int:
+	if bool(_local_player.get("is_dead")):
+		return 2
+	if bool(_local_player.get("is_downed")):
+		return 1
+	return 0
+
+
 @rpc("any_peer", "call_remote", "unreliable")
-func _receive_state(pos: Vector3, yaw: float) -> void:
+func _receive_state(pos: Vector3, yaw: float, state: int, bleed: float, progress: float) -> void:
 	var id: int = multiplayer.get_remote_sender_id()
 	if not _remotes.has(id):
 		var capsule: Node3D = _make_remote(id)
 		get_parent().add_child(capsule)
 		capsule.global_position = pos
 		_remotes[id] = capsule
-	_targets[id] = {"pos": pos, "yaw": yaw}
+	_targets[id] = {"pos": pos, "yaw": yaw, "state": state, "bleed": bleed, "progress": progress}
+	var node: Node3D = _remotes[id]
+	node.set_meta("downed", state == 1)
+	node.set_meta("dead", state == 2)
+
+
+## If this phone's player is downed/dead and so is everyone else, it's game over.
+func _check_everyone_out() -> void:
+	if _remotes.is_empty():
+		return
+	if not (bool(_local_player.get("is_downed")) or bool(_local_player.get("is_dead"))):
+		return
+	for id in _remotes.keys():
+		var target: Dictionary = _targets.get(id, {})
+		if int(target.get("state", 0)) == 0:
+			return
+	GameManager.report_player_death()
 
 
 func _on_peer_left(id: int) -> void:
@@ -72,9 +105,16 @@ func _make_remote(id: int) -> Node3D:
 	# Zombies on the host chase these and damage the phone that owns them.
 	root.add_to_group("remote_players")
 	root.set_meta("peer_id", id)
+	root.set_meta("downed", false)
+	root.set_meta("dead", false)
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color.from_hsv(fmod(float(id) * 0.37, 1.0), 0.7, 0.9)
+
+	# Body and nose hang off a pivot so the whole body can tip over when downed.
+	var pivot := Node3D.new()
+	pivot.name = "Pivot"
+	root.add_child(pivot)
 
 	var body := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
@@ -82,7 +122,7 @@ func _make_remote(id: int) -> Node3D:
 	capsule.height = 1.8
 	capsule.material = mat
 	body.mesh = capsule
-	root.add_child(body)
+	pivot.add_child(body)
 
 	# Small box on the front so you can see which way they face.
 	var nose := MeshInstance3D.new()
@@ -91,9 +131,10 @@ func _make_remote(id: int) -> Node3D:
 	box.material = mat
 	nose.mesh = box
 	nose.position = Vector3(0, 0.6, -0.45)
-	root.add_child(nose)
+	pivot.add_child(nose)
 
 	var tag := Label3D.new()
+	tag.name = "Tag"
 	tag.text = "HOST" if id == 1 else "P%d" % id
 	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	tag.no_depth_test = true
@@ -102,6 +143,15 @@ func _make_remote(id: int) -> Node3D:
 	tag.position = Vector3(0, 1.3, 0)
 	root.add_child(tag)
 	return root
+
+
+func _tag_text(id: int, target: Dictionary) -> String:
+	var base: String = "HOST" if id == 1 else "P%d" % id
+	if int(target["state"]) == 1:
+		if float(target["progress"]) > 0.0:
+			return "%s\nREVIVING %.1f/5" % [base, float(target["progress"])]
+		return "%s\nDOWNED %d" % [base, ceili(float(target["bleed"]))]
+	return base
 
 
 # ---------- zombies ----------
@@ -209,8 +259,18 @@ func _process(delta: float) -> void:
 		if node == null or not is_instance_valid(node) or not _targets.has(id):
 			continue
 		var target: Dictionary = _targets[id]
+		var state: int = int(target["state"])
 		node.global_position = node.global_position.lerp(target["pos"], t)
 		node.rotation.y = lerp_angle(node.rotation.y, float(target["yaw"]), t)
+		node.visible = state != 2  # bled-out players are hidden (they spectate)
+		var pivot := node.get_node_or_null("Pivot") as Node3D
+		if pivot != null:
+			pivot.rotation.x = lerp_angle(pivot.rotation.x, -PI * 0.5 if state == 1 else 0.0, t)
+			pivot.position.y = lerpf(pivot.position.y, -0.5 if state == 1 else 0.0, t)
+		var tag := node.get_node_or_null("Tag") as Label3D
+		if tag != null:
+			tag.text = _tag_text(id, target)
+			tag.position.y = lerpf(tag.position.y, 0.8 if state == 1 else 1.3, t)
 
 	var tz: float = clampf(delta * 12.0, 0.0, 1.0)
 	for id in _puppets.keys():
