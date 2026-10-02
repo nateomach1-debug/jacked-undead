@@ -6,7 +6,19 @@ signal health_changed(current: float, max_hp: float)
 signal ammo_changed(current_mag: int, reserve: int)
 signal interact_prompt_changed(text: String)
 signal perks_changed(owned: Array)
+signal stamina_changed(current: float, max_stamina: float)
 
+const STAMINA_MAX: float = 100.0
+const STAMINA_DRAIN: float = 25.0        # per second while sprinting (4s of sprint)
+const STAMINA_REGEN: float = 18.0        # per second while not sprinting
+const STAMINA_REGEN_DELAY: float = 1.0   # seconds after sprinting before regen starts
+const STAMINA_RECOVER_AT: float = 30.0   # after hitting 0, refill to this before sprinting again
+
+var stamina: float = STAMINA_MAX
+var max_stamina: float = STAMINA_MAX
+var _stamina_delay: float = 0.0
+var _stamina_exhausted: bool = false
+var _last_stamina_sent: float = -1.0
 const GRAVITY: float = 9.8
 const JUMP_VELOCITY: float = 4.5
 const MOUSE_SENSITIVITY: float = 0.0025
@@ -178,7 +190,7 @@ func _handle_movement(delta: float) -> void:
 	var speed := base_walk_speed * speed_multiplier
 	if is_downed:
 		speed = base_walk_speed * DOWNED_SPEED_FACTOR
-	elif Input.is_action_pressed("sprint"):
+	elif _wants_sprint(delta, direction):
 		speed *= base_sprint_multiplier
 
 	if direction:
@@ -707,3 +719,31 @@ func clear_supplements() -> void:
 	infinite_stamina = false
 	max_health = base_max_health
 	current_health = max_health
+
+
+func _wants_sprint(delta: float, direction: Vector3) -> bool:
+	var wants: bool = Input.is_action_pressed("sprint") and direction.length() > 0.1
+	if infinite_stamina:
+		_set_stamina(max_stamina)
+		_stamina_exhausted = false
+		return wants
+	if wants and not _stamina_exhausted:
+		_set_stamina(stamina - STAMINA_DRAIN * delta)
+		_stamina_delay = STAMINA_REGEN_DELAY
+		if stamina <= 0.0:
+			_stamina_exhausted = true
+		return true
+	if _stamina_delay > 0.0:
+		_stamina_delay -= delta
+	else:
+		_set_stamina(stamina + STAMINA_REGEN * delta)
+		if _stamina_exhausted and stamina >= STAMINA_RECOVER_AT:
+			_stamina_exhausted = false
+	return false
+
+
+func _set_stamina(value: float) -> void:
+	stamina = clampf(value, 0.0, max_stamina)
+	if stamina != _last_stamina_sent:
+		_last_stamina_sent = stamina
+		stamina_changed.emit(stamina, max_stamina)
