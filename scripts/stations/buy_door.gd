@@ -3,6 +3,7 @@ extends Area3D
 ## Gains, then it disappears and unlocks the listed zones (spawn points tagged
 ## with metadata "zone" start spawning there). On the Building map the nav
 ## baker rebakes so zombies can path through the opening.
+## Co-op: buying it tells the other phones, so it opens for everyone.
 ##
 ## The door's origin is the CENTER OF ITS BASE on the floor. Width is along
 ## local X, thickness along local Z. For a door in a wall that runs along the
@@ -55,6 +56,16 @@ func interact(_player: Node) -> void:
 	if _opened:
 		return
 	if not GameManager.try_spend_gains(cost):
+		return
+	_opened = true
+	NetManager.announce_door_opened(get_path())
+	GameManager.open_barrier(unlocks_zones)
+	queue_free()
+
+
+## Co-op: another phone bought this door, so open it here without charging.
+func remote_open() -> void:
+	if _opened:
 		return
 	_opened = true
 	GameManager.open_barrier(unlocks_zones)
