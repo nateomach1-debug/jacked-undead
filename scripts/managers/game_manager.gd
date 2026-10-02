@@ -25,6 +25,10 @@ const DEV_DEFAULTS: Dictionary = {
 var gains: int = 500
 var round_number: int = 1
 var kills: int = 0
+var gains_earned: int = 0     # Gains from kills/damage only; refunds don't count
+var headshot_kills: int = 0
+var revives: int = 0          # co-op: teammates you revived
+var deaths: int = 0           # co-op: times you went down
 var is_game_over: bool = false
 var unlocked_zones: Array = ["start"]
 var dev: Dictionary = DEV_DEFAULTS.duplicate()
@@ -35,8 +39,12 @@ func _ready() -> void:
 	_apply_nav_debug()
 
 
-func add_gains(amount: int) -> void:
+## earned = false for refunds (like the co-op revive bonus): they add Gains
+## but don't count toward the "Gains earned" score.
+func add_gains(amount: int, earned: bool = true) -> void:
 	gains += amount
+	if earned and amount > 0:
+		gains_earned += amount
 	gains_changed.emit(gains)
 
 
@@ -48,9 +56,22 @@ func try_spend_gains(amount: int) -> bool:
 	return false
 
 
-func add_kill() -> void:
+func add_kill(headshot: bool = false) -> void:
 	kills += 1
+	if headshot:
+		headshot_kills += 1
 	kills_changed.emit(kills)
+
+
+## This player's numbers for the game over screen / co-op scoreboard.
+func get_stats() -> Dictionary:
+	return {
+		"kills": kills,
+		"gains_earned": gains_earned,
+		"headshots": headshot_kills,
+		"revives": revives,
+		"deaths": deaths,
+	}
 
 
 func start_next_round() -> void:
@@ -84,6 +105,10 @@ func reset_run() -> void:
 	gains = 500
 	round_number = 1
 	kills = 0
+	gains_earned = 0
+	headshot_kills = 0
+	revives = 0
+	deaths = 0
 	is_game_over = false
 	unlocked_zones = ["start"]
 	gains_changed.emit(gains)
