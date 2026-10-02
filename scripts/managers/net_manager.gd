@@ -249,3 +249,47 @@ func _setup_coop_in_scene() -> void:
 	coop.name = "CoopSync"
 	scene.add_child(coop)
 	coop.setup(player, round_manager)
+
+signal stats_changed
+
+var peer_stats: Dictionary = {}  # peer id -> {"kills", "gains_earned", "headshots", "revives", "deaths"}
+
+
+## Host only: pays a kill (Gains + kill count + headshot count) to the phone that earned it.
+func reward_kill(peer_id: int, amount: int, was_headshot: bool) -> void:
+	if not is_online or not is_host:
+		return
+	_kill_reward.rpc_id(peer_id, amount, was_headshot)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _kill_reward(amount: int, was_headshot: bool) -> void:
+	GameManager.add_gains(amount)
+	GameManager.add_kill(was_headshot)
+
+
+## Credits a revive to the teammate who did it.
+func credit_revive(peer_id: int) -> void:
+	if not is_online:
+		return
+	_revive_credit.rpc_id(peer_id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _revive_credit() -> void:
+	GameManager.revives += 1
+
+
+## Sends this phone's final numbers to everyone for the co-op scoreboard.
+func send_final_stats() -> void:
+	if not is_online:
+		return
+	var s: Dictionary = GameManager.get_stats()
+	_receive_stats.rpc(int(s["kills"]), int(s["gains_earned"]), int(s["headshots"]), int(s["revives"]), int(s["deaths"]))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _receive_stats(kills: int, gains_earned: int, headshots: int, revives: int, deaths: int) -> void:
+	var id: int = multiplayer.get_remote_sender_id()
+	peer_stats[id] = {"kills": kills, "gains_earned": gains_earned, "headshots": headshots, "revives": revives, "deaths": deaths}
+	stats_changed.emit()
