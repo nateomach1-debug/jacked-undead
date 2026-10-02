@@ -1,6 +1,7 @@
 extends Control
 ## Co-op screen: host or join a LAN game. The host also gets MAP and START.
-## Uses an on-screen number pad because the phone keyboard won't open here.
+## Uses on-screen pads because the phone keyboard won't open here:
+## a number pad for the host IP and a letter pad for your display name.
 
 # Keep in sync with the maps listed in map_select.gd.
 const MAPS: Array = [
@@ -11,10 +12,21 @@ const MAPS: Array = [
 	{"title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn"},
 ]
 
+const NAME_KEYS: Array = [
+	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+	"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
+	"U", "V", "W", "X", "Y", "Z", "0", "1", "2", "3",
+	"4", "5", "6", "7", "8", "9", "SPACE", "DEL", "OK", "CANCEL",
+]
+
 var _status: Label
 var _ip_label: Label
 var _map_button: Button
 var _start_button: Button
+var _name_button: Button
+var _name_pad: Control
+var _name_display: Label
+var _name_buffer: String = ""
 var _ip: String = ""
 var _map_index: int = 0
 
@@ -58,7 +70,7 @@ func _ready() -> void:
 		b.pressed.connect(_on_key.bind(key))
 		grid.add_child(b)
 
-	# Right side: status + host / join / map / start / back
+	# Right side: status + name / host / join / map / start / back
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 12)
 	row.add_child(right)
@@ -70,6 +82,10 @@ func _ready() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_font_size_override("font_size", 26)
 	right.add_child(_status)
+
+	_name_button = _make_button("", _on_name)
+	_name_button.custom_minimum_size = Vector2(460, 64)
+	right.add_child(_name_button)
 
 	right.add_child(_make_button("HOST GAME", _on_host))
 	right.add_child(_make_button("JOIN GAME", _on_join))
@@ -90,6 +106,9 @@ func _ready() -> void:
 		_ip = mine.substr(0, mine.rfind(".") + 1)
 	_refresh_ip()
 	_refresh_map()
+	_refresh_name_button()
+
+	_build_name_pad()
 
 	NetManager.status_changed.connect(_on_status)
 
@@ -119,6 +138,83 @@ func _refresh_ip() -> void:
 func _refresh_map() -> void:
 	_map_button.text = "MAP: " + str(MAPS[_map_index]["title"])
 
+
+func _refresh_name_button() -> void:
+	var n: String = NetManager.player_name
+	_name_button.text = "NAME: " + (n if n != "" else "(auto)")
+
+
+# ---------- name pad ----------
+
+func _build_name_pad() -> void:
+	_name_pad = Control.new()
+	_name_pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_name_pad.visible = false
+	add_child(_name_pad)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0.03, 0.03, 0.05, 0.99)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_name_pad.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_name_pad.add_child(center)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	center.add_child(box)
+
+	_name_display = Label.new()
+	_name_display.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name_display.add_theme_font_size_override("font_size", 40)
+	box.add_child(_name_display)
+
+	var keys := GridContainer.new()
+	keys.columns = 10
+	keys.add_theme_constant_override("h_separation", 6)
+	keys.add_theme_constant_override("v_separation", 6)
+	box.add_child(keys)
+	for key in NAME_KEYS:
+		var b := Button.new()
+		b.text = str(key)
+		b.custom_minimum_size = Vector2(96, 70)
+		b.add_theme_font_size_override("font_size", 24 if str(key).length() > 2 else 30)
+		b.pressed.connect(_on_name_key.bind(str(key)))
+		keys.add_child(b)
+
+
+func _on_name() -> void:
+	_name_buffer = NetManager.player_name
+	_refresh_name_display()
+	_name_pad.visible = true
+
+
+func _on_name_key(key: String) -> void:
+	if key == "DEL":
+		if _name_buffer.length() > 0:
+			_name_buffer = _name_buffer.substr(0, _name_buffer.length() - 1)
+	elif key == "SPACE":
+		if _name_buffer.length() < NetManager.MAX_NAME_LENGTH:
+			_name_buffer += " "
+	elif key == "OK":
+		NetManager.set_player_name(_name_buffer)
+		_refresh_name_button()
+		_name_pad.visible = false
+		return
+	elif key == "CANCEL":
+		_name_pad.visible = false
+		return
+	elif _name_buffer.length() < NetManager.MAX_NAME_LENGTH:
+		_name_buffer += key
+	_refresh_name_display()
+
+
+func _refresh_name_display() -> void:
+	_name_display.text = "Name: " + (_name_buffer if _name_buffer != "" else "_")
+
+
+# ---------- host / join ----------
 
 func _on_host() -> void:
 	if NetManager.host_game():
