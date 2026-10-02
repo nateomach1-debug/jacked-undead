@@ -159,7 +159,7 @@ func _make_remote(id: int) -> Node3D:
 
 
 func _tag_text(id: int, target: Dictionary) -> String:
-	var base: String = "HOST" if id == 1 else "P%d" % id
+	var base: String = NetManager.get_player_name(id)
 	if int(target["state"]) == 1:
 		if float(target["progress"]) > 0.0:
 			return "%s\nREVIVING %.1f/5" % [base, float(target["progress"])]
