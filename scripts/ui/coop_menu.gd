@@ -1,11 +1,22 @@
 extends Control
-## Co-op screen: host or join a LAN game. The host also gets a START button.
+## Co-op screen: host or join a LAN game. The host also gets MAP and START.
 ## Uses an on-screen number pad because the phone keyboard won't open here.
+
+# Keep in sync with the maps listed in map_select.gd.
+const MAPS: Array = [
+	{"title": "GYM ARENA", "path": "res://scenes/main/main.tscn"},
+	{"title": "BUILDING", "path": "res://scenes/main/building_map.tscn"},
+	{"title": "MULTI-ROOM", "path": "res://scenes/main/multi_room_map.tscn"},
+	{"title": "GYM COMPOUND", "path": "res://scenes/main/gym_compound.tscn"},
+	{"title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn"},
+]
 
 var _status: Label
 var _ip_label: Label
+var _map_button: Button
 var _start_button: Button
 var _ip: String = ""
+var _map_index: int = 0
 
 
 func _ready() -> void:
@@ -47,14 +58,14 @@ func _ready() -> void:
 		b.pressed.connect(_on_key.bind(key))
 		grid.add_child(b)
 
-	# Right side: status + host / join / start / back
+	# Right side: status + host / join / map / start / back
 	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 14)
+	right.add_theme_constant_override("separation", 12)
 	row.add_child(right)
 
 	_status = Label.new()
 	_status.text = "Co-op (same Wi-Fi)"
-	_status.custom_minimum_size = Vector2(460, 110)
+	_status.custom_minimum_size = Vector2(460, 100)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_font_size_override("font_size", 26)
@@ -63,7 +74,11 @@ func _ready() -> void:
 	right.add_child(_make_button("HOST GAME", _on_host))
 	right.add_child(_make_button("JOIN GAME", _on_join))
 
-	_start_button = _make_button("START GAME (Gym Arena)", _on_start)
+	_map_button = _make_button("", _on_map)
+	_map_button.visible = false
+	right.add_child(_map_button)
+
+	_start_button = _make_button("START GAME", _on_start)
 	_start_button.visible = false
 	right.add_child(_start_button)
 
@@ -74,6 +89,7 @@ func _ready() -> void:
 	if mine != "unknown":
 		_ip = mine.substr(0, mine.rfind(".") + 1)
 	_refresh_ip()
+	_refresh_map()
 
 	NetManager.status_changed.connect(_on_status)
 
@@ -81,7 +97,7 @@ func _ready() -> void:
 func _make_button(label: String, callback: Callable) -> Button:
 	var b := Button.new()
 	b.text = label
-	b.custom_minimum_size = Vector2(460, 90)
+	b.custom_minimum_size = Vector2(460, 80)
 	b.add_theme_font_size_override("font_size", 28)
 	b.pressed.connect(callback)
 	return b
@@ -100,18 +116,29 @@ func _refresh_ip() -> void:
 	_ip_label.text = "Host IP: " + (_ip if _ip != "" else "_")
 
 
+func _refresh_map() -> void:
+	_map_button.text = "MAP: " + str(MAPS[_map_index]["title"])
+
+
 func _on_host() -> void:
 	if NetManager.host_game():
+		_map_button.visible = true
 		_start_button.visible = true
 
 
 func _on_join() -> void:
+	_map_button.visible = false
 	_start_button.visible = false
 	NetManager.join_game(_ip)
 
 
+func _on_map() -> void:
+	_map_index = (_map_index + 1) % MAPS.size()
+	_refresh_map()
+
+
 func _on_start() -> void:
-	NetManager.start_game()
+	NetManager.start_game_on(str(MAPS[_map_index]["path"]))
 
 
 func _on_back() -> void:
