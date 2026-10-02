@@ -16,10 +16,12 @@ const STICK_LOOK_SPEED: float = 480.0  # degrees/sec of turn at full shoot-stick
 const HIT_MARKER_SCENE: PackedScene = preload("res://scenes/effects/hit_marker.tscn")
 const STEP_HEIGHT: float = 0.35  # max ledge height the player can walk straight up (real stairs)
 const SHOT_MASK: int = 1 | 4     # world + zombies, same as the old muzzle ray
+const DOWNED_SPEED_FACTOR: float = 0.3  # crawl speed while downed (co-op)
 # Loaded only when needed, so a problem in these can never break the player itself.
 const BURN_EFFECT_PATH: String = "res://scripts/effects/burn_effect.gd"
 const PROJECTILE_PATH: String = "res://scripts/weapons/projectile.gd"
 const DAMAGE_INDICATOR_PATH: String = "res://scripts/ui/damage_indicator.gd"
+const DOWNED_STATE_PATH: String = "res://scripts/player/downed_state.gd"
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -53,6 +55,13 @@ var reload_speed_multiplier: float = 1.0 # Pre-Workout
 var regen_per_second: float = 0.0       # Fish Oil
 var infinite_stamina: bool = false      # BCAAs
 var owned_perks: Array = []             # supplement ids purchased so far, for the HUD perk bar
+
+# --- Co-op downed state (driven by downed_state.gd) ---
+var is_downed: bool = false             # at 0 HP in co-op: crawling, pistol only
+var is_dead: bool = false               # bled out: spectating until the next round
+var downed_bleed_left: float = 0.0
+var downed_revive_progress: float = 0.0
+var _downed_state: Node = null
 
 # --- Weapon / ammo state ---
 @export var current_weapon: WeaponData  # fallback single starting gun if weapon_loadout is empty
@@ -145,9 +154,14 @@ func _physics_process(delta: float) -> void:
 
 
 func _handle_movement(delta: float) -> void:
+	# Bled out in co-op: no body movement, downed_state.gd carries us along.
+	if is_dead:
+		velocity = Vector3.ZERO
+		return
+
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
-	elif Input.is_action_just_pressed("jump"):
+	elif Input.is_action_just_pressed("jump") and not is_downed:
 		velocity.y = JUMP_VELOCITY
 
 	var input_dir := Vector2(
@@ -162,7 +176,9 @@ func _handle_movement(delta: float) -> void:
 		raw_dir = raw_dir.normalized()
 	var direction := transform.basis * raw_dir
 	var speed := base_walk_speed * speed_multiplier
-	if Input.is_action_pressed("sprint"):
+	if is_downed:
+		speed = base_walk_speed * DOWNED_SPEED_FACTOR
+	elif Input.is_action_pressed("sprint"):
 		speed *= base_sprint_multiplier
 
 	if direction:
@@ -201,6 +217,9 @@ func _handle_shooting(delta: float) -> void:
 	if _fire_cooldown > 0.0:
 		_fire_cooldown -= delta
 	_flame_marker_cooldown = maxf(_flame_marker_cooldown - delta, 0.0)
+
+	if is_dead:
+		return
 
 	# Timed reload: no shooting until it finishes.
 	if _reloading:
@@ -359,7 +378,7 @@ func _launch_projectile() -> void:
 ## per-frame is_action_pressed() poll. Called directly on stick touch-down
 ## so a fast tap can't land between two physics frames and get missed.
 func fire_once_if_ready() -> void:
-	if not current_weapon or _fire_cooldown > 0.0 or _reloading or _burst_left > 0:
+	if is_dead or not current_weapon or _fire_cooldown > 0.0 or _reloading or _burst_left > 0:
 		return
 	_try_trigger()
 
@@ -415,11 +434,61 @@ func _handle_regen(delta: float) -> void:
 
 
 func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
+	if is_downed or is_dead:
+		return  # a downed or bled-out player can't be hurt further
 	_show_damage_indicator(amount, from_position)
 	current_health = max(current_health - amount, 0.0)
 	health_changed.emit(current_health, max_health)
 	if current_health <= 0.0:
+		# Co-op: go down instead of dying. Solo (or if the script is missing): game over.
+		if NetManager.is_online and _go_down():
+			return
 		GameManager.report_player_death()
+
+
+## Co-op: hands over to downed_state.gd. Returns false if that script can't load.
+func _go_down() -> bool:
+	if _downed_state == null:
+		var state_script = load(DOWNED_STATE_PATH)
+		if state_script == null:
+			return false
+		_downed_state = state_script.new()
+		add_child(_downed_state)
+		_downed_state.setup(self)
+	_downed_state.go_down()
+	return true
+
+
+## Co-op downed penalty (called by downed_state.gd): lose all supplements and
+## every gun except the pistol (slot 1) and your second gun (slot 2), both
+## back at base level with no PR upgrades. You hold the pistol while downed.
+func strip_for_downed() -> void:
+	_cancel_actions()
+	clear_supplements()
+	owned_perks.clear()
+	perks_changed.emit(owned_perks)
+	if weapon_loadout.is_empty():
+		return
+	var keep: Array = []
+	for i in range(mini(2, weapon_loadout.size())):
+		var kept: WeaponData = weapon_loadout[i]
+		if kept.pr_base != null:
+			kept = kept.pr_base
+		keep.append(kept)
+	weapon_loadout = keep
+	owned_weapon_names.clear()
+	_saved_mag_ammo.clear()
+	_saved_reserve_ammo.clear()
+	for w in weapon_loadout:
+		owned_weapon_names.append(w.weapon_name)
+		_saved_mag_ammo.append(w.mag_size)
+		_saved_reserve_ammo.append(w.max_reserve_ammo)
+	current_weapon_index = 0
+	current_weapon = weapon_loadout[0]
+	current_mag_ammo = current_weapon.mag_size
+	current_reserve_ammo = current_weapon.max_reserve_ammo
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+	_update_weapon_model()
 
 
 ## Tells the red damage indicator which way the hit came from. If the
@@ -475,8 +544,10 @@ func equip_weapon(weapon: WeaponData) -> void:
 
 ## Cycles to the next (or previous, with direction = -1) weapon in
 ## weapon_loadout. Called by the on-screen SWAP button. Remembers each
-## weapon's own ammo counts across switches.
+## weapon's own ammo counts across switches. Blocked while downed (pistol only).
 func switch_weapon(direction: int = 1) -> void:
+	if is_downed or is_dead:
+		return
 	if weapon_loadout.size() < 2:
 		return
 
@@ -494,140 +565,4 @@ func switch_weapon(direction: int = 1) -> void:
 	_update_weapon_model()
 
 
-## Called by the PR Rack (Pack-a-Punch) station.
-func apply_pr_upgrade() -> void:
-	if current_weapon and current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
-		equip_weapon(current_weapon.get_pr_upgraded_copy())
-
-
-## True once this weapon (by base name, so PR-upgraded copies still
-## count) has ever been bought. Used by wall-buy stations to decide
-## between "buy" and "refill ammo".
-func has_weapon(w: WeaponData) -> bool:
-	return w != null and w.weapon_name in owned_weapon_names
-
-
-## Called by a GunWallBuy station the first time that gun is purchased.
-## Adds it to the loadout and immediately equips it.
-func add_weapon_to_loadout(w: WeaponData) -> void:
-	if has_weapon(w):
-		return
-	_cancel_actions()
-	owned_weapon_names.append(w.weapon_name)
-	weapon_loadout.append(w)
-	_saved_mag_ammo.append(w.mag_size)
-	_saved_reserve_ammo.append(w.max_reserve_ammo)
-	current_weapon_index = weapon_loadout.size() - 1
-	current_weapon = w
-	current_mag_ammo = w.mag_size
-	current_reserve_ammo = w.max_reserve_ammo
-	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
-	_update_weapon_model()
-
-
-## Called by the Loot Locker. A gun you don't own is added and equipped;
-## a gun you already own (including its PR-upgraded copy) gets a full refill.
-func grant_weapon(w: WeaponData) -> void:
-	if w == null:
-		return
-	if not has_weapon(w):
-		add_weapon_to_loadout(w)
-		return
-	for i in range(weapon_loadout.size()):
-		var owned: WeaponData = weapon_loadout[i]
-		if owned.get_base_name() == w.get_base_name():
-			if i == current_weapon_index:
-				current_mag_ammo = owned.mag_size
-				current_reserve_ammo = owned.max_reserve_ammo
-				ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
-			elif i < _saved_mag_ammo.size():
-				_saved_mag_ammo[i] = owned.mag_size
-				_saved_reserve_ammo[i] = owned.max_reserve_ammo
-			return
-
-
-## True if w (by base name) is the weapon currently in the player's hands.
-func is_current_weapon(w: WeaponData) -> bool:
-	return w != null and current_weapon != null and current_weapon.get_base_name() == w.get_base_name()
-
-
-## Called by a GunWallBuy station on repeat visits. Only ever touches
-## the currently-equipped weapon's reserve ammo -- the station itself
-## checks is_current_weapon() first, so this should never be called
-## for a gun that isn't the one you're holding.
-func add_ammo_to_current_weapon(amount: int) -> void:
-	if not current_weapon:
-		return
-	current_reserve_ammo = min(current_reserve_ammo + amount, current_weapon.max_reserve_ammo)
-	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
-
-
-## Swaps the visible first-person model to match current_weapon. Call this
-## anywhere current_weapon changes (initial equip, PR upgrade, switching).
-func _update_weapon_model() -> void:
-	if _current_model:
-		_current_model.queue_free()
-		_current_model = null
-	if current_weapon:
-		var model: Node3D = current_weapon.create_model()
-		if model:
-			_current_model = model
-			weapon_mount.add_child(_current_model)
-			if not current_weapon.model_scene:
-				# Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
-				_current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
-
-
-func _try_interact() -> void:
-	interact_ray.force_raycast_update()
-	if interact_ray.is_colliding():
-		var target := interact_ray.get_collider()
-		if target and target.has_method("interact"):
-			target.interact(self)
-
-
-func _update_interact_prompt() -> void:
-	interact_ray.force_raycast_update()
-	if interact_ray.is_colliding():
-		var target := interact_ray.get_collider()
-		if target and target.has_method("get_prompt_text"):
-			interact_prompt_changed.emit(target.get_prompt_text())
-			return
-	interact_prompt_changed.emit("")
-
-
-# --- Supplement (perk-a-cola) effect hooks, called by SupplementStation ---
-func apply_supplement(id: String) -> void:
-	match id:
-		"trt":
-			damage_multiplier = 1.5
-		"creatine":
-			speed_multiplier = 1.25
-			melee_multiplier = 2.0
-		"whey":
-			max_health = base_max_health * 1.5
-			current_health = max_health
-			health_changed.emit(current_health, max_health)
-		"pre_workout":
-			reload_speed_multiplier = 1.5
-		"fish_oil":
-			regen_per_second = 2.0
-		"bcaas":
-			infinite_stamina = true
-
-	if id not in owned_perks:
-		owned_perks.append(id)
-		perks_changed.emit(owned_perks)
-
-
-## Called on death (or by a future "downed" system) to strip perks,
-## mirroring the classic "lose your perks when you go down" rule.
-func clear_supplements() -> void:
-	damage_multiplier = 1.0
-	speed_multiplier = 1.0
-	melee_multiplier = 1.0
-	reload_speed_multiplier = 1.0
-	regen_per_second = 0.0
-	infinite_stamina = false
-	max_health = base_max_health
-	current_health = max_health
+## Called by the PR Rack (Pack-a-Punch) sta
