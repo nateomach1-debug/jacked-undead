@@ -191,6 +191,7 @@ func start_game_on(map_path: String) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _load_map_coop(path: String) -> void:
+	get_tree().paused = false
 	_round_manager_ref = null
 	if not get_tree().node_added.is_connected(_on_node_added):
 		get_tree().node_added.connect(_on_node_added)
