@@ -84,7 +84,7 @@ func _refresh_board() -> void:
 	ids.sort()
 	for id in ids:
 		var stats: Dictionary = GameManager.get_stats() if id == my_id else NetManager.peer_stats[id]
-		var who: String = "HOST" if id == 1 else "P%d" % id
+		var who: String = NetManager.get_player_name(id)
 		if id == my_id:
 			who += " (you)"
 		_add_cell(who, false)
