@@ -89,6 +89,9 @@ func bind_player(player: Node) -> void:
 	player.interact_prompt_changed.connect(_on_prompt_changed)
 	player.perks_changed.connect(_on_perks_changed)
 	_on_perks_changed(player.owned_perks)
+	_build_stamina_bar()
+	player.stamina_changed.connect(_on_stamina_changed)
+	_on_stamina_changed(player.stamina, player.max_stamina)
 
 
 func bind_round_manager(round_manager: Node) -> void:
@@ -162,3 +165,34 @@ func _on_perks_changed(owned: Array) -> void:
 	for id in _perk_icons.keys():
 		var icon: TextureRect = _perk_icons[id]
 		icon.modulate.a = 1.0 if id in owned else 0.25
+
+
+var _stamina_bar: ProgressBar = null
+
+
+## Chalk-white bar under the Gains label; hidden while stamina is full.
+func _build_stamina_bar() -> void:
+	if _stamina_bar != null:
+		return
+	_stamina_bar = ProgressBar.new()
+	_stamina_bar.custom_minimum_size = Vector2(280, 22)
+	_stamina_bar.show_percentage = false
+	_stamina_bar.min_value = 0.0
+	_stamina_bar.max_value = 100.0
+	_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color(0.93, 0.93, 0.88, 1.0)
+	var back := StyleBoxFlat.new()
+	back.bg_color = Color(0.06, 0.02, 0.02, 0.7)
+	_stamina_bar.add_theme_stylebox_override("fill", fill)
+	_stamina_bar.add_theme_stylebox_override("background", back)
+	health_label.get_parent().add_child(_stamina_bar)
+	_stamina_bar.visible = false
+
+
+func _on_stamina_changed(current: float, max_stamina: float) -> void:
+	if _stamina_bar == null:
+		return
+	_stamina_bar.max_value = max_stamina
+	_stamina_bar.value = current
+	_stamina_bar.visible = current < max_stamina - 0.1
