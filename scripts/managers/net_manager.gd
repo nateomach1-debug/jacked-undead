@@ -13,6 +13,7 @@ var is_host: bool = false
 
 
 func _ready() -> void:
+	_load_player_name()
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
@@ -116,8 +117,9 @@ func start_game() -> void:
 func _load_map(path: String) -> void:
 	get_tree().change_scene_to_file(path)
 
-
 func _on_peer_connected(id: int) -> void:
+	if is_online:
+		_set_name.rpc_id(id, player_name)
 	if is_host:
 		status_changed.emit("Player %d joined. Players: %d\n%s" % [id, _player_count(), _address_text()])
 
@@ -293,3 +295,43 @@ func _receive_stats(kills: int, gains_earned: int, headshots: int, revives: int,
 	var id: int = multiplayer.get_remote_sender_id()
 	peer_stats[id] = {"kills": kills, "gains_earned": gains_earned, "headshots": headshots, "revives": revives, "deaths": deaths}
 	stats_changed.emit()
+
+
+const MAX_NAME_LENGTH: int = 12
+const PLAYER_FILE: String = "user://player.cfg"
+
+var player_name: String = ""   # this phone's display name ("" = automatic HOST / P2)
+var names: Dictionary = {}     # peer id -> display name sent by the other phones
+
+
+func _load_player_name() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(PLAYER_FILE) == OK:
+		player_name = _clean_name(str(cfg.get_value("player", "name", "")))
+
+
+func set_player_name(new_name: String) -> void:
+	player_name = _clean_name(new_name)
+	var cfg := ConfigFile.new()
+	cfg.set_value("player", "name", player_name)
+	cfg.save(PLAYER_FILE)
+	if is_online:
+		_set_name.rpc(player_name)
+
+
+func _clean_name(raw: String) -> String:
+	return raw.strip_edges().left(MAX_NAME_LENGTH)
+
+
+## Name to show for a player: their chosen name, or HOST / P2 if they have none.
+func get_player_name(id: int) -> String:
+	var own: bool = is_online and id == multiplayer.get_unique_id()
+	var chosen: String = player_name if own else str(names.get(id, ""))
+	if chosen != "":
+		return chosen
+	return "HOST" if id == 1 else "P%d" % id
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _set_name(new_name: String) -> void:
+	names[multiplayer.get_remote_sender_id()] = _clean_name(new_name)
