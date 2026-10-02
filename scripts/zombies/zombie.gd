@@ -11,6 +11,7 @@ class_name Zombie
 ##
 ## Co-op: the host runs the real zombies. Other phones get "puppet" copies
 ## (is_puppet = true) that do nothing but show where the host's zombie is.
+## Zombies ignore players who are downed or dead.
 
 signal died(zombie: Zombie)
 
@@ -20,7 +21,10 @@ const MAX_ATTACK_HEIGHT_GAP: float = 2.2  # can't hit you through a floor or cei
 const STUCK_CHECK_INTERVAL: float = 0.5   # how often to check whether we're making progress
 const STUCK_MOVE_THRESHOLD: float = 0.25  # moved less than this (meters) in that time = stuck
 const DETOUR_DURATION: float = 0.9        # seconds spent sliding sideways off a corner
-const RETARGET_INTERVAL: float = 1.0      # how often to re-pick the nearest player
+const RETARGET_INTERVAL: float = 0.5      # how often to re-pick the nearest player
+const SEPARATION_RADIUS: float = 1.0      # zombies closer than this push each other apart
+const SEPARATION_STRENGTH: float = 1.5
+const SEPARATION_INTERVAL: float = 0.12   # separation is recalculated this often (cheaper)
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
@@ -48,16 +52,20 @@ var _stuck_timer: float = 0.0
 var _last_check_position: Vector3 = Vector3.ZERO
 var _detour_time: float = 0.0
 var _detour_direction: Vector3 = Vector3.ZERO
+var _sep_timer: float = 0.0
+var _sep_vector: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
 	current_health = max_health
 	add_to_group("zombies")
 	_repath_timer = randf() * repath_interval  # stagger so zombies don't all repath on the same frame
+	_sep_timer = randf() * SEPARATION_INTERVAL
 	_find_target()
 
 
-## Picks the nearest player: this phone's player plus any co-op players.
+## Picks the nearest player who is still up: this phone's player plus any
+## co-op players. Becomes null if everyone is downed or dead.
 func _find_target() -> void:
 	var best: Node3D = null
 	var best_dist: float = INF
@@ -72,14 +80,17 @@ func _find_target() -> void:
 			if d < best_dist:
 				best_dist = d
 				best = p
-	if best != null:
-		_target = best
+	_target = best
 
 
 func _physics_process(delta: float) -> void:
 	if is_puppet:
 		return
 
+	# Drop a target that went down / died / left right away; re-pick regularly.
+	if _target != null and (not is_instance_valid(_target) or _is_out(_target)):
+		_target = null
+		_retarget_timer = 0.0
 	_retarget_timer -= delta
 	if _retarget_timer <= 0.0:
 		_retarget_timer = RETARGET_INTERVAL
@@ -91,7 +102,9 @@ func _physics_process(delta: float) -> void:
 	if _attack_timer > 0.0:
 		_attack_timer -= delta
 
-	if _target and is_instance_valid(_target):
+	_update_separation(delta)
+
+	if _target != null and is_instance_valid(_target):
 		var to_target := _target.global_position - global_position
 		var vertical_gap: float = absf(to_target.y)
 		to_target.y = 0.0
@@ -100,6 +113,7 @@ func _physics_process(delta: float) -> void:
 		if distance > attack_range or vertical_gap > MAX_ATTACK_HEIGHT_GAP:
 			var direction := _get_move_direction(to_target, delta)
 			direction = _apply_unstuck(direction, delta)
+			direction = _apply_separation(direction)
 			velocity.x = direction.x * move_speed
 			velocity.z = direction.z * move_speed
 			if direction.length() > 0.01:
@@ -109,16 +123,60 @@ func _physics_process(delta: float) -> void:
 			velocity.z = 0.0
 			_stuck_timer = 0.0
 			_detour_time = 0.0
+			# Heavily overlapped with another zombie: shuffle sideways (around the player).
+			if _sep_vector.length() > 0.5 and distance > 0.01:
+				var toward: Vector3 = to_target.normalized()
+				var sideways: Vector3 = _sep_vector - toward * _sep_vector.dot(toward)
+				velocity.x = sideways.x * move_speed * 0.4
+				velocity.z = sideways.z * move_speed * 0.4
 			if distance > 0.01:
 				look_at(Vector3(_target.global_position.x, global_position.y, _target.global_position.z), Vector3.UP)
 			_try_attack()
 	else:
-		_find_target()
+		# Nobody to chase (everyone downed or dead): stand still.
 		velocity.x = 0.0
 		velocity.z = 0.0
 
 	_step_up_if_blocked(delta)
 	move_and_slide()
+
+
+## Recalculates the push away from nearby zombies a few times a second.
+func _update_separation(delta: float) -> void:
+	_sep_timer -= delta
+	if _sep_timer > 0.0:
+		return
+	_sep_timer = SEPARATION_INTERVAL
+	var push := Vector3.ZERO
+	var radius_sq: float = SEPARATION_RADIUS * SEPARATION_RADIUS
+	for n in get_tree().get_nodes_in_group("zombies"):
+		if n == self:
+			continue
+		var other := n as Node3D
+		if other == null or not is_instance_valid(other):
+			continue
+		var offset: Vector3 = global_position - other.global_position
+		offset.y = 0.0
+		var d_sq: float = offset.length_squared()
+		if d_sq >= radius_sq:
+			continue
+		if d_sq < 0.0001:
+			offset = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
+			d_sq = maxf(offset.length_squared(), 0.0001)
+		var d: float = sqrt(d_sq)
+		push += (offset / d) * (1.0 - d / SEPARATION_RADIUS)
+	_sep_vector = push
+
+
+## Bends the walking direction away from nearby zombies so they don't stack.
+func _apply_separation(direction: Vector3) -> Vector3:
+	if _sep_vector == Vector3.ZERO:
+		return direction
+	var mixed: Vector3 = direction + _sep_vector * SEPARATION_STRENGTH
+	mixed.y = 0.0
+	if mixed.length() < 0.01:
+		return direction
+	return mixed.normalized()
 
 
 ## Which way to walk this frame: along the navigation path if there is one,
