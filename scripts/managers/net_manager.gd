@@ -163,3 +163,15 @@ func reward_peer(peer_id: int, amount: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _get_reward(amount: int) -> void:
 	GameManager.add_gains(amount)
+
+## Tells every other phone that a door was bought so it opens for them too.
+func announce_door_opened(door_path: NodePath) -> void:
+	if is_online:
+		_door_opened.rpc(str(door_path))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _door_opened(door_path: String) -> void:
+	var door := get_node_or_null(door_path)
+	if door != null and door.has_method("remote_open"):
+		door.remote_open()
