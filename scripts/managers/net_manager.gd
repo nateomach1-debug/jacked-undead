@@ -175,3 +175,76 @@ func _door_opened(door_path: String) -> void:
 	var door := get_node_or_null(door_path)
 	if door != null and door.has_method("remote_open"):
 		door.remote_open()
+
+const COOP_SYNC_PATH: String = "res://scripts/managers/coop_sync.gd"
+const ROUND_MANAGER_SCRIPT: String = "res://scripts/managers/round_manager.gd"
+
+var _round_manager_ref: Node = null
+
+
+## Host only: loads the chosen map on every phone at once.
+func start_game_on(map_path: String) -> void:
+	if not is_host:
+		return
+	_load_map_coop.rpc(map_path)
+
+
+@rpc("authority", "call_local", "reliable")
+func _load_map_coop(path: String) -> void:
+	_round_manager_ref = null
+	if not get_tree().node_added.is_connected(_on_node_added):
+		get_tree().node_added.connect(_on_node_added)
+	get_tree().change_scene_to_file(path)
+	# Wait until the new map is loaded and running.
+	for i in range(180):
+		await get_tree().process_frame
+		var cs: Node = get_tree().current_scene
+		if cs != null and cs.scene_file_path == path:
+			break
+	await get_tree().process_frame
+	_setup_coop_in_scene()
+
+
+## Runs for every node added while online. Finds the round manager before it
+## starts, and stops non-host phones from spawning their own zombies.
+func _on_node_added(node: Node) -> void:
+	if not is_online:
+		return
+	var s: Script = node.get_script()
+	if s == null or s.resource_path != ROUND_MANAGER_SCRIPT:
+		return
+	_round_manager_ref = node
+	if not is_host:
+		node.set("zombie_scene", null)
+		node.set("roid_rager_scene", null)
+
+
+## Adds the CoopSync node to whatever map just loaded and spreads players out.
+func _setup_coop_in_scene() -> void:
+	var scene: Node = get_tree().current_scene
+	if scene == null or scene.has_node("CoopSync"):
+		return
+	var coop_script = load(COOP_SYNC_PATH)
+	if coop_script == null:
+		push_warning("coop_sync.gd is missing or broken.")
+		return
+
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var my_id: int = multiplayer.get_unique_id()
+	var ids: Array = multiplayer.get_peers()
+	ids.append(my_id)
+	ids.sort()
+	var slot: int = ids.find(my_id)
+	if player != null:
+		var spread: float = (float(slot) - float(ids.size() - 1) * 0.5) * 1.5
+		player.global_position += Vector3(spread, 0.0, 0.0)
+
+	var round_manager: Node = null
+	if _round_manager_ref != null and is_instance_valid(_round_manager_ref):
+		round_manager = _round_manager_ref
+
+	var coop := Node.new()
+	coop.set_script(coop_script)
+	coop.name = "CoopSync"
+	scene.add_child(coop)
+	coop.setup(player, round_manager)
