@@ -7,7 +7,7 @@ extends Node
 ##   bleed-out timer pauses while they're close. If it runs out you are Dead.
 ## Dead: spectate above a living teammate, respawn when the next round starts.
 ## After round BONUS_AFTER_ROUND, a revive or respawn returns 20% of the Gains
-## you had when you went down.
+## you had when you went down (a refund: it doesn't count as Gains earned).
 
 const BLEED_TIME: float = 15.0
 const REVIVE_TIME: float = 5.0
@@ -24,6 +24,7 @@ var _lost_gains: int = 0
 var _died_round: int = 0
 var _saved_layer: int = 1
 var _saved_mask: int = 1
+var _last_reviver: int = 0
 var _label: Label = null
 
 
@@ -37,9 +38,11 @@ func setup(player) -> void:
 
 ## Called by the player when health hits 0 in co-op.
 func go_down() -> void:
+	GameManager.deaths += 1
 	_lost_gains = GameManager.gains
 	if GameManager.gains > 0:
 		GameManager.try_spend_gains(GameManager.gains)
+	_last_reviver = 0
 	_player.is_downed = true
 	_player.is_dead = false
 	_player.downed_bleed_left = BLEED_TIME
@@ -62,7 +65,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _tick_downed(delta: float) -> void:
-	if _has_reviver_near():
+	var reviver: int = _find_reviver()
+	if reviver != 0:
+		_last_reviver = reviver
 		_player.downed_revive_progress += delta
 		if _player.downed_revive_progress >= REVIVE_TIME:
 			_revive()
@@ -73,8 +78,8 @@ func _tick_downed(delta: float) -> void:
 			_bleed_out()
 
 
-## True if a teammate who is up (not downed or dead) is close enough.
-func _has_reviver_near() -> bool:
+## Peer id of a teammate who is up (not downed or dead) and close enough, or 0.
+func _find_reviver() -> int:
 	for n in get_tree().get_nodes_in_group("remote_players"):
 		var p := n as Node3D
 		if p == null or not is_instance_valid(p):
@@ -82,11 +87,13 @@ func _has_reviver_near() -> bool:
 		if bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false)):
 			continue
 		if p.global_position.distance_to(_player.global_position) <= REVIVE_RANGE:
-			return true
-	return false
+			return int(p.get_meta("peer_id", 0))
+	return 0
 
 
 func _revive() -> void:
+	if _last_reviver != 0:
+		NetManager.credit_revive(_last_reviver)
 	_player.is_downed = false
 	_player.downed_bleed_left = 0.0
 	_player.downed_revive_progress = 0.0
@@ -134,9 +141,10 @@ func _respawn() -> void:
 
 
 ## After round 5: gives back 20% of the Gains held before going down.
+## A refund, so it does not count as Gains earned.
 func _give_bonus() -> void:
 	if GameManager.round_number > BONUS_AFTER_ROUND and _lost_gains > 0:
-		GameManager.add_gains(int(float(_lost_gains) * BONUS_FRACTION))
+		GameManager.add_gains(int(float(_lost_gains) * BONUS_FRACTION), false)
 	_lost_gains = 0
 
 
