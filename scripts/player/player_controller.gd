@@ -565,4 +565,145 @@ func switch_weapon(direction: int = 1) -> void:
 	_update_weapon_model()
 
 
-## Called by the PR Rack (Pack-a-Punch) sta
+## Called by the PR Rack (Pack-a-Punch) station.
+func apply_pr_upgrade() -> void:
+	if current_weapon and current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
+		equip_weapon(current_weapon.get_pr_upgraded_copy())
+
+
+## True once this weapon (by base name, so PR-upgraded copies still
+## count) has ever been bought. Used by wall-buy stations to decide
+## between "buy" and "refill ammo".
+func has_weapon(w: WeaponData) -> bool:
+	return w != null and w.weapon_name in owned_weapon_names
+
+
+## Called by a GunWallBuy station the first time that gun is purchased.
+## Adds it to the loadout and immediately equips it.
+func add_weapon_to_loadout(w: WeaponData) -> void:
+	if has_weapon(w):
+		return
+	_cancel_actions()
+	owned_weapon_names.append(w.weapon_name)
+	weapon_loadout.append(w)
+	_saved_mag_ammo.append(w.mag_size)
+	_saved_reserve_ammo.append(w.max_reserve_ammo)
+	current_weapon_index = weapon_loadout.size() - 1
+	current_weapon = w
+	current_mag_ammo = w.mag_size
+	current_reserve_ammo = w.max_reserve_ammo
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+	_update_weapon_model()
+
+
+## Called by the Loot Locker. A gun you don't own is added and equipped;
+## a gun you already own (including its PR-upgraded copy) gets a full refill.
+func grant_weapon(w: WeaponData) -> void:
+	if w == null:
+		return
+	if not has_weapon(w):
+		add_weapon_to_loadout(w)
+		return
+	for i in range(weapon_loadout.size()):
+		var owned: WeaponData = weapon_loadout[i]
+		if owned.get_base_name() == w.get_base_name():
+			if i == current_weapon_index:
+				current_mag_ammo = owned.mag_size
+				current_reserve_ammo = owned.max_reserve_ammo
+				ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+			elif i < _saved_mag_ammo.size():
+				_saved_mag_ammo[i] = owned.mag_size
+				_saved_reserve_ammo[i] = owned.max_reserve_ammo
+			return
+
+
+## True if w (by base name) is the weapon currently in the player's hands.
+func is_current_weapon(w: WeaponData) -> bool:
+	return w != null and current_weapon != null and current_weapon.get_base_name() == w.get_base_name()
+
+
+## Called by a GunWallBuy station on repeat visits. Only ever touches
+## the currently-equipped weapon's reserve ammo -- the station itself
+## checks is_current_weapon() first, so this should never be called
+## for a gun that isn't the one you're holding.
+func add_ammo_to_current_weapon(amount: int) -> void:
+	if not current_weapon:
+		return
+	current_reserve_ammo = min(current_reserve_ammo + amount, current_weapon.max_reserve_ammo)
+	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+## Swaps the visible first-person model to match current_weapon. Call this
+## anywhere current_weapon changes (initial equip, PR upgrade, switching).
+func _update_weapon_model() -> void:
+	if _current_model:
+		_current_model.queue_free()
+		_current_model = null
+	if current_weapon:
+		var model: Node3D = current_weapon.create_model()
+		if model:
+			_current_model = model
+			weapon_mount.add_child(_current_model)
+			if not current_weapon.model_scene:
+				# Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
+				_current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
+
+
+func _try_interact() -> void:
+	if is_downed or is_dead:
+		return
+	interact_ray.force_raycast_update()
+	if interact_ray.is_colliding():
+		var target := interact_ray.get_collider()
+		if target and target.has_method("interact"):
+			target.interact(self)
+
+
+func _update_interact_prompt() -> void:
+	if is_downed or is_dead:
+		interact_prompt_changed.emit("")
+		return
+	interact_ray.force_raycast_update()
+	if interact_ray.is_colliding():
+		var target := interact_ray.get_collider()
+		if target and target.has_method("get_prompt_text"):
+			interact_prompt_changed.emit(target.get_prompt_text())
+			return
+	interact_prompt_changed.emit("")
+
+
+# --- Supplement (perk-a-cola) effect hooks, called by SupplementStation ---
+func apply_supplement(id: String) -> void:
+	match id:
+		"trt":
+			damage_multiplier = 1.5
+		"creatine":
+			speed_multiplier = 1.25
+			melee_multiplier = 2.0
+		"whey":
+			max_health = base_max_health * 1.5
+			current_health = max_health
+			health_changed.emit(current_health, max_health)
+		"pre_workout":
+			reload_speed_multiplier = 1.5
+		"fish_oil":
+			regen_per_second = 2.0
+		"bcaas":
+			infinite_stamina = true
+
+	if id not in owned_perks:
+		owned_perks.append(id)
+		perks_changed.emit(owned_perks)
+
+
+## Called on death (or by a future "downed" system) to strip perks,
+## mirroring the classic "lose your perks when you go down" rule.
+func clear_supplements() -> void:
+	damage_multiplier = 1.0
+	speed_multiplier = 1.0
+	melee_multiplier = 1.0
+	reload_speed_multiplier = 1.0
+	regen_per_second = 0.0
+	infinite_stamina = false
+	max_health = base_max_health
+	current_health = max_health
