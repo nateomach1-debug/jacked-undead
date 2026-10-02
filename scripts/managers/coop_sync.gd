@@ -6,7 +6,7 @@ extends Node
 ## downed or dead, game over triggers on all phones. Created by net_manager.gd.
 
 const SEND_INTERVAL: float = 1.0 / 15.0
-const ZOMBIE_INTERVAL: float = 1.0 / 10.0
+const ZOMBIE_INTERVAL: float = 1.0 / 15.0
 const ZOMBIE_SCENE: String = "res://scenes/zombies/zombie.tscn"
 const RAGER_SCENE: String = "res://scenes/zombies/roid_rager.tscn"
 
@@ -15,12 +15,15 @@ var _round_manager = null
 var _remotes: Dictionary = {}         # peer id -> player capsule
 var _targets: Dictionary = {}         # peer id -> {"pos", "yaw", "state", "bleed", "progress"}
 var _puppets: Dictionary = {}         # zombie net id -> puppet zombie (non-host phones)
-var _puppet_targets: Dictionary = {}  # zombie net id -> {"pos", "yaw"}
+var _puppet_targets: Dictionary = {}  # zombie net id -> {"from_pos", "to_pos", "from_yaw", "to_yaw", "elapsed"}
 var _timer: float = 0.0
 var _zombie_timer: float = 0.0
 var _next_zombie_id: int = 1
 var _last_remaining: int = -1
 var _last_total: int = -1
+var _last_sent_state: int = -1
+var _last_snapshot_time: float = 0.0
+var _snapshot_interval: float = 0.1
 
 
 func _ready() -> void:
@@ -34,13 +37,16 @@ func setup(local_player: Node3D, round_manager = null) -> void:
 
 func _physics_process(delta: float) -> void:
 	if _local_player != null and is_instance_valid(_local_player):
+		var state: int = _local_state()
 		_timer -= delta
-		if _timer <= 0.0:
+		# Send on a timer, and immediately whenever up/downed/dead changes.
+		if _timer <= 0.0 or state != _last_sent_state:
 			_timer = SEND_INTERVAL
+			_last_sent_state = state
 			_receive_state.rpc(
 				_local_player.global_position,
 				_local_player.rotation.y,
-				_local_state(),
+				state,
 				float(_local_player.get("downed_bleed_left")),
 				float(_local_player.get("downed_revive_progress"))
 			)
@@ -78,8 +84,9 @@ func _receive_state(pos: Vector3, yaw: float, state: int, bleed: float, progress
 
 
 ## If this phone's player is downed/dead and so is everyone else, it's game over.
+## It tells every other phone directly, so nobody misses it.
 func _check_everyone_out() -> void:
-	if _remotes.is_empty():
+	if GameManager.is_game_over or _remotes.is_empty():
 		return
 	if not (bool(_local_player.get("is_downed")) or bool(_local_player.get("is_dead"))):
 		return
@@ -87,6 +94,12 @@ func _check_everyone_out() -> void:
 		var target: Dictionary = _targets.get(id, {})
 		if int(target.get("state", 0)) == 0:
 			return
+	_everyone_out.rpc()
+	GameManager.report_player_death()
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _everyone_out() -> void:
 	GameManager.report_player_death()
 
 
@@ -194,6 +207,11 @@ func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions:
 		_last_total = total
 		_round_manager.zombies_changed.emit(remaining, total)
 
+	# How long since the last snapshot: puppets glide to the new spot over that time.
+	var now: float = float(Time.get_ticks_msec()) / 1000.0
+	_snapshot_interval = clampf(now - _last_snapshot_time, 0.03, 0.3)
+	_last_snapshot_time = now
+
 	var alive: Dictionary = {}
 	for i in range(ids.size()):
 		var id: int = ids[i]
@@ -204,7 +222,15 @@ func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions:
 			if puppet == null:
 				continue
 			_puppets[id] = puppet
-		_puppet_targets[id] = {"pos": positions[i], "yaw": yaws[i]}
+			_puppet_targets[id] = {
+				"from_pos": positions[i], "to_pos": positions[i],
+				"from_yaw": yaws[i], "to_yaw": yaws[i], "elapsed": 0.0
+			}
+		else:
+			_puppet_targets[id] = {
+				"from_pos": puppet.global_position, "to_pos": positions[i],
+				"from_yaw": puppet.rotation.y, "to_yaw": yaws[i], "elapsed": 0.0
+			}
 
 	for id in _puppets.keys():
 		if not alive.has(id):
@@ -272,11 +298,15 @@ func _process(delta: float) -> void:
 			tag.text = _tag_text(id, target)
 			tag.position.y = lerpf(tag.position.y, 0.8 if state == 1 else 1.3, t)
 
-	var tz: float = clampf(delta * 12.0, 0.0, 1.0)
+	# Puppet zombies glide in a straight line to the host's latest position.
 	for id in _puppets.keys():
 		var z = _puppets[id]
 		if z == null or not is_instance_valid(z) or not _puppet_targets.has(id):
 			continue
 		var tgt: Dictionary = _puppet_targets[id]
-		z.global_position = z.global_position.lerp(tgt["pos"], tz)
-		z.rotation.y = lerp_angle(z.rotation.y, float(tgt["yaw"]), tz)
+		tgt["elapsed"] = float(tgt["elapsed"]) + delta
+		var a: float = clampf(float(tgt["elapsed"]) / _snapshot_interval, 0.0, 1.0)
+		var from_pos: Vector3 = tgt["from_pos"]
+		var to_pos: Vector3 = tgt["to_pos"]
+		z.global_position = from_pos.lerp(to_pos, a)
+		z.rotation.y = lerp_angle(float(tgt["from_yaw"]), float(tgt["to_yaw"]), a)
