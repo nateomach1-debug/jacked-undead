@@ -1,0 +1,179 @@
+extends Node
+## Co-op "downed" state for the local player. Created on demand by
+## player_controller.gd (as a child of the player) the first time you go down.
+##
+## Up -> (0 HP) -> Downed: all Gains, supplements and extra guns lost, pistol
+##   only, crawling. A teammate staying close for REVIVE_TIME revives you; the
+##   bleed-out timer pauses while they're close. If it runs out you are Dead.
+## Dead: spectate above a living teammate, respawn when the next round starts.
+## After round BONUS_AFTER_ROUND, a revive or respawn returns 20% of the Gains
+## you had when you went down.
+
+const BLEED_TIME: float = 15.0
+const REVIVE_TIME: float = 5.0
+const REVIVE_RANGE: float = 2.5
+const REVIVE_HEALTH_FRACTION: float = 0.5
+const BONUS_AFTER_ROUND: int = 5
+const BONUS_FRACTION: float = 0.2
+const STAND_CAMERA_Y: float = 0.7
+const CRAWL_CAMERA_Y: float = 0.15
+const SPECTATE_HEIGHT: float = 1.5
+
+var _player = null
+var _lost_gains: int = 0
+var _died_round: int = 0
+var _saved_layer: int = 1
+var _saved_mask: int = 1
+var _label: Label = null
+
+
+func setup(player) -> void:
+	_player = player
+	_saved_layer = player.collision_layer
+	_saved_mask = player.collision_mask
+	_build_overlay()
+	GameManager.round_changed.connect(_on_round_changed)
+
+
+## Called by the player when health hits 0 in co-op.
+func go_down() -> void:
+	_lost_gains = GameManager.gains
+	if GameManager.gains > 0:
+		GameManager.try_spend_gains(GameManager.gains)
+	_player.is_downed = true
+	_player.is_dead = false
+	_player.downed_bleed_left = BLEED_TIME
+	_player.downed_revive_progress = 0.0
+	_player.strip_for_downed()
+	_player.current_health = 0.0
+	_player.health_changed.emit(0.0, _player.max_health)
+	_refresh_label()
+
+
+func _physics_process(delta: float) -> void:
+	if _player == null:
+		return
+	if _player.is_downed:
+		_tick_downed(delta)
+	elif _player.is_dead:
+		_tick_dead()
+	_update_camera(delta)
+	_refresh_label()
+
+
+func _tick_downed(delta: float) -> void:
+	if _has_reviver_near():
+		_player.downed_revive_progress += delta
+		if _player.downed_revive_progress >= REVIVE_TIME:
+			_revive()
+	else:
+		_player.downed_revive_progress = 0.0
+		_player.downed_bleed_left -= delta
+		if _player.downed_bleed_left <= 0.0:
+			_bleed_out()
+
+
+## True if a teammate who is up (not downed or dead) is close enough.
+func _has_reviver_near() -> bool:
+	for n in get_tree().get_nodes_in_group("remote_players"):
+		var p := n as Node3D
+		if p == null or not is_instance_valid(p):
+			continue
+		if bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false)):
+			continue
+		if p.global_position.distance_to(_player.global_position) <= REVIVE_RANGE:
+			return true
+	return false
+
+
+func _revive() -> void:
+	_player.is_downed = false
+	_player.downed_bleed_left = 0.0
+	_player.downed_revive_progress = 0.0
+	_player.current_health = _player.max_health * REVIVE_HEALTH_FRACTION
+	_player.health_changed.emit(_player.current_health, _player.max_health)
+	_give_bonus()
+
+
+func _bleed_out() -> void:
+	_player.is_downed = false
+	_player.is_dead = true
+	_died_round = GameManager.round_number
+	_player.downed_bleed_left = 0.0
+	_player.downed_revive_progress = 0.0
+	_player.velocity = Vector3.ZERO
+	_player.collision_layer = 0
+	_player.collision_mask = 0
+
+
+## Dead: float above a living teammate so you can watch them play.
+func _tick_dead() -> void:
+	for n in get_tree().get_nodes_in_group("remote_players"):
+		var p := n as Node3D
+		if p == null or not is_instance_valid(p):
+			continue
+		if bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false)):
+			continue
+		_player.global_position = p.global_position + Vector3(0.0, SPECTATE_HEIGHT, 0.0)
+		return
+
+
+func _on_round_changed(new_round: int) -> void:
+	if _player != null and _player.is_dead and new_round > _died_round:
+		_respawn()
+
+
+func _respawn() -> void:
+	_player.is_dead = false
+	_player.collision_layer = _saved_layer
+	_player.collision_mask = _saved_mask
+	_player.velocity = Vector3.ZERO
+	_player.current_health = _player.max_health
+	_player.health_changed.emit(_player.current_health, _player.max_health)
+	_give_bonus()
+
+
+## After round 5: gives back 20% of the Gains held before going down.
+func _give_bonus() -> void:
+	if GameManager.round_number > BONUS_AFTER_ROUND and _lost_gains > 0:
+		GameManager.add_gains(int(float(_lost_gains) * BONUS_FRACTION))
+	_lost_gains = 0
+
+
+func _update_camera(delta: float) -> void:
+	var cam: Node3D = _player.camera
+	var goal: float = CRAWL_CAMERA_Y if _player.is_downed else STAND_CAMERA_Y
+	cam.position.y = lerpf(cam.position.y, goal, clampf(delta * 8.0, 0.0, 1.0))
+
+
+func _build_overlay() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 40
+	add_child(layer)
+	_label = Label.new()
+	_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_label.offset_top = 140.0
+	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_label.add_theme_font_size_override("font_size", 40)
+	_label.add_theme_color_override("font_color", Color(1.0, 0.25, 0.25))
+	_label.add_theme_constant_override("outline_size", 8)
+	_label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_label.visible = false
+	layer.add_child(_label)
+
+
+func _refresh_label() -> void:
+	if _label == null or _player == null:
+		return
+	if _player.is_downed:
+		_label.visible = true
+		if _player.downed_revive_progress > 0.0:
+			_label.text = "DOWNED - REVIVING %.1f / %d s" % [_player.downed_revive_progress, int(REVIVE_TIME)]
+		else:
+			_label.text = "DOWNED - %d s left" % ceili(_player.downed_bleed_left)
+	elif _player.is_dead:
+		_label.visible = true
+		_label.text = "DEAD - respawn next round"
+	else:
+		_label.visible = false
