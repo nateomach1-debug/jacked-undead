@@ -15,6 +15,7 @@ func _ready() -> void:
 	options_button.pressed.connect(_on_options_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
 	options_back_button.pressed.connect(_on_options_back_pressed)
+	_add_settings_button()
 	_add_character_picker()
 	_add_dev_button()
 	_add_coop_button()
@@ -99,3 +100,25 @@ func _add_menu_note(vbox: Node, text: String) -> void:
 	note.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 	vbox.add_child(note)
 	vbox.move_child(note, options_back_button.get_index())
+
+
+## Adds a SETTINGS button to the options panel, above BACK.
+func _add_settings_button() -> void:
+	var vbox: Node = options_back_button.get_parent()
+	var b := Button.new()
+	b.text = "SETTINGS"
+	b.custom_minimum_size = Vector2(240, 70)
+	b.add_theme_font_size_override("font_size", 24)
+	b.pressed.connect(_on_settings_pressed)
+	vbox.add_child(b)
+	vbox.move_child(b, options_back_button.get_index())
+
+
+func _on_settings_pressed() -> void:
+	var menu_script = load("res://scripts/ui/settings_menu.gd")
+	if menu_script == null:
+		push_warning("settings_menu.gd is missing or broken.")
+		return
+	var menu := Control.new()
+	menu.set_script(menu_script)
+	add_child(menu)
