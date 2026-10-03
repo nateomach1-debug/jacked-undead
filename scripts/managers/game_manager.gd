@@ -32,7 +32,7 @@ var deaths: int = 0           # co-op: times you went down
 var is_game_over: bool = false
 var unlocked_zones: Array = ["start"]
 var dev: Dictionary = DEV_DEFAULTS.duplicate()
-
+var dev_override: Dictionary = {}   # co-op: the host's dev settings, used while online
 
 func _ready() -> void:
 	_load_dev_settings()
@@ -119,6 +119,8 @@ func reset_run() -> void:
 # ---------- developer settings ----------
 
 func dev_get(key: String) -> float:
+	if NetManager.is_online and dev_override.has(key):
+		return float(dev_override[key])
 	return float(dev.get(key, DEV_DEFAULTS.get(key, 0.0)))
 
 
@@ -181,3 +183,10 @@ func _save_dev_settings() -> void:
 	for key in dev.keys():
 		cfg.set_value("dev", key, dev[key])
 	cfg.save(DEV_FILE)
+
+
+## Co-op: called when the host starts a game, so every phone uses the host's settings.
+func dev_apply_override(settings: Dictionary) -> void:
+	dev_override = settings.duplicate()
+	_apply_nav_debug()
+	dev_settings_changed.emit()
