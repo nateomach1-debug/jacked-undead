@@ -195,8 +195,7 @@ func start_game_on(map_path: String) -> void:
 	if not is_host:
 		return
 	_apply_host_dev.rpc(GameManager.dev)
-	_load_map_coop.rpc(map_path))
-
+	_load_map_coop.rpc(map_path)
 
 @rpc("authority", "call_local", "reliable")
 func _load_map_coop(path: String) -> void:
