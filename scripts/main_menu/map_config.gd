@@ -6,7 +6,7 @@ const ENABLED: Dictionary = {
 	"arena": true,
 	"building": true,
 	"multi_room": true,
-	"gym_compound": true,
+	"gym_compound": false,
 	"challenge": true,
 	"deadfall": false,
 }
