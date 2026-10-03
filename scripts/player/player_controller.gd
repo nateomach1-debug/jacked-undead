@@ -795,7 +795,7 @@ func _look_scale() -> float:
 func _update_ads(delta: float) -> void:
 	if not _ads_ready:
 		_ads_ready = true
-		_hip_fov = camera.fov
+		_hip_fov = _settings_fov()
 		_hip_mount_pos = weapon_mount.position
 		_build_scope()
 
@@ -849,3 +849,12 @@ func _draw_scope() -> void:
 	_scope_ctrl.draw_line(Vector2(center.x, center.y - radius), Vector2(center.x, center.y - gap), ink, 2.0)
 	_scope_ctrl.draw_line(Vector2(center.x, center.y + gap), Vector2(center.x, center.y + radius), ink, 2.0)
 	_scope_ctrl.draw_circle(center, 2.5, Color(1.0, 0.2, 0.2, 0.9))
+
+
+## Field of view from the Settings screen (falls back to the scene's FOV).
+func _settings_fov() -> float:
+	var script = load("res://scripts/managers/game_settings.gd")
+	if script == null:
+		return camera.fov
+	var s = script.new()
+	return clampf(float(s.get_value("fov")), 50.0, 120.0)
