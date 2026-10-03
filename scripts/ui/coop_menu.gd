@@ -32,6 +32,7 @@ var _map_index: int = 0
 
 
 func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	var bg := ColorRect.new()
@@ -154,7 +155,7 @@ func _build_name_pad() -> void:
 	add_child(_name_pad)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0.03, 0.03, 0.05, 0.99)
+	dim.color = Color(0.03, 0.03, 0.05, 1.0)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_name_pad.add_child(dim)
 
