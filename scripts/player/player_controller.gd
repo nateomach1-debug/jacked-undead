@@ -743,10 +743,10 @@ func clear_supplements() -> void:
 
 
 func _wants_sprint(delta: float, direction: Vector3) -> bool:
-	var result: bool = _compute_sprint(delta, direction)
-	if result:
-		is_aiming = false   # sprinting cancels aim down sights
-	return result
+	# Aiming overrides sprint: no sprinting while aimed, and no stamina drain.
+	if is_aiming:
+		return _compute_sprint(delta, Vector3.ZERO)
+	return _compute_sprint(delta, direction)
 
 
 func _compute_sprint(delta: float, direction: Vector3) -> bool:
@@ -836,12 +836,16 @@ func _build_scope() -> void:
 	_scope_ctrl.draw.connect(_draw_scope)
 
 
-## Black everywhere except a circle in the middle, with a thin crosshair.
+## Just the scope: a thin ring, crosshair and dot. The rest of the screen stays visible.
 func _draw_scope() -> void:
 	var size: Vector2 = _scope_ctrl.size
 	var center: Vector2 = size * 0.5
-	var hole: float = minf(size.x, size.y) * 0.42
-	var width: float = center.length() + 4.0 - hole
-	_scope_ctrl.draw_arc(center, hole + width * 0.5, 0.0, TAU, 128, Color.BLACK, width)
-	_scope_ctrl.draw_line(Vector2(center.x - hole, center.y), Vector2(center.x + hole, center.y), Color.BLACK, 2.0)
-	_scope_ctrl.draw_line(Vector2(center.x, center.y - hole), Vector2(center.x, center.y + hole), Color.BLACK, 2.0)
+	var radius: float = minf(size.x, size.y) * 0.28
+	var gap: float = 14.0
+	var ink := Color(0.0, 0.0, 0.0, 0.9)
+	_scope_ctrl.draw_arc(center, radius, 0.0, TAU, 96, ink, 6.0, true)
+	_scope_ctrl.draw_line(Vector2(center.x - radius, center.y), Vector2(center.x - gap, center.y), ink, 2.0)
+	_scope_ctrl.draw_line(Vector2(center.x + gap, center.y), Vector2(center.x + radius, center.y), ink, 2.0)
+	_scope_ctrl.draw_line(Vector2(center.x, center.y - radius), Vector2(center.x, center.y - gap), ink, 2.0)
+	_scope_ctrl.draw_line(Vector2(center.x, center.y + gap), Vector2(center.x, center.y + radius), ink, 2.0)
+	_scope_ctrl.draw_circle(center, 2.5, Color(1.0, 0.2, 0.2, 0.9))
