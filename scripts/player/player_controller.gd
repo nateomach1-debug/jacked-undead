@@ -872,18 +872,43 @@ func _apply_attachments(w: WeaponData) -> void:
 	var registry = script.new()
 	registry.apply_to(w)
 
-
 ## Draws the attachments on the first-person gun model.
 func _add_attachment_visuals() -> void:
 	if current_weapon == null or _current_model == null:
 		return
 	var loadout = current_weapon.get_meta("attachments", {})
 	if not (loadout is Dictionary) or loadout.is_empty():
+		if current_weapon.pr_level >= 1:
+			_attach_debug("ATT: upgraded gun has no attachment data")
 		return
 	var script = load("res://scripts/weapons/attachment_models.gd")
 	if script == null:
+		_attach_debug("ATT: attachment_models.gd missing or broken")
 		return
 	var builder = script.new()
+	if builder == null:
+		_attach_debug("ATT: attachment_models.gd could not start")
+		return
 	_attach_root = builder.build_for(_current_model, loadout, current_weapon.get_base_name())
-	if _attach_root != null:
-		weapon_mount.add_child(_attach_root)
+	if _attach_root == null:
+		_attach_debug("ATT: gun size not found")
+		return
+	weapon_mount.add_child(_attach_root)
+	var first_pos: String = ""
+	if _attach_root.get_child_count() > 0:
+		first_pos = str((_attach_root.get_child(0) as Node3D).position)
+	_attach_debug("ATT ok: %d parts, first at %s" % [_attach_root.get_child_count(), first_pos])
+
+
+## TEMPORARY: shows a yellow message for a few seconds (remove once attachments are working).
+func _attach_debug(text: String) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 30)
+	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	label.position = Vector2(30, 260)
+	layer.add_child(label)
+	add_child(layer)
+	get_tree().create_timer(6.0).timeout.connect(layer.queue_free)
