@@ -16,7 +16,7 @@ func _ready() -> void:
 	add_theme_constant_override("separation", 6)
 	var script = load(REGISTRY_PATH)
 	if script == null:
-		push_warning("character_registry.gd is missing or broken.")
+		add_child(_error_label("CHARACTER LIST FAILED TO LOAD"))
 		return
 	_reg = script.new()
 	_index = _reg.index_of(NetManager.character_id)
@@ -100,3 +100,10 @@ func _refresh() -> void:
 func _process(delta: float) -> void:
 	if _stage != null and is_visible_in_tree():
 		_stage.rotation.y += delta * 0.9
+
+
+func _error_label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	return l
