@@ -51,6 +51,8 @@ func _ready() -> void:
 		vbox.add_child(_sprint_button)
 		_refresh_sprint_button()
 		vbox.add_child(_make_button("RESET TO DEFAULTS", _on_reset))
+		_replay_button = _make_button("REPLAY TUTORIAL", _on_replay_tutorial)
+		vbox.add_child(_replay_button)
 	vbox.add_child(_make_button("BACK", _on_back))
 
 
@@ -136,3 +138,11 @@ func _on_reset() -> void:
 
 func _on_back() -> void:
 	queue_free()
+
+
+var _replay_button: Button
+
+
+func _on_replay_tutorial() -> void:
+	_settings.set_value("tutorial_seen", 0.0)
+	_replay_button.text = "TUTORIAL SHOWS AT NEXT GAME"
