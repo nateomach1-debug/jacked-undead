@@ -12,6 +12,7 @@ var _sprint_on: bool = false
 
 
 func _ready() -> void:
+	add_to_group("touch_ui")
 	_bind(btn_jump, "jump")
 	_bind(btn_reload, "reload")
 	_bind(btn_use, "interact")
