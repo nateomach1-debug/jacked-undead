@@ -54,6 +54,7 @@ func _build_extra_ui() -> void:
 func _on_player_died() -> void:
 	var coop: bool = NetManager.is_online
 	round_label.text = "Round Reached: %d" % GameManager.round_number
+	_credit_juice()
 
 	# Solo: personal lines. Co-op: the scoreboard shows everyone (including you).
 	kills_label.visible = not coop
@@ -164,3 +165,39 @@ func _refresh_dev_label() -> void:
 		if NetManager.is_online:
 			header += " (host's settings)"
 		_dev_label.text = header + "\n" + "\n".join(lines)
+
+
+var _credited: bool = false
+var _juice_label: Label = null
+
+
+## Adds this run's Juice to the saved profile (once) and shows it under the dev settings block.
+func _credit_juice() -> void:
+	if _credited:
+		return
+	_credited = true
+	var script = load("res://scripts/managers/profile.gd")
+	if script == null:
+		return
+	var vbox: Node = kills_label.get_parent()
+	_juice_label = Label.new()
+	_juice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_juice_label.add_theme_font_size_override("font_size", 28)
+	_juice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	vbox.add_child(_juice_label)
+	if _dev_label != null:
+		vbox.move_child(_juice_label, _dev_label.get_index() + 1)
+	var profile = script.new()
+	if _dev_settings_changed():
+		_juice_label.text = "No Juice earned (dev settings changed)"
+		return
+	var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
+	_juice_label.text = "+%d Juice earned  (total %d)" % [earned, profile.get_juice()]
+
+
+func _dev_settings_changed() -> bool:
+	for row in DEV_LINES:
+		var key: String = row["key"]
+		if not is_equal_approx(GameManager.dev_get(key), float(GameManager.DEV_DEFAULTS.get(key, 0.0))):
+			return true
+	return false
