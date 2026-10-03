@@ -9,6 +9,14 @@ extends RefCounted
 
 const FIRE_SOUND_PATH: String = "res://resources/audio/weapons/impactPlate_medium_002.ogg"
 
+# Base spread (degrees) for guns that don't set their own below.
+const BASE_SPREAD: Dictionary = {
+	"Revolver": 0.3,
+	"Magnum": 0.5,
+	"Burst Rifle": 0.8,
+	"Grenade Launcher": 0.5,
+	"Rocket Launcher": 0.3,
+}
 # Wall-buy guns that can also roll from the locker (weight 1 each).
 const COMMON_GUN_PATHS: Array = [
 	"res://resources/weapons/smg.tres",
@@ -48,6 +56,7 @@ static func _make(weapon_name: String, damage: float, fire_rate: float, mag: int
 	w.range = range_m
 	w.reload_time = reload
 	w.placeholder_kind = weapon_name
+	w.spread_degrees = float(BASE_SPREAD.get(weapon_name, 0.0))
 	w.placeholder_size = size
 	w.placeholder_color = color
 	w.fire_sound = load(FIRE_SOUND_PATH)
