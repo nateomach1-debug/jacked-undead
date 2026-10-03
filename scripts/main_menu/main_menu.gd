@@ -12,14 +12,14 @@ extends Control
 func _ready() -> void:
 	options_panel.visible = false
 	start_button.pressed.connect(_on_start_pressed)
-	options_back_button.pressed.connect(_on_options_back_pressed)
-	_add_juice_label()
+	options_button.pressed.connect(_on_options_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
 	options_back_button.pressed.connect(_on_options_back_pressed)
 	_add_settings_button()
 	_add_character_picker()
 	_add_dev_button()
 	_add_coop_button()
+	_add_juice_label()
 
 
 ## Adds a DEVELOPER button to the options panel, just above BACK.
@@ -127,14 +127,17 @@ func _on_settings_pressed() -> void:
 
 ## Shows the saved Juice balance in the top-right corner.
 func _add_juice_label() -> void:
-	var script = load("res://scripts/managers/profile.gd")
-	if script == null:
+	var profile_script = load("res://scripts/managers/profile.gd")
+	if profile_script == null:
 		return
-	var profile = script.new()
+	var profile = profile_script.new()
+	if profile == null:
+		return
 	var label := Label.new()
 	label.text = "JUICE: %d" % profile.get_juice()
 	label.add_theme_font_size_override("font_size", 32)
 	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
 	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 	label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
