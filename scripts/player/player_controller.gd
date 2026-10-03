@@ -8,6 +8,24 @@ signal interact_prompt_changed(text: String)
 signal perks_changed(owned: Array)
 signal stamina_changed(current: float, max_stamina: float)
 
+# --- Aim down sights (toggle) ---
+const ADS_SPEED: float = 9.0               # how fast the zoom blends in/out
+const ADS_DEFAULT_ZOOM: float = 1.5        # FOV is divided by this
+const ADS_ZOOM_BY_NAME: Dictionary = {"pistol": 1.4, "smg": 1.5, "rifle": 1.8, "shotgun": 1.3, "crossbow": 2.2, "sniper": 3.5}
+const SCOPE_WEAPONS: Array = ["sniper"]    # these get the scope overlay
+const ADS_SPREAD_FACTOR: float = 0.5       # spread multiplier while aimed
+const ADS_MOVE_FACTOR: float = 0.7         # walk speed multiplier while aimed
+const ADS_MOUNT_POS: Vector3 = Vector3(0.05, -0.3, -0.7)   # where the gun sits while aimed
+
+var is_aiming: bool = false
+var _aim_blend: float = 0.0
+var _aim_weapon: WeaponData = null
+var _ads_ready: bool = false
+var _hip_fov: float = 80.0
+var _hip_mount_pos: Vector3 = Vector3.ZERO
+var _scoped: bool = false
+var _scope_layer: CanvasLayer = null
+var _scope_ctrl: Control = null
 const STAMINA_MAX: float = 100.0
 const STAMINA_DRAIN: float = 25.0        # per second while sprinting (4s of sprint)
 const STAMINA_REGEN: float = 18.0        # per second while not sprinting
@@ -142,20 +160,23 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func apply_look_delta(delta: Vector2, sensitivity: float = MOUSE_SENSITIVITY) -> void:
-	rotate_y(-delta.x * sensitivity)
-	camera.rotate_x(-delta.y * sensitivity)
+	var s: float = sensitivity * _look_scale()
+	rotate_y(-delta.x * s)
+	camera.rotate_x(-delta.y * s)
 	camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
 
 
 func _physics_process(delta: float) -> void:
+	_update_ads(delta)
 	_handle_movement(delta)
 	_handle_shooting(delta)
 	_handle_regen(delta)
 	_update_interact_prompt()
 
 	if stick_look_vector.length() > 0.01:
-		rotate_y(-stick_look_vector.x * deg_to_rad(STICK_LOOK_SPEED) * delta)
-		camera.rotate_x(-stick_look_vector.y * deg_to_rad(STICK_LOOK_SPEED) * delta)
+		var look_speed: float = deg_to_rad(STICK_LOOK_SPEED) * _look_scale() * delta
+		rotate_y(-stick_look_vector.x * look_speed)
+		camera.rotate_x(-stick_look_vector.y * look_speed)
 		camera.rotation.x = clamp(camera.rotation.x, deg_to_rad(-89), deg_to_rad(89))
 
 	if Input.is_action_just_pressed("reload"):
@@ -187,7 +208,7 @@ func _handle_movement(delta: float) -> void:
 	if raw_dir.length() > 1.0:
 		raw_dir = raw_dir.normalized()
 	var direction := transform.basis * raw_dir
-	var speed := base_walk_speed * speed_multiplier
+	var speed := base_walk_speed * speed_multiplier * lerpf(1.0, ADS_MOVE_FACTOR, _aim_blend)
 	if is_downed:
 		speed = base_walk_speed * DOWNED_SPEED_FACTOR
 	elif _wants_sprint(delta, direction):
@@ -338,7 +359,7 @@ func _spread_direction(spread_deg: float) -> Vector3:
 	var forward: Vector3 = -b.z
 	if spread_deg <= 0.0:
 		return forward
-	var spread: float = deg_to_rad(spread_deg)
+	var spread: float = deg_to_rad(spread_deg) * lerpf(1.0, ADS_SPREAD_FACTOR, _aim_blend)
 	forward = forward.rotated(b.y, randf_range(-spread, spread))
 	forward = forward.rotated(b.x, randf_range(-spread, spread))
 	return forward.normalized()
@@ -722,6 +743,13 @@ func clear_supplements() -> void:
 
 
 func _wants_sprint(delta: float, direction: Vector3) -> bool:
+	var result: bool = _compute_sprint(delta, direction)
+	if result:
+		is_aiming = false   # sprinting cancels aim down sights
+	return result
+
+
+func _compute_sprint(delta: float, direction: Vector3) -> bool:
 	var wants: bool = Input.is_action_pressed("sprint") and direction.length() > 0.1
 	if infinite_stamina:
 		_set_stamina(max_stamina)
@@ -747,3 +775,73 @@ func _set_stamina(value: float) -> void:
 	if stamina != _last_stamina_sent:
 		_last_stamina_sent = stamina
 		stamina_changed.emit(stamina, max_stamina)
+
+
+func _ads_zoom() -> float:
+	if current_weapon == null:
+		return ADS_DEFAULT_ZOOM
+	return float(ADS_ZOOM_BY_NAME.get(current_weapon.get_base_name().to_lower(), ADS_DEFAULT_ZOOM))
+
+
+func _is_scope_weapon() -> bool:
+	return current_weapon != null and SCOPE_WEAPONS.has(current_weapon.get_base_name().to_lower())
+
+
+## Look speed shrinks as you zoom in.
+func _look_scale() -> float:
+	return 1.0 / lerpf(1.0, _ads_zoom(), _aim_blend)
+
+
+func _update_ads(delta: float) -> void:
+	if not _ads_ready:
+		_ads_ready = true
+		_hip_fov = camera.fov
+		_hip_mount_pos = weapon_mount.position
+		_build_scope()
+
+	# Swapping weapons ends aiming.
+	if current_weapon != _aim_weapon:
+		_aim_weapon = current_weapon
+		is_aiming = false
+
+	if _reloading or is_downed or is_dead or current_weapon == null:
+		is_aiming = false
+	elif InputMap.has_action("aim") and Input.is_action_just_pressed("aim"):
+		is_aiming = not is_aiming
+
+	_aim_blend = move_toward(_aim_blend, 1.0 if is_aiming else 0.0, delta * ADS_SPEED)
+	var eased: float = _aim_blend * _aim_blend * (3.0 - 2.0 * _aim_blend)
+	camera.fov = lerpf(_hip_fov, _hip_fov / _ads_zoom(), eased)
+	weapon_mount.position = _hip_mount_pos.lerp(ADS_MOUNT_POS, eased)
+
+	var scoped: bool = _is_scope_weapon() and _aim_blend > 0.85
+	if scoped != _scoped:
+		_scoped = scoped
+		weapon_mount.visible = not scoped
+		if _scope_layer != null:
+			_scope_layer.visible = scoped
+		if scoped and _scope_ctrl != null:
+			_scope_ctrl.queue_redraw()
+
+
+func _build_scope() -> void:
+	_scope_layer = CanvasLayer.new()
+	_scope_layer.layer = 5
+	_scope_layer.visible = false
+	add_child(_scope_layer)
+	_scope_ctrl = Control.new()
+	_scope_ctrl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope_layer.add_child(_scope_ctrl)
+	_scope_ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_scope_ctrl.draw.connect(_draw_scope)
+
+
+## Black everywhere except a circle in the middle, with a thin crosshair.
+func _draw_scope() -> void:
+	var size: Vector2 = _scope_ctrl.size
+	var center: Vector2 = size * 0.5
+	var hole: float = minf(size.x, size.y) * 0.42
+	var width: float = center.length() + 4.0 - hole
+	_scope_ctrl.draw_arc(center, hole + width * 0.5, 0.0, TAU, 128, Color.BLACK, width)
+	_scope_ctrl.draw_line(Vector2(center.x - hole, center.y), Vector2(center.x + hole, center.y), Color.BLACK, 2.0)
+	_scope_ctrl.draw_line(Vector2(center.x, center.y - hole), Vector2(center.x, center.y + hole), Color.BLACK, 2.0)
