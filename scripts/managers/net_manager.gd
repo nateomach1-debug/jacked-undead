@@ -5,7 +5,7 @@ extends Node
 signal status_changed(text: String)
 
 const PORT: int = 7777
-const MAX_CLIENTS: int = 3
+const MAX_CLIENTS: int = 4
 const GAME_MAP: String = "res://scenes/main/main.tscn"
 
 var is_online: bool = false
@@ -97,11 +97,13 @@ func _is_172_private(a: String) -> bool:
 
 func _address_text() -> String:
 	var all_ips: Array = get_all_local_ips()
-	var best: String = get_local_ip()
-	if all_ips.size() <= 1:
-		return "Join IP: %s" % best
-	return "Join IP: %s\nAll addresses: %s" % [best, ", ".join(PackedStringArray(all_ips))]
-
+	var text: String = "Join IP: %s" % get_local_ip()
+	var ts: String = get_tailscale_ip()
+	if ts != "":
+		text += "\nOnline (Tailscale): %s" % ts
+	elif all_ips.size() > 1:
+		text += "\nAll addresses: %s" % ", ".join(PackedStringArray(all_ips))
+	return text
 
 func _player_count() -> int:
 	return multiplayer.get_peers().size() + 1
@@ -372,3 +374,24 @@ func _set_character(new_id: String) -> void:
 	var id: int = multiplayer.get_remote_sender_id()
 	characters[id] = new_id.left(32)
 	character_changed.emit(id)
+
+
+## Tailscale-style address (100.64.0.0 - 100.127.255.255) on this phone, or "" if none is visible.
+func get_tailscale_ip() -> String:
+	for addr in IP.get_local_addresses():
+		var a: String = str(addr)
+		if a.contains(":"):
+			continue
+		if _is_tailscale_ip(a):
+			return a
+	return ""
+
+
+func _is_tailscale_ip(a: String) -> bool:
+	if not a.begins_with("100."):
+		return false
+	var parts: PackedStringArray = a.split(".")
+	if parts.size() != 4:
+		return false
+	var second: int = int(parts[1])
+	return second >= 64 and second <= 127
