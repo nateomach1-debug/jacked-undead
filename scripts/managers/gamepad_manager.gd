@@ -112,8 +112,7 @@ func _process(delta: float) -> void:
 		return
 	var player := get_tree().get_first_node_in_group("player")
 	if player != null and player.has_method("apply_look_delta"):
-		player.apply_look_delta(look, deg_to_rad(LOOK_DEG_PER_SEC) * delta)
-
+		player.apply_look_delta(look, deg_to_rad(_pad_look_speed()) * delta)
 
 # ---------- menus ----------
 
@@ -156,3 +155,37 @@ func _press_focused_button() -> void:
 		var b := f as BaseButton
 		if not b.disabled:
 			b.pressed.emit()
+
+
+var _settings = null
+var _next_settings_check: int = 0
+
+
+## Re-reads the saved settings every couple of seconds so menu changes apply.
+func _refresh_settings() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now < _next_settings_check:
+		return
+	_next_settings_check = now + 2000
+	var script = load("res://scripts/managers/game_settings.gd")
+	_settings = script.new() if script != null else null
+
+
+func _pad_look_speed() -> float:
+	_refresh_settings()
+	if _settings == null:
+		return LOOK_DEG_PER_SEC
+	return float(_settings.get_value("pad_look"))
+
+
+func _sprint_hold_mode() -> bool:
+	_refresh_settings()
+	return _settings != null and _settings.get_value("sprint_hold") > 0.5
+
+
+## Hold mode: letting go of L3 stops sprinting.
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton and not event.pressed and event.button_index == JOY_BUTTON_LEFT_STICK:
+		if _sprint_hold_mode() and _sprint_on:
+			_sprint_on = false
+			Input.action_release("sprint")
