@@ -13,6 +13,7 @@ var _shoot_knob_offset: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
+	add_to_group("touch_ui")
 	_player = get_tree().get_first_node_in_group("player")
 
 
