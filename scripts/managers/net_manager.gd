@@ -25,6 +25,7 @@ func _ready() -> void:
 func host_game() -> bool:
 	leave()
 	var peer := ENetMultiplayerPeer.new()
+	peer.set_bind_ip("0.0.0.0")
 	var err: int = peer.create_server(PORT, MAX_CLIENTS)
 	if err != OK:
 		status_changed.emit("Host failed (error %d)" % err)
@@ -43,7 +44,8 @@ func join_game(ip: String) -> bool:
 		status_changed.emit("Type the host's IP first")
 		return false
 	var peer := ENetMultiplayerPeer.new()
-	var err: int = peer.create_client(address, PORT)
+	peer.set_bind_ip("0.0.0.0")
+	var err: int = peer.create_client(address, PORT, 0, 0, 0, randi_range(20000, 60000))
 	if err != OK:
 		status_changed.emit("Join failed (error %d)" % err)
 		return false
