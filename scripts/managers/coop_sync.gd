@@ -28,6 +28,7 @@ var _snapshot_interval: float = 0.1
 
 func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_left)
+	NetManager.character_changed.connect(_on_character_changed)
 
 
 func setup(local_player: Node3D, round_manager = null) -> void:
@@ -155,7 +156,7 @@ func _make_remote(id: int) -> Node3D:
 	tag.font_size = 64
 	tag.position = Vector3(0, 1.3, 0)
 	root.add_child(tag)
-	return root
+	return _with_character(root, id)
 
 
 func _tag_text(id: int, target: Dictionary) -> String:
@@ -278,6 +279,67 @@ func _zombie_hit(net_id: int, amount: float, headshot: bool) -> void:
 
 # ---------- smoothing ----------
 
+const CHAR_HEIGHT: float = 1.8
+const CHAR_FOOT_Y: float = -0.9   # feet height relative to the player's position
+
+var _registry = null
+
+
+func _get_registry():
+	if _registry == null:
+		var script = load("res://scripts/managers/character_registry.gd")
+		if script != null:
+			_registry = script.new()
+	return _registry
+
+
+func _with_character(root: Node3D, id: int) -> Node3D:
+	_apply_character(root, NetManager.get_character(id))
+	return root
+
+
+## Swaps the capsule for the chosen model (falls back to the capsule if it can't load).
+func _apply_character(root: Node3D, char_id: String) -> void:
+	var pivot := root.get_node_or_null("Pivot") as Node3D
+	if pivot == null:
+		return
+	var old := pivot.get_node_or_null("CharModel")
+	if old != null:
+		pivot.remove_child(old)
+		old.queue_free()
+	var model: Node3D = null
+	var reg = _get_registry()
+	if reg != null and char_id != "":
+		model = reg.build_fitted(char_id, CHAR_HEIGHT)
+	if model != null:
+		model.name = "CharModel"
+		model.position = Vector3(0.0, CHAR_FOOT_Y, 0.0)
+		pivot.add_child(model)
+	for c in pivot.get_children():
+		if c is MeshInstance3D:
+			(c as MeshInstance3D).visible = model == null
+
+
+func _on_character_changed(peer_id: int) -> void:
+	var node = _remotes.get(peer_id)
+	if node != null and is_instance_valid(node):
+		_apply_character(node, NetManager.get_character(peer_id))
+
+
+## Small walking bob while a remote player is moving (the models have no animations).
+func _bob_remote(node: Node3D, target: Dictionary, state: int) -> void:
+	var pivot := node.get_node_or_null("Pivot") as Node3D
+	if pivot == null:
+		return
+	var model := pivot.get_node_or_null("CharModel") as Node3D
+	if model == null:
+		return
+	var moving: bool = state == 0 and node.global_position.distance_to(target["pos"]) > 0.08
+	var secs: float = float(Time.get_ticks_msec()) / 1000.0
+	var bob: float = absf(sin(secs * 10.0)) * 0.07 if moving else 0.0
+	model.position.y = lerpf(model.position.y, CHAR_FOOT_Y + bob, 0.4)
+
+
 func _process(delta: float) -> void:
 	var t: float = clampf(delta * 15.0, 0.0, 1.0)
 	for id in _remotes.keys():
@@ -293,6 +355,7 @@ func _process(delta: float) -> void:
 		if pivot != null:
 			pivot.rotation.x = lerp_angle(pivot.rotation.x, -PI * 0.5 if state == 1 else 0.0, t)
 			pivot.position.y = lerpf(pivot.position.y, -0.5 if state == 1 else 0.0, t)
+		_bob_remote(node, target, state)
 		var tag := node.get_node_or_null("Tag") as Label3D
 		if tag != null:
 			tag.text = _tag_text(id, target)
