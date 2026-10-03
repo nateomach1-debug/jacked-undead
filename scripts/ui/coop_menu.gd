@@ -138,7 +138,7 @@ func _refresh_ip() -> void:
 
 
 func _refresh_map() -> void:
-	_map_button.text = "MAP: " + str(MAPS[_map_index]["title"])
+	_map_button.text = "MAP: " + str(_maps()[_map_index % _maps().size()]["title"])
 
 
 func _refresh_name_button() -> void:
@@ -231,13 +231,12 @@ func _on_join() -> void:
 
 
 func _on_map() -> void:
-	_map_index = (_map_index + 1) % MAPS.size()
+	_map_index = (_map_index + 1) % _maps().size()
 	_refresh_map()
 
 
 func _on_start() -> void:
-	NetManager.start_game_on(str(MAPS[_map_index]["path"]))
-
+	NetManager.start_game_on(str(_maps()[_map_index % _maps().size()]["path"]))
 
 func _on_back() -> void:
 	NetManager.leave()
@@ -265,3 +264,21 @@ func _add_quick_ip_buttons(parent: Control) -> void:
 func _on_quick_ip(prefix: String) -> void:
 	_ip = prefix
 	_refresh_ip()
+
+
+const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
+
+var _map_config = null
+
+
+## Co-op maps from map_config.gd (falls back to the MAPS list above if it's missing).
+func _maps() -> Array:
+	if _map_config == null:
+		var cfg_script = load(MAP_CONFIG_PATH)
+		if cfg_script != null:
+			_map_config = cfg_script.new()
+	if _map_config != null:
+		var list: Array = _map_config.get_enabled_maps()
+		if not list.is_empty():
+			return list
+	return MAPS
