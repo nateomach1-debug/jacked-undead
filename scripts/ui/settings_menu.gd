@@ -1,15 +1,15 @@
 extends Control
 ## Settings screen opened from OPTIONS: look speeds, field of view, sprint mode.
+## Values change with - / + buttons (easy on touch and with a controller).
 
 const SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
 const ROWS: Array = [
-	{"key": "touch_look", "title": "Touch look speed", "min": 0.5, "max": 2.0, "step": 0.05, "fmt": "x%.2f"},
-	{"key": "pad_look", "title": "Gamepad look speed", "min": 90.0, "max": 400.0, "step": 10.0, "fmt": "%d deg/s"},
-	{"key": "fov", "title": "Field of view", "min": 60.0, "max": 110.0, "step": 1.0, "fmt": "%d"},
+	{"key": "touch_look", "title": "Touch look speed", "min": 0.5, "max": 2.0, "step": 0.1, "fmt": "x%.1f"},
+	{"key": "pad_look", "title": "Gamepad look speed", "min": 90.0, "max": 400.0, "step": 20.0, "fmt": "%d deg/s"},
+	{"key": "fov", "title": "Field of view", "min": 60.0, "max": 110.0, "step": 5.0, "fmt": "%d"},
 ]
 
 var _settings = null
-var _sliders: Dictionary = {}
 var _labels: Dictionary = {}
 var _sprint_button: Button
 
@@ -46,7 +46,7 @@ func _ready() -> void:
 		vbox.add_child(err)
 	else:
 		for row in ROWS:
-			_add_slider_row(vbox, row)
+			_add_stepper_row(vbox, row)
 		_sprint_button = _make_button("", _on_sprint_mode)
 		vbox.add_child(_sprint_button)
 		_refresh_sprint_button()
@@ -57,56 +57,63 @@ func _ready() -> void:
 func _make_button(label: String, callback: Callable) -> Button:
 	var b := Button.new()
 	b.text = label
-	b.custom_minimum_size = Vector2(500, 70)
+	b.custom_minimum_size = Vector2(560, 70)
 	b.add_theme_font_size_override("font_size", 26)
 	b.pressed.connect(callback)
 	return b
 
 
-func _add_slider_row(parent: Control, row: Dictionary) -> void:
+func _add_stepper_row(parent: Control, row: Dictionary) -> void:
 	var key: String = row["key"]
 	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 16)
+	box.add_theme_constant_override("separation", 12)
 	parent.add_child(box)
 
 	var name_label := Label.new()
 	name_label.text = str(row["title"])
-	name_label.custom_minimum_size = Vector2(340, 0)
+	name_label.custom_minimum_size = Vector2(300, 0)
 	name_label.add_theme_font_size_override("font_size", 26)
 	box.add_child(name_label)
 
-	var slider := HSlider.new()
-	slider.min_value = float(row["min"])
-	slider.max_value = float(row["max"])
-	slider.step = float(row["step"])
-	slider.custom_minimum_size = Vector2(460, 56)
-	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	slider.value = _settings.get_value(key)
-	box.add_child(slider)
+	box.add_child(_step_button("-", key, -1))
 
 	var value_label := Label.new()
-	value_label.custom_minimum_size = Vector2(150, 0)
-	value_label.add_theme_font_size_override("font_size", 26)
+	value_label.custom_minimum_size = Vector2(170, 0)
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	value_label.add_theme_font_size_override("font_size", 28)
 	box.add_child(value_label)
-
-	_sliders[key] = slider
 	_labels[key] = value_label
+
+	box.add_child(_step_button("+", key, 1))
 	_update_label(key)
-	slider.value_changed.connect(_on_slider.bind(key))
+
+
+func _step_button(text: String, key: String, dir: int) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(90, 70)
+	b.add_theme_font_size_override("font_size", 36)
+	b.pressed.connect(_on_step.bind(key, dir))
+	return b
+
+
+func _on_step(key: String, dir: int) -> void:
+	for row in ROWS:
+		if row["key"] == key:
+			var step: float = float(row["step"])
+			var v: float = _settings.get_value(key) + float(dir) * step
+			v = snappedf(clampf(v, float(row["min"]), float(row["max"])), step / 10.0)
+			_settings.set_value(key, v)
+	_update_label(key)
 
 
 func _update_label(key: String) -> void:
 	for row in ROWS:
 		if row["key"] == key:
-			var v: float = (_sliders[key] as HSlider).value
+			var v: float = _settings.get_value(key)
 			var fmt: String = row["fmt"]
 			var shown: String = (fmt % v) if fmt.contains("%.") else (fmt % int(v))
 			(_labels[key] as Label).text = shown
-
-
-func _on_slider(value: float, key: String) -> void:
-	_settings.set_value(key, value)
-	_update_label(key)
 
 
 func _on_sprint_mode() -> void:
@@ -122,8 +129,7 @@ func _refresh_sprint_button() -> void:
 
 func _on_reset() -> void:
 	_settings.reset()
-	for key in _sliders.keys():
-		(_sliders[key] as HSlider).value = _settings.get_value(key)
+	for key in _labels.keys():
 		_update_label(key)
 	_refresh_sprint_button()
 
