@@ -119,7 +119,7 @@ func reset_run() -> void:
 # ---------- developer settings ----------
 
 func dev_get(key: String) -> float:
-	if dev_override.has(key) and multiplayer.has_multiplayer_peer():
+	if dev_override.has(key) and _online():
 		return float(dev_override[key])
 	return float(dev.get(key, DEV_DEFAULTS.get(key, 0.0)))
 
@@ -189,3 +189,9 @@ func dev_apply_override(settings: Dictionary) -> void:
 	dev_override = settings.duplicate()
 	_apply_nav_debug()
 	dev_settings_changed.emit()
+
+
+## True only while connected through a real network peer (not the default offline one).
+func _online() -> bool:
+	var peer: MultiplayerPeer = multiplayer.multiplayer_peer
+	return peer != null and not (peer is OfflineMultiplayerPeer)
