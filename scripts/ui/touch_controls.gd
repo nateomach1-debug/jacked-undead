@@ -13,6 +13,7 @@ var _sprint_on: bool = false
 
 func _ready() -> void:
 	add_to_group("touch_ui")
+	call_deferred("_maybe_show_tutorial")
 	_bind(btn_jump, "jump")
 	_bind(btn_reload, "reload")
 	_bind(btn_use, "interact")
@@ -77,3 +78,20 @@ func _setup_sprint_button() -> void:
 		_bind(btn_sprint, "sprint")
 	else:
 		btn_sprint.pressed.connect(_on_sprint_pressed)
+
+
+## First time only: shows the tutorial overlay (skipped if its script is missing).
+func _maybe_show_tutorial() -> void:
+	var settings_script = load("res://scripts/managers/game_settings.gd")
+	if settings_script == null:
+		return
+	var s = settings_script.new()
+	if s.get_value("tutorial_seen") > 0.5:
+		return
+	var tutorial_script = load("res://scripts/ui/tutorial_overlay.gd")
+	var scene: Node = get_tree().current_scene
+	if tutorial_script == null or scene == null:
+		return
+	var overlay := CanvasLayer.new()
+	overlay.set_script(tutorial_script)
+	scene.add_child(overlay)
