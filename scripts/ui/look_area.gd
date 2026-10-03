@@ -14,6 +14,7 @@ var _shoot_knob_offset: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	add_to_group("touch_ui")
+	_load_look_multiplier()
 	_player = get_tree().get_first_node_in_group("player")
 
 
@@ -23,7 +24,7 @@ func _gui_input(event: InputEvent) -> void:
 
 	if event is InputEventScreenDrag:
 		if _player and _player.has_method("apply_look_delta"):
-			_player.apply_look_delta(event.relative, TOUCH_LOOK_SENSITIVITY)
+			_player.apply_look_delta(event.relative, TOUCH_LOOK_SENSITIVITY * _look_mult)
 		if event.index == _shoot_touch_index:
 			var offset: Vector2 = event.position - _shoot_origin
 			if offset.length() > STICK_VISUAL_RADIUS:
@@ -54,3 +55,13 @@ func _draw() -> void:
 		return
 	draw_circle(_shoot_origin, STICK_VISUAL_RADIUS, Color(1, 1, 1, 0.15))
 	draw_circle(_shoot_origin + _shoot_knob_offset, STICK_KNOB_RADIUS, Color(1, 1, 1, 0.35))
+
+
+var _look_mult: float = 1.0
+
+
+func _load_look_multiplier() -> void:
+	var script = load("res://scripts/managers/game_settings.gd")
+	if script != null:
+		var s = script.new()
+		_look_mult = float(s.get_value("touch_look"))
