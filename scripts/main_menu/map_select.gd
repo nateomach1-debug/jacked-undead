@@ -15,18 +15,38 @@ const EXTRA_MAPS: Array = [
 @onready var placeholder_label: Label = $CenterContainer/VBox/PlaceholderLabel
 
 
+const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
+
+var _config = null
+
+
 func _ready() -> void:
+	var cfg_script = load(MAP_CONFIG_PATH)
+	if cfg_script != null:
+		_config = cfg_script.new()
 	placeholder_label.visible = false
+	arena_button.visible = _map_enabled("arena")
+	building_button.visible = _map_enabled("building")
 	arena_button.pressed.connect(_on_arena_pressed)
 	building_button.pressed.connect(_on_building_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 	_add_extra_map_buttons()
 
 
+func _map_enabled(id: String) -> bool:
+	return _config == null or _config.is_enabled(id)
+
+
+func _extra_maps() -> Array:
+	if _config == null:
+		return EXTRA_MAPS
+	return _config.get_extra_maps()
+
+
 func _add_extra_map_buttons() -> void:
 	var vbox: Node = building_button.get_parent()
 	var insert_at: int = building_button.get_index() + 1
-	for m in EXTRA_MAPS:
+	for m in _extra_maps():
 		var b := Button.new()
 		b.text = m["title"]
 		b.custom_minimum_size = Vector2(340, 90)
