@@ -601,8 +601,9 @@ func switch_weapon(direction: int = 1) -> void:
 ## Called by the PR Rack (Pack-a-Punch) station.
 func apply_pr_upgrade() -> void:
 	if current_weapon and current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
-		equip_weapon(current_weapon.get_pr_upgraded_copy())
-
+		var upgraded: WeaponData = current_weapon.get_pr_upgraded_copy()
+		_apply_attachments(upgraded)
+		equip_weapon(upgraded)
 
 ## True once this weapon (by base name, so PR-upgraded copies still
 ## count) has ever been bought. Used by wall-buy stations to decide
@@ -780,8 +781,8 @@ func _set_stamina(value: float) -> void:
 func _ads_zoom() -> float:
 	if current_weapon == null:
 		return ADS_DEFAULT_ZOOM
-	return float(ADS_ZOOM_BY_NAME.get(current_weapon.get_base_name().to_lower(), ADS_DEFAULT_ZOOM))
-
+	var zoom: float = float(ADS_ZOOM_BY_NAME.get(current_weapon.get_base_name().to_lower(), ADS_DEFAULT_ZOOM))
+	return zoom * float(current_weapon.get_meta("ads_zoom_mult", 1.0))
 
 func _is_scope_weapon() -> bool:
 	return current_weapon != null and SCOPE_WEAPONS.has(current_weapon.get_base_name().to_lower())
@@ -858,3 +859,31 @@ func _settings_fov() -> float:
 		return camera.fov
 	var s = script.new()
 	return clampf(float(s.get_value("fov")), 50.0, 120.0)
+
+
+var _attach_root: Node3D = null
+
+
+## Applies the gun's equipped attachments to a freshly PR-upgraded copy.
+func _apply_attachments(w: WeaponData) -> void:
+	var script = load("res://scripts/weapons/attachments.gd")
+	if script == null:
+		return
+	var registry = script.new()
+	registry.apply_to(w)
+
+
+## Draws the attachments on the first-person gun model.
+func _add_attachment_visuals() -> void:
+	if current_weapon == null or _current_model == null:
+		return
+	var loadout = current_weapon.get_meta("attachments", {})
+	if not (loadout is Dictionary) or loadout.is_empty():
+		return
+	var script = load("res://scripts/weapons/attachment_models.gd")
+	if script == null:
+		return
+	var builder = script.new()
+	_attach_root = builder.build_for(_current_model, loadout, current_weapon.get_base_name())
+	if _attach_root != null:
+		weapon_mount.add_child(_attach_root)
