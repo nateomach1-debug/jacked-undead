@@ -18,6 +18,7 @@ func _ready() -> void:
 	_bind(btn_use, "interact")
 	btn_sprint.pressed.connect(_on_sprint_pressed)
 	btn_switch.pressed.connect(_on_switch_pressed)
+	_add_aim_button()
 	_player = get_tree().get_first_node_in_group("player")
 
 
@@ -44,3 +45,22 @@ func _process(_delta: float) -> void:
 func _bind(button: Button, action: String) -> void:
 	button.button_down.connect(func(): Input.action_press(action))
 	button.button_up.connect(func(): Input.action_release(action))
+
+
+func _add_aim_button() -> void:
+	if not InputMap.has_action("aim"):
+		InputMap.add_action("aim", 0.5)
+	var aim := Button.new()
+	aim.text = "AIM"
+	aim.focus_mode = Control.FOCUS_NONE
+	aim.add_theme_font_size_override("font_size", 28)
+	aim.anchor_left = 1.0
+	aim.anchor_top = 1.0
+	aim.anchor_right = 1.0
+	aim.anchor_bottom = 1.0
+	aim.offset_left = -170.0
+	aim.offset_top = -500.0
+	aim.offset_right = -20.0
+	aim.offset_bottom = -350.0
+	_bind(aim, "aim")
+	btn_use.get_parent().add_child(aim)
