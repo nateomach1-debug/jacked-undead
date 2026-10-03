@@ -1,5 +1,5 @@
 extends RefCounted
-## Saved player profile (user://profile.cfg): Juice, lifetime stats, owned items.
+## Saved player profile (user://profile.cfg): Juice, lifetime stats, owned items, gun loadouts.
 ## Other scripts load this with load() + a null check, so a problem here can't break the game.
 
 const FILE: String = "user://profile.cfg"
@@ -10,7 +10,8 @@ var total_kills: int = 0
 var total_headshots: int = 0
 var best_round: int = 0
 var runs: int = 0
-var owned: Array = []   # ids of bought / unlocked items (used by the market later)
+var owned: Array = []        # ids of bought / unlocked items (used by the market later)
+var loadouts: Dictionary = {}   # base gun name -> {slot: attachment id}
 
 
 func _init() -> void:
@@ -25,6 +26,9 @@ func _init() -> void:
 	var saved = cfg.get_value("profile", "owned", [])
 	if saved is Array:
 		owned = saved
+	var saved_loadouts = cfg.get_value("profile", "loadouts", {})
+	if saved_loadouts is Dictionary:
+		loadouts = saved_loadouts
 
 
 func get_juice() -> int:
@@ -67,6 +71,25 @@ func add_item(id: String) -> void:
 		save()
 
 
+## The attachments equipped on a gun: {slot: id} (empty if none).
+func get_loadout(gun: String) -> Dictionary:
+	var l = loadouts.get(gun, {})
+	if l is Dictionary:
+		return l.duplicate()
+	return {}
+
+
+## Equips an attachment in a slot (pass id = "" to empty the slot).
+func set_attachment(gun: String, slot: String, id: String) -> void:
+	var l: Dictionary = get_loadout(gun)
+	if id == "":
+		l.erase(slot)
+	else:
+		l[slot] = id
+	loadouts[gun] = l
+	save()
+
+
 func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("profile", "juice", juice)
@@ -75,4 +98,5 @@ func save() -> void:
 	cfg.set_value("profile", "best_round", best_round)
 	cfg.set_value("profile", "runs", runs)
 	cfg.set_value("profile", "owned", owned)
+	cfg.set_value("profile", "loadouts", loadouts)
 	cfg.save(FILE)
