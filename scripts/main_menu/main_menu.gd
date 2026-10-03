@@ -19,6 +19,7 @@ func _ready() -> void:
 	_add_character_picker()
 	_add_dev_button()
 	_add_coop_button()
+	_add_weapons_button()
 	_add_juice_label()
 
 
@@ -141,3 +142,25 @@ func _add_juice_label() -> void:
 	add_child(label)
 	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
 	label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+
+
+## Adds a WEAPONS button to the main menu, just below CO-OP.
+func _add_weapons_button() -> void:
+	var vbox: Node = start_button.get_parent()
+	var b := Button.new()
+	b.text = "WEAPONS"
+	b.custom_minimum_size = start_button.custom_minimum_size
+	b.add_theme_font_size_override("font_size", 26)
+	b.pressed.connect(_on_weapons_pressed)
+	vbox.add_child(b)
+	vbox.move_child(b, start_button.get_index() + 2)
+
+
+func _on_weapons_pressed() -> void:
+	var menu_script = load("res://scripts/ui/weapon_gallery.gd")
+	if menu_script == null:
+		push_warning("weapon_gallery.gd is missing or broken.")
+		return
+	var menu := Control.new()
+	menu.set_script(menu_script)
+	add_child(menu)
