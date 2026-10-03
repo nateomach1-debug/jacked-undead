@@ -194,7 +194,8 @@ var _round_manager_ref: Node = null
 func start_game_on(map_path: String) -> void:
 	if not is_host:
 		return
-	_load_map_coop.rpc(map_path)
+	_apply_host_dev.rpc(GameManager.dev)
+	_load_map_coop.rpc(map_path))
 
 
 @rpc("authority", "call_local", "reliable")
@@ -397,3 +398,9 @@ func _is_tailscale_ip(a: String) -> bool:
 		return false
 	var second: int = int(parts[1])
 	return second >= 64 and second <= 127
+
+
+## Host sends its developer settings so everyone plays with the same prices and damage.
+@rpc("authority", "call_local", "reliable")
+func _apply_host_dev(settings: Dictionary) -> void:
+	GameManager.dev_apply_override(settings)
