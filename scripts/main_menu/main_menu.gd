@@ -15,6 +15,7 @@ func _ready() -> void:
 	options_button.pressed.connect(_on_options_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
 	options_back_button.pressed.connect(_on_options_back_pressed)
+	_add_character_picker()
 	_add_dev_button()
 	_add_coop_button()
 
@@ -77,3 +78,16 @@ func _on_options_back_pressed() -> void:
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()
+
+
+## Adds the character picker (with preview) to the options panel, above DEVELOPER.
+func _add_character_picker() -> void:
+	var picker_script = load("res://scripts/ui/character_picker.gd")
+	if picker_script == null:
+		push_warning("character_picker.gd is missing or broken.")
+		return
+	var vbox: Node = options_back_button.get_parent()
+	var picker := VBoxContainer.new()
+	picker.set_script(picker_script)
+	vbox.add_child(picker)
+	vbox.move_child(picker, options_back_button.get_index())
