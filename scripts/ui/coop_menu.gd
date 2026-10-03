@@ -70,6 +70,7 @@ func _ready() -> void:
 		b.pressed.connect(_on_key.bind(key))
 		grid.add_child(b)
 
+	_add_quick_ip_buttons(left)
 	# Right side: status + name / host / join / map / start / back
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 12)
@@ -244,3 +245,22 @@ func _on_back() -> void:
 
 func _on_status(text: String) -> void:
 	_status.text = text
+
+
+## CLEAR empties the IP; 100. starts a Tailscale address.
+func _add_quick_ip_buttons(parent: Control) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	for item in [["CLEAR", ""], ["100.  ONLINE", "100."]]:
+		var b := Button.new()
+		b.text = str(item[0])
+		b.custom_minimum_size = Vector2(199, 64)
+		b.add_theme_font_size_override("font_size", 24)
+		b.pressed.connect(_on_quick_ip.bind(str(item[1])))
+		row.add_child(b)
+	parent.add_child(row)
+
+
+func _on_quick_ip(prefix: String) -> void:
+	_ip = prefix
+	_refresh_ip()
