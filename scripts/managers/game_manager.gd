@@ -119,10 +119,9 @@ func reset_run() -> void:
 # ---------- developer settings ----------
 
 func dev_get(key: String) -> float:
-	if NetManager.is_online and dev_override.has(key):
+	if dev_override.has(key) and multiplayer.has_multiplayer_peer():
 		return float(dev_override[key])
 	return float(dev.get(key, DEV_DEFAULTS.get(key, 0.0)))
-
 
 func dev_set(key: String, value: float) -> void:
 	dev[key] = value
