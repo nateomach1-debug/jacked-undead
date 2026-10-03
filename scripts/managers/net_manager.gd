@@ -13,6 +13,7 @@ var is_host: bool = false
 
 
 func _ready() -> void:
+	_load_character()
 	_load_player_name()
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -120,6 +121,7 @@ func _load_map(path: String) -> void:
 func _on_peer_connected(id: int) -> void:
 	if is_online:
 		_set_name.rpc_id(id, player_name)
+		_set_character.rpc_id(id, character_id)
 	if is_host:
 		status_changed.emit("Player %d joined. Players: %d\n%s" % [id, _player_count(), _address_text()])
 
@@ -335,3 +337,38 @@ func get_player_name(id: int) -> String:
 @rpc("any_peer", "call_remote", "reliable")
 func _set_name(new_name: String) -> void:
 	names[multiplayer.get_remote_sender_id()] = _clean_name(new_name)
+
+
+signal character_changed(peer_id: int)
+
+const CHARACTER_FILE: String = "user://character.cfg"
+
+var character_id: String = "Adventurer"   # this phone's chosen character
+var characters: Dictionary = {}            # peer id -> character id from the other phones
+
+
+func _load_character() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(CHARACTER_FILE) == OK:
+		character_id = str(cfg.get_value("player", "character", "Adventurer")).left(32)
+
+
+func set_character(new_id: String) -> void:
+	character_id = new_id.left(32)
+	var cfg := ConfigFile.new()
+	cfg.set_value("player", "character", character_id)
+	cfg.save(CHARACTER_FILE)
+	if is_online:
+		_set_character.rpc(character_id)
+
+
+func get_character(peer_id: int) -> String:
+	var own: bool = is_online and peer_id == multiplayer.get_unique_id()
+	return character_id if own else str(characters.get(peer_id, ""))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _set_character(new_id: String) -> void:
+	var id: int = multiplayer.get_remote_sender_id()
+	characters[id] = new_id.left(32)
+	character_changed.emit(id)
