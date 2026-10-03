@@ -6,9 +6,9 @@ const ENABLED: Dictionary = {
 	"arena": true,
 	"building": true,
 	"multi_room": true,
-	"gym_compound": true,
+	"gym_compound": false,
 	"challenge": true,
-	"deadfall": true,
+	"deadfall": false,
 }
 
 # coop = also offered on the Co-op host screen.
