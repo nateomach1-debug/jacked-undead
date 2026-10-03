@@ -30,7 +30,7 @@ func _ready() -> void:
 	_build_pages()
 	_build_ui()
 	# Solo play pauses behind the tutorial; in co-op the game can't wait.
-	if not multiplayer.has_multiplayer_peer():
+	if not _is_online():
 		get_tree().paused = true
 		_paused_by_me = true
 	await get_tree().process_frame
@@ -226,3 +226,9 @@ func _rect_for(kind: String):
 			if found:
 				return merged.grow(10.0)
 	return null
+
+
+## True only while connected through a real network peer (not the default offline one).
+func _is_online() -> bool:
+	var peer: MultiplayerPeer = multiplayer.multiplayer_peer
+	return peer != null and not (peer is OfflineMultiplayerPeer)
