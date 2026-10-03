@@ -40,6 +40,16 @@ func _build_extra_ui() -> void:
 	vbox.add_child(_board)
 	vbox.move_child(_board, round_label.get_index() + 1)
 
+	# Gold block listing any developer settings that differ from the defaults.
+	_dev_label = Label.new()
+	_dev_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_dev_label.add_theme_font_size_override("font_size", 22)
+	_dev_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	_dev_label.visible = false
+	vbox.add_child(_dev_label)
+	vbox.move_child(_dev_label, _board.get_index() + 1)
+	GameManager.player_died.connect(_refresh_dev_label)
+
 
 func _on_player_died() -> void:
 	var coop: bool = NetManager.is_online
@@ -118,3 +128,39 @@ func _on_menu_pressed() -> void:
 	NetManager.leave()
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
+
+
+var _dev_label: Label = null
+
+const DEV_LINES: Array = [
+	{"key": "zombie_damage", "title": "Zombie damage", "kind": "flat", "unit": " HP/hit"},
+	{"key": "locker_cost", "title": "Loot Locker cost", "kind": "flat", "unit": " Gains"},
+	{"key": "pr_cost", "title": "PR Rack cost", "kind": "flat", "unit": " Gains"},
+	{"key": "wall_scale", "title": "Wall buy prices", "kind": "pct", "unit": ""},
+	{"key": "supp_scale", "title": "Supplement prices", "kind": "pct", "unit": ""},
+]
+
+
+## Shows only the developer settings that differ from the defaults.
+func _refresh_dev_label() -> void:
+	if _dev_label == null:
+		return
+	var lines := PackedStringArray()
+	for row in DEV_LINES:
+		var key: String = row["key"]
+		var now: float = GameManager.dev_get(key)
+		var base: float = float(GameManager.DEV_DEFAULTS.get(key, 0.0))
+		if is_equal_approx(now, base):
+			continue
+		var shown: String
+		if row["kind"] == "pct":
+			shown = "%d%%" % int(round(now * 100.0))
+		else:
+			shown = "%d%s" % [int(now), row["unit"]]
+		lines.append("%s: %s" % [row["title"], shown])
+	_dev_label.visible = not lines.is_empty()
+	if not lines.is_empty():
+		var header: String = "CUSTOM DEV SETTINGS"
+		if NetManager.is_online:
+			header += " (this phone)"
+		_dev_label.text = header + "\n" + "\n".join(lines)
