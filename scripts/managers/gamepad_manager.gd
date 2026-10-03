@@ -52,6 +52,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
 		_set_active(false)
 		return
+	var had_focus: bool = get_viewport().gui_get_focus_owner() != null
 	var used: bool = false
 	if event is InputEventJoypadButton and event.pressed:
 		used = true
@@ -62,6 +63,10 @@ func _input(event: InputEvent) -> void:
 		_set_active(true)
 	if used and not _in_game():
 		_ensure_menu_focus()
+		# A presses the focused menu button directly (the engine's accept wasn't reaching it).
+		if event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A and had_focus:
+			_press_focused_button()
+			get_viewport().set_input_as_handled()
 
 
 func _set_active(on: bool) -> void:
@@ -143,3 +148,11 @@ func _find_button(node: Node) -> Button:
 		if found != null:
 			return found
 	return null
+
+
+func _press_focused_button() -> void:
+	var f: Control = get_viewport().gui_get_focus_owner()
+	if f is BaseButton:
+		var b := f as BaseButton
+		if not b.disabled:
+			b.pressed.emit()
