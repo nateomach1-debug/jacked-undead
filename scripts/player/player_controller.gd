@@ -673,6 +673,9 @@ func _update_weapon_model() -> void:
 	if _current_model:
 		_current_model.queue_free()
 		_current_model = null
+	if _attach_root:
+		_attach_root.queue_free()
+		_attach_root = null
 	if current_weapon:
 		var model: Node3D = current_weapon.create_model()
 		if model:
@@ -681,6 +684,7 @@ func _update_weapon_model() -> void:
 			if not current_weapon.model_scene:
 				# Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
 				_current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
+			_add_attachment_visuals()
 
 
 func _try_interact() -> void:
