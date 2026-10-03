@@ -16,7 +16,7 @@ func _ready() -> void:
 	_bind(btn_jump, "jump")
 	_bind(btn_reload, "reload")
 	_bind(btn_use, "interact")
-	btn_sprint.pressed.connect(_on_sprint_pressed)
+	_setup_sprint_button()
 	btn_switch.pressed.connect(_on_switch_pressed)
 	_add_aim_button()
 	_player = get_tree().get_first_node_in_group("player")
@@ -64,3 +64,16 @@ func _add_aim_button() -> void:
 	aim.offset_bottom = -350.0
 	_bind(aim, "aim")
 	btn_use.get_parent().add_child(aim)
+
+
+## Sprint button: toggle (tap on/off) or hold, per the Settings screen.
+func _setup_sprint_button() -> void:
+	var hold: bool = false
+	var script = load("res://scripts/managers/game_settings.gd")
+	if script != null:
+		var s = script.new()
+		hold = s.get_value("sprint_hold") > 0.5
+	if hold:
+		_bind(btn_sprint, "sprint")
+	else:
+		btn_sprint.pressed.connect(_on_sprint_pressed)
