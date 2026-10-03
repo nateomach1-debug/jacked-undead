@@ -4,10 +4,11 @@ extends RefCounted
 
 const FILE: String = "user://settings.cfg"
 const DEFAULTS: Dictionary = {
-	"touch_look": 1.0,    # multiplier on touch look speed
-	"pad_look": 200.0,    # gamepad look speed, degrees per second
-	"fov": 80.0,          # field of view in degrees
-	"sprint_hold": 0.0,   # 0 = toggle, 1 = hold
+	"touch_look": 1.0,      # multiplier on touch look speed
+	"pad_look": 200.0,      # gamepad look speed, degrees per second
+	"fov": 80.0,            # field of view in degrees
+	"sprint_hold": 0.0,     # 0 = toggle, 1 = hold
+	"tutorial_seen": 0.0,   # 1 = the first-time tutorial has been shown
 }
 
 var values: Dictionary = DEFAULTS.duplicate()
@@ -30,7 +31,9 @@ func set_value(key: String, v: float) -> void:
 
 
 func reset() -> void:
+	var seen: float = get_value("tutorial_seen")
 	values = DEFAULTS.duplicate()
+	values["tutorial_seen"] = seen
 	save()
 
 
