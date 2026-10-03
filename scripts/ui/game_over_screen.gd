@@ -162,5 +162,5 @@ func _refresh_dev_label() -> void:
 	if not lines.is_empty():
 		var header: String = "CUSTOM DEV SETTINGS"
 		if NetManager.is_online:
-			header += " (this phone)"
+			header += " (host's settings)"
 		_dev_label.text = header + "\n" + "\n".join(lines)
