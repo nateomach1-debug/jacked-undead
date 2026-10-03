@@ -22,7 +22,7 @@ func _ready() -> void:
 	_add_button("jump", JOY_BUTTON_A)
 	_add_button("reload", JOY_BUTTON_X)
 	_add_button("interact", JOY_BUTTON_B)
-
+	_add_axis("aim", JOY_AXIS_TRIGGER_LEFT, 1.0)
 
 func _ensure_action(action: String) -> void:
 	if not InputMap.has_action(action):
