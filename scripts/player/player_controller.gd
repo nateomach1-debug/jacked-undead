@@ -420,6 +420,8 @@ func fire_once_if_ready() -> void:
 
 
 func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
+	if _setting_value("hit_markers", 1.0) < 0.5:
+		return
 	var marker: Node3D = HIT_MARKER_SCENE.instantiate()
 	_tint_hit_marker.call_deferred(marker, is_headshot)
 	if is_headshot and marker.has_method("set_headshot"):
@@ -790,7 +792,8 @@ func _ads_zoom() -> float:
 	if current_weapon == null:
 		return ADS_DEFAULT_ZOOM
 	var zoom: float = float(ADS_ZOOM_BY_NAME.get(current_weapon.get_base_name().to_lower(), ADS_DEFAULT_ZOOM))
-	return zoom * float(current_weapon.get_meta("ads_zoom_mult", 1.0))
+		var total_zoom: float = zoom * float(current_weapon.get_meta("ads_zoom_mult", 1.0))
+	return 1.0 + (total_zoom - 1.0) * _setting_value("ads_zoom", 100.0) / 100.0
 
 func _is_scope_weapon() -> bool:
 	return current_weapon != null and SCOPE_WEAPONS.has(current_weapon.get_base_name().to_lower())
@@ -798,8 +801,8 @@ func _is_scope_weapon() -> bool:
 
 ## Look speed shrinks as you zoom in.
 func _look_scale() -> float:
-	return 1.0 / lerpf(1.0, _ads_zoom(), _aim_blend)
-
+		var ads_sens: float = lerpf(1.0, _setting_value("ads_sens", 100.0) / 100.0, _aim_blend)
+	return ads_sens / lerpf(1.0, _ads_zoom(), _aim_blend)
 
 func _update_ads(delta: float) -> void:
 	if not _ads_ready:
@@ -1034,3 +1037,21 @@ func _reticle_kind_for(optic: String) -> String:
 			kind = chosen
 	_reticle_kind_cache[optic] = kind
 	return kind
+
+
+# ---------- settings values ----------
+
+var _game_settings = null
+var _game_settings_tried: bool = false
+
+
+## A number from the Settings screen (loaded once; falls back if the script is missing).
+func _setting_value(key: String, fallback: float) -> float:
+	if not _game_settings_tried:
+		_game_settings_tried = true
+		var script = load("res://scripts/managers/game_settings.gd")
+		if script != null:
+			_game_settings = script.new()
+	if _game_settings == null:
+		return fallback
+	return float(_game_settings.get_value(key))
