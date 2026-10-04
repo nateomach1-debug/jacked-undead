@@ -168,6 +168,7 @@ func apply_look_delta(delta: Vector2, sensitivity: float = MOUSE_SENSITIVITY) ->
 
 func _physics_process(delta: float) -> void:
 	_update_ads(delta)
+	_update_reticle()
 	_handle_movement(delta)
 	_handle_shooting(delta)
 	_handle_regen(delta)
@@ -945,3 +946,47 @@ func _tint_hit_marker(marker: Node3D, is_headshot: bool) -> void:
 func _track_weapon() -> void:
 	if current_weapon != null:
 		GameManager.last_weapon = current_weapon.get_base_name()
+
+
+# ---------- optic reticle ----------
+
+const RETICLE_OVERLAY_PATH: String = "res://scripts/ui/reticle_overlay.gd"
+const RETICLES_PATH: String = "res://scripts/ui/reticles.gd"
+
+var _reticle_layer: CanvasLayer = null
+var _reticle_ctrl = null
+var _reticle_lib = null
+var _reticle_tried: bool = false
+
+
+func _build_reticle() -> void:
+	_reticle_tried = true
+	var overlay_script = load(RETICLE_OVERLAY_PATH)
+	var lib_script = load(RETICLES_PATH)
+	if overlay_script == null or lib_script == null:
+		return
+	_reticle_lib = lib_script.new()
+	_reticle_layer = CanvasLayer.new()
+	_reticle_layer.layer = 6
+	add_child(_reticle_layer)
+	var ctrl := Control.new()
+	ctrl.set_script(overlay_script)
+	_reticle_layer.add_child(ctrl)
+	_reticle_ctrl = ctrl
+
+
+## Shows the equipped optic's reticle while aiming (PR-upgraded guns with an optic only).
+func _update_reticle() -> void:
+	if not _reticle_tried:
+		_build_reticle()
+	if _reticle_ctrl == null:
+		return
+	var kind: String = ""
+	if current_weapon != null and _aim_blend > 0.0:
+		var loadout = current_weapon.get_meta("attachments", {})
+		if loadout is Dictionary:
+			var optic: String = str(loadout.get("optic", ""))
+			if optic != "":
+				kind = _reticle_lib.default_for(optic)
+	var amount: float = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
+	_reticle_ctrl.show_reticle(kind, amount)
