@@ -51,3 +51,11 @@ func owns_character(profile, id: String) -> bool:
 	if id == free_character():
 		return true
 	return profile != null and profile.has_item(character_key(id))
+
+
+func badge_key(id: String) -> String:
+	return "badge:" + id
+
+
+func owns_badge(profile, id: String) -> bool:
+	return profile != null and profile.has_item(badge_key(id))
