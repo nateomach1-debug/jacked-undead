@@ -19,8 +19,7 @@ func _ready() -> void:
 		add_child(_error_label("CHARACTER LIST FAILED TO LOAD"))
 		return
 	_reg = script.new()
-	_index = _reg.index_of(NetManager.character_id)
-
+	_index = _owned_or_first(_reg.index_of(NetManager.character_id))
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(row)
@@ -80,7 +79,7 @@ func _make_arrow(label: String, dir: int) -> Button:
 func _step(dir: int) -> void:
 	if _reg == null:
 		return
-	_index = posmod(_index + dir, _reg.count())
+	_index = _next_owned(_index, dir)
 	NetManager.set_character(_reg.id_at(_index))
 	_refresh()
 
@@ -107,3 +106,30 @@ func _error_label(text: String) -> Label:
 	l.text = text
 	l.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 	return l
+
+
+## True if character i is the free one or has been bought in the Market.
+func _owns(i: int) -> bool:
+	var market_script = load("res://scripts/managers/market.gd")
+	var profile_script = load("res://scripts/managers/profile.gd")
+	if market_script == null or profile_script == null:
+		return true
+	return market_script.new().owns_character(profile_script.new(), _reg.id_at(i))
+
+
+## The next owned character in the given direction (stays put if there is none).
+func _next_owned(from: int, dir: int) -> int:
+	var i: int = from
+	for _n in range(_reg.count()):
+		i = posmod(i + dir, _reg.count())
+		if _owns(i):
+			return i
+	return from
+
+
+## If the saved character is locked, switch to the free first one.
+func _owned_or_first(i: int) -> int:
+	if _owns(i):
+		return i
+	NetManager.set_character(_reg.id_at(0))
+	return 0
