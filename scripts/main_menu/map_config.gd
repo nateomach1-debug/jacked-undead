@@ -8,7 +8,7 @@ const ENABLED: Dictionary = {
 	"multi_room": true,
 	"gym_compound": false,
 	"challenge": true,
-	"deadfall": false,
+	"complex": true,
 }
 
 # coop = also offered on the Co-op host screen.
@@ -18,7 +18,7 @@ const MAPS: Array = [
 	{"id": "multi_room", "title": "MULTI-ROOM", "path": "res://scenes/main/multi_room_map.tscn", "coop": true},
 	{"id": "gym_compound", "title": "GYM COMPOUND", "path": "res://scenes/main/gym_compound.tscn", "coop": true},
 	{"id": "challenge", "title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn", "coop": true},
-	{"id": "deadfall", "title": "DEADFALL COMPLEX", "path": "res://scenes/main/deadfall_complex_mega.tscn", "coop": false},
+	{"id": "complex", "title": "COMPLEX", "path": "res://scenes/main/complex.tscn", "coop": false},
 ]
 
 
