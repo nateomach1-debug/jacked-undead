@@ -298,6 +298,7 @@ func _try_trigger() -> void:
 
 
 func _fire_shot() -> void:
+	_badge_flash()
 	current_mag_ammo -= 1
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 
@@ -418,6 +419,7 @@ func fire_once_if_ready() -> void:
 
 func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
 	var marker: Node3D = HIT_MARKER_SCENE.instantiate()
+	_tint_hit_marker.call_deferred(marker, is_headshot)
 	if is_headshot and marker.has_method("set_headshot"):
 		marker.set_headshot()
 	get_tree().current_scene.add_child(marker)
@@ -890,3 +892,49 @@ func _add_attachment_visuals() -> void:
 	_attach_root = builder.build_for(_current_model, loadout, current_weapon.get_base_name())
 	if _attach_root != null:
 		weapon_mount.add_child(_attach_root)
+
+
+# ---------- badge effects ----------
+
+const BADGE_FX_PATH: String = "res://scripts/effects/badge_effects.gd"
+const BADGE_FLASH_POS: Vector3 = Vector3(0.0, 0.05, -0.8)   # relative to weapon_mount; tune if off the barrel
+
+var _badge_fx = null
+var _badge_fx_tried: bool = false
+
+
+func _get_badge_fx():
+	if not _badge_fx_tried:
+		_badge_fx_tried = true
+		var script = load(BADGE_FX_PATH)
+		if script != null:
+			_badge_fx = script.new()
+	return _badge_fx
+
+
+## Badge effect: a tinted muzzle flash on my gun, also shown on other phones.
+func _badge_flash() -> void:
+	var fx = _get_badge_fx()
+	if fx == null:
+		return
+	var color: Color = fx.effect_color(NetManager.badge_id, "flash")
+	if color.a <= 0.0:
+		return
+	fx.flash(weapon_mount, BADGE_FLASH_POS, color)
+	var sync = get_tree().current_scene.get_node_or_null("CoopSync")
+	if sync != null and sync.has_method("send_shot"):
+		sync.send_shot()
+
+
+## Badge effect: recolors my hit markers (headshot markers keep their own color).
+func _tint_hit_marker(marker: Node3D, is_headshot: bool) -> void:
+	if is_headshot or marker == null or not is_instance_valid(marker):
+		return
+	var fx = _get_badge_fx()
+	if fx == null:
+		return
+	var color: Color = fx.effect_color(NetManager.badge_id, "hit")
+	if color.a <= 0.0:
+		return
+	var current: Color = marker.get("modulate")
+	marker.set("modulate", Color(color.r, color.g, color.b, current.a))
