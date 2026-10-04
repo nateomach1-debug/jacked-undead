@@ -20,7 +20,7 @@ func _ready() -> void:
 	_add_dev_button()
 	_add_coop_button()
 	_add_weapons_button()
-		_add_market_button()
+	_add_market_button()
 	_add_achievements_button()
 	_add_juice_label()
 
