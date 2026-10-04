@@ -1,10 +1,11 @@
 extends Control
-## Market: spend Juice on characters and attachments (badges come next).
+## Market: spend Juice on characters, attachments and badges.
 
 const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const MARKET_PATH: String = "res://scripts/managers/market.gd"
 const REGISTRY_PATH: String = "res://scripts/weapons/attachments.gd"
 const CHAR_REGISTRY_PATH: String = "res://scripts/managers/character_registry.gd"
+const BADGES_PATH: String = "res://scripts/managers/badges.gd"
 
 const STAT_LABELS: Dictionary = {
 	"damage_mult": "damage", "range_mult": "range", "spread_mult": "spread",
@@ -16,9 +17,11 @@ var _profile = null
 var _market = null
 var _reg = null      # attachments registry
 var _chars = null    # character registry
+var _badges = null   # badge registry
 var _juice_label: Label
 var _list: VBoxContainer
-var _rows: Array = []   # {"btn": Button, "kind": "att"/"char", "id": String, "cost": int}
+# {"btn": Button, "label": Label, "name": String, "kind": "att"/"char"/"badge", "id": String, "cost": int}
+var _rows: Array = []
 
 
 func _ready() -> void:
@@ -28,6 +31,7 @@ func _ready() -> void:
 	var market_script = load(MARKET_PATH)
 	var reg_script = load(REGISTRY_PATH)
 	var char_script = load(CHAR_REGISTRY_PATH)
+	var badge_script = load(BADGES_PATH)
 	if profile_script != null:
 		_profile = profile_script.new()
 	if market_script != null:
@@ -36,6 +40,8 @@ func _ready() -> void:
 		_reg = reg_script.new()
 	if char_script != null:
 		_chars = char_script.new()
+	if badge_script != null:
+		_badges = badge_script.new()
 	_build_ui()
 	_show_tab("attachments")
 
@@ -73,9 +79,9 @@ func _build_ui() -> void:
 	tabs.add_theme_constant_override("separation", 8)
 	outer.add_child(tabs)
 	var group := ButtonGroup.new()
-	tabs.add_child(_make_tab("CHARACTERS", false, group, "characters"))
-	tabs.add_child(_make_tab("ATTACHMENTS", false, group, "attachments"))
-	tabs.add_child(_make_tab("BADGES (SOON)", true, group, "badges"))
+	tabs.add_child(_make_tab("CHARACTERS", group, "characters"))
+	tabs.add_child(_make_tab("ATTACHMENTS", group, "attachments"))
+	tabs.add_child(_make_tab("BADGES", group, "badges"))
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -94,18 +100,16 @@ func _build_ui() -> void:
 	outer.add_child(back)
 
 
-func _make_tab(text: String, disabled: bool, group: ButtonGroup, tab_id: String) -> Button:
+func _make_tab(text: String, group: ButtonGroup, tab_id: String) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.disabled = disabled
 	b.toggle_mode = true
 	b.button_group = group
 	b.button_pressed = (tab_id == "attachments")
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.custom_minimum_size = Vector2(0, 56)
 	b.add_theme_font_size_override("font_size", 20)
-	if not disabled:
-		b.pressed.connect(_show_tab.bind(tab_id))
+	b.pressed.connect(_show_tab.bind(tab_id))
 	return b
 
 
@@ -126,6 +130,11 @@ func _show_tab(tab: String) -> void:
 			_error("CHARACTERS FAILED TO LOAD")
 		else:
 			_build_character_rows()
+	elif tab == "badges":
+		if _badges == null:
+			_error("BADGES FAILED TO LOAD")
+		else:
+			_build_badge_rows()
 	_update_buttons()
 
 
@@ -156,7 +165,15 @@ func _build_character_rows() -> void:
 		_add_row("char", id, _chars.title_at(i), "", _market.character_cost(id))
 
 
-func _add_row(kind: String, id: String, item_name: String, desc: String, cost: int) -> void:
+func _build_badge_rows() -> void:
+	for id in _badges.ids():
+		var bid: String = str(id)
+		_add_row("badge", bid, "%s %s" % [_badges.icon(bid), _badges.title(bid)],
+				_badges.description(bid), _badges.cost(bid), _badges.color(bid))
+
+
+func _add_row(kind: String, id: String, item_name: String, desc: String, cost: int,
+		tint: Color = Color(1, 1, 1)) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	_list.add_child(row)
@@ -167,12 +184,14 @@ func _add_row(kind: String, id: String, item_name: String, desc: String, cost: i
 	var name_l := Label.new()
 	name_l.text = item_name
 	name_l.add_theme_font_size_override("font_size", 24)
+	name_l.add_theme_color_override("font_color", tint)
 	info.add_child(name_l)
 	if desc != "":
 		var d := Label.new()
 		d.text = desc
 		d.add_theme_font_size_override("font_size", 16)
 		d.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		info.add_child(d)
 
 	var b := Button.new()
@@ -180,7 +199,7 @@ func _add_row(kind: String, id: String, item_name: String, desc: String, cost: i
 	b.add_theme_font_size_override("font_size", 20)
 	b.pressed.connect(_buy.bind(kind, id, cost))
 	row.add_child(b)
-	_rows.append({"btn": b, "kind": kind, "id": id, "cost": cost})
+	_rows.append({"btn": b, "label": name_l, "name": item_name, "kind": kind, "id": id, "cost": cost})
 
 
 ## "+20% range, +10% damage, -10% fire rate"
@@ -195,19 +214,27 @@ func _describe(mods: Dictionary) -> String:
 func _owned(kind: String, id: String) -> bool:
 	if kind == "char":
 		return _market.owns_character(_profile, id)
+	if kind == "badge":
+		return _market.owns_badge(_profile, id)
 	return _market.owns_attachment(_profile, id)
 
 
 func _key(kind: String, id: String) -> String:
 	if kind == "char":
 		return _market.character_key(id)
+	if kind == "badge":
+		return _market.badge_key(id)
 	return _market.attachment_key(id)
 
 
+## Buys the item. Owned badges toggle equipped instead.
 func _buy(kind: String, id: String, cost: int) -> void:
 	if _profile == null or _market == null:
 		return
 	if _owned(kind, id):
+		if kind == "badge":
+			NetManager.set_badge("" if NetManager.badge_id == id else id)
+			_update_buttons()
 		return
 	if _profile.spend_juice(cost):
 		_profile.add_item(_key(kind, id))
@@ -224,9 +251,20 @@ func _update_buttons() -> void:
 		return
 	for r in _rows:
 		var b: Button = r["btn"]
-		if _owned(str(r["kind"]), str(r["id"])):
-			b.text = "OWNED"
-			b.disabled = true
+		var kind: String = str(r["kind"])
+		var id: String = str(r["id"])
+		var label: Label = r["label"]
+		label.text = str(r["name"])
+		if _owned(kind, id):
+			if kind == "badge":
+				var equipped: bool = NetManager.badge_id == id
+				b.text = "UNEQUIP" if equipped else "EQUIP"
+				b.disabled = false
+				if equipped:
+					label.text = str(r["name"]) + "  (EQUIPPED)"
+			else:
+				b.text = "OWNED"
+				b.disabled = true
 		else:
 			b.text = "%d JUICE" % int(r["cost"])
 			b.disabled = juice < int(r["cost"])
