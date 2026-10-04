@@ -987,7 +987,7 @@ func _update_reticle() -> void:
 		if loadout is Dictionary:
 			var optic: String = str(loadout.get("optic", ""))
 			if optic != "":
-				kind = _reticle_lib.default_for(optic)
+							kind = _reticle_kind_for(optic)
 	var amount: float = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
 	_reticle_ctrl.show_reticle(kind, amount)
 	_hide_crosshair(kind != "" and amount > 0.0)
@@ -1017,3 +1017,20 @@ func _find_crosshair(node: Node) -> Node:
 		if found != null:
 			return found
 	return null
+
+
+var _reticle_kind_cache: Dictionary = {}   # optic id -> reticle kind (looked up once per run)
+
+
+## The reticle chosen for an optic in the gallery, or the optic's default.
+func _reticle_kind_for(optic: String) -> String:
+	if _reticle_kind_cache.has(optic):
+		return str(_reticle_kind_cache[optic])
+	var kind: String = _reticle_lib.default_for(optic)
+	var script = load("res://scripts/managers/achievements.gd")
+	if script != null:
+		var chosen: String = str(script.new().get_reticle(optic))
+		if chosen != "":
+			kind = chosen
+	_reticle_kind_cache[optic] = kind
+	return kind
