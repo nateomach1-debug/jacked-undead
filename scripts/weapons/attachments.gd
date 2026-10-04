@@ -15,13 +15,21 @@ const TEST_LOADOUT: Dictionary = {"optic": "red_dot", "barrel": "long_barrel", "
 # cost = Juice price (used by the market later).
 const ATTACHMENTS: Dictionary = {
 	"red_dot": {"name": "Red Dot", "slot": "optic", "cost": 150, "mods": {"ads_zoom_mult": 1.15}},
+	"holo": {"name": "Holo Sight", "slot": "optic", "cost": 300, "mods": {"ads_zoom_mult": 1.25}},
 	"scope_4x": {"name": "4x Scope", "slot": "optic", "cost": 400, "mods": {"ads_zoom_mult": 1.6}},
+	"scope_8x": {"name": "8x Scope", "slot": "optic", "cost": 800, "mods": {"ads_zoom_mult": 2.4, "fire_rate_mult": 0.95}},
 	"long_barrel": {"name": "Long Barrel", "slot": "barrel", "cost": 300, "mods": {"range_mult": 1.2, "damage_mult": 1.1, "fire_rate_mult": 0.9}},
 	"suppressor": {"name": "Suppressor", "slot": "barrel", "cost": 350, "mods": {"damage_mult": 0.9, "spread_mult": 0.8}},
+	"compensator": {"name": "Compensator", "slot": "barrel", "cost": 300, "mods": {"spread_mult": 0.85, "fire_rate_mult": 1.05}},
+	"heavy_barrel": {"name": "Heavy Barrel", "slot": "barrel", "cost": 450, "mods": {"damage_mult": 1.2, "fire_rate_mult": 0.85, "spread_mult": 1.1}},
 	"ext_mag": {"name": "Extended Mag", "slot": "magazine", "cost": 250, "mods": {"mag_mult": 1.4}},
 	"fast_mag": {"name": "Fast Mag", "slot": "magazine", "cost": 250, "mods": {"reload_speed_mult": 1.25}},
+	"drum_mag": {"name": "Drum Mag", "slot": "magazine", "cost": 450, "mods": {"mag_mult": 1.8, "reload_speed_mult": 0.8}},
+	"ammo_pouch": {"name": "Ammo Pouch", "slot": "magazine", "cost": 300, "mods": {"reserve_mult": 1.5}},
 	"foregrip": {"name": "Foregrip", "slot": "grip", "cost": 200, "mods": {"spread_mult": 0.75}},
 	"angled_grip": {"name": "Angled Grip", "slot": "grip", "cost": 200, "mods": {"fire_rate_mult": 1.08}},
+	"vertical_grip": {"name": "Vertical Grip", "slot": "grip", "cost": 250, "mods": {"spread_mult": 0.7, "fire_rate_mult": 0.95}},
+	"ergo_grip": {"name": "Ergo Grip", "slot": "grip", "cost": 250, "mods": {"reload_speed_mult": 1.15, "spread_mult": 0.9}},
 }
 
 
