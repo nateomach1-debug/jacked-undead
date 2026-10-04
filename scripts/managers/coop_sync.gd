@@ -160,7 +160,7 @@ func _make_remote(id: int) -> Node3D:
 
 
 func _tag_text(id: int, target: Dictionary) -> String:
-	var base: String = NetManager.get_player_name(id)
+	var base: String = _badge_prefix(id) + NetManager.get_player_name(id)
 	if int(target["state"]) == 1:
 		if float(target["progress"]) > 0.0:
 			return "%s\nREVIVING %.1f/5" % [base, float(target["progress"])]
@@ -359,6 +359,7 @@ func _process(delta: float) -> void:
 		var tag := node.get_node_or_null("Tag") as Label3D
 		if tag != null:
 			tag.text = _tag_text(id, target)
+			_style_tag(tag, id)
 			tag.position.y = lerpf(tag.position.y, 0.8 if state == 1 else 1.3, t)
 
 	# Puppet zombies glide in a straight line to the host's latest position.
@@ -373,3 +374,41 @@ func _process(delta: float) -> void:
 		var to_pos: Vector3 = tgt["to_pos"]
 		z.global_position = from_pos.lerp(to_pos, a)
 		z.rotation.y = lerp_angle(float(tgt["from_yaw"]), float(tgt["to_yaw"]), a)
+
+
+# ---------- badges ----------
+
+var _badge_reg = null
+var _badge_reg_tried: bool = false
+
+
+func _get_badges():
+	if not _badge_reg_tried:
+		_badge_reg_tried = true
+		var script = load("res://scripts/managers/badges.gd")
+		if script != null:
+			_badge_reg = script.new()
+	return _badge_reg
+
+
+## The badge icon in front of a player's name ("" if none).
+func _badge_prefix(id: int) -> String:
+	var reg = _get_badges()
+	var b: String = NetManager.get_badge(id)
+	if reg == null or b == "" or not reg.has_badge(b):
+		return ""
+	return reg.icon(b) + " "
+
+
+## Colors a player's name tag with their badge color (rainbow badges cycle).
+func _style_tag(tag: Label3D, id: int) -> void:
+	var reg = _get_badges()
+	var b: String = NetManager.get_badge(id)
+	if reg == null or b == "" or not reg.has_badge(b):
+		tag.modulate = Color(1, 1, 1)
+		return
+	if reg.is_rainbow(b):
+		var hue: float = fmod(float(Time.get_ticks_msec()) / 1000.0 * 0.4, 1.0)
+		tag.modulate = Color.from_hsv(hue, 0.7, 1.0)
+	else:
+		tag.modulate = reg.color(b)
