@@ -197,7 +197,7 @@ func _build_ui() -> void:
 			sb.pressed.connect(_on_slot_pressed.bind(str(slot)))
 			slot_grid.add_child(sb)
 			_slot_buttons[str(slot)] = sb
-
+		    _add_reticle_button(slot_grid)
 	# ---- right: stat bars
 	_stats_box = VBoxContainer.new()
 	_stats_box.custom_minimum_size = Vector2(400, 0)
@@ -253,6 +253,7 @@ func _update_slot_buttons() -> void:
 		return
 	var reg = reg_script.new()
 	var loadout: Dictionary = reg.get_loadout(w.get_base_name())
+		_update_reticle_button()
 	for slot in _slot_buttons.keys():
 		var id: String = str(loadout.get(slot, ""))
 		var label: String = "NONE"
@@ -478,3 +479,96 @@ func _owns_attachment(id: String) -> bool:
 	if market_script == null or profile_script == null:
 		return true
 	return market_script.new().owns_attachment(profile_script.new(), id)
+
+
+# ---------- reticle picker ----------
+
+const ACH_PATH: String = "res://scripts/managers/achievements.gd"
+const RETICLES_LIB_PATH: String = "res://scripts/ui/reticles.gd"
+
+var _reticle_button: Button = null
+var _reticle_preview = null
+
+
+func _add_reticle_button(slot_grid: Control) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	slot_grid.get_parent().add_child(row)
+	_reticle_button = Button.new()
+	_reticle_button.custom_minimum_size = Vector2(0, 56)
+	_reticle_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_reticle_button.add_theme_font_size_override("font_size", 18)
+	_reticle_button.pressed.connect(_on_reticle_pressed)
+	row.add_child(_reticle_button)
+	var preview := ReticlePreview.new()
+	var lib_script = load(RETICLES_LIB_PATH)
+	if lib_script != null:
+		preview.lib = lib_script.new()
+	row.add_child(preview)
+	_reticle_preview = preview
+
+
+## The optic equipped on the selected gun ("" if none).
+func _current_optic() -> String:
+	if _guns.is_empty():
+		return ""
+	var w: WeaponData = _guns[_index]["w"]
+	var reg_script = load(ATTACH_REGISTRY)
+	if reg_script == null:
+		return ""
+	var loadout: Dictionary = reg_script.new().get_loadout(w.get_base_name())
+	return str(loadout.get("optic", ""))
+
+
+func _update_reticle_button() -> void:
+	if _reticle_button == null or _reticle_preview == null:
+		return
+	var optic: String = _current_optic()
+	var ach_script = load(ACH_PATH)
+	if optic == "" or ach_script == null:
+		_reticle_button.text = "RETICLE: (equip an optic)"
+		_reticle_button.disabled = true
+		_reticle_preview.kind = ""
+		_reticle_preview.queue_redraw()
+		return
+	var ach = ach_script.new()
+	var chosen: String = ach.get_reticle(optic)
+	_reticle_button.disabled = false
+	if chosen == "":
+		_reticle_button.text = "RETICLE: Default"
+		var shown: String = "dot"
+		if _reticle_preview.lib != null:
+			shown = _reticle_preview.lib.default_for(optic)
+		_reticle_preview.kind = shown
+	else:
+		_reticle_button.text = "RETICLE: %s" % str(ach.RETICLES.get(chosen, chosen))
+		_reticle_preview.kind = chosen
+	_reticle_preview.queue_redraw()
+
+
+## Tap: cycles Default -> each unlocked reticle -> Default, saved for this optic.
+func _on_reticle_pressed() -> void:
+	var optic: String = _current_optic()
+	var ach_script = load(ACH_PATH)
+	if optic == "" or ach_script == null:
+		return
+	var ach = ach_script.new()
+	var options: Array = [""]
+	options.append_array(ach.unlocked_reticles())
+	var idx: int = maxi(options.find(ach.get_reticle(optic)), 0)
+	ach.set_reticle(optic, str(options[(idx + 1) % options.size()]))
+	_update_reticle_button()
+
+
+## A small box that draws a reticle so you can see what you picked.
+class ReticlePreview extends Control:
+	var kind: String = ""
+	var lib = null
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(70, 56)
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.12, 0.15))
+		if lib != null and kind != "":
+			lib.draw_reticle(self, size * 0.5, kind, 18.0, Color(1.0, 0.2, 0.2))
