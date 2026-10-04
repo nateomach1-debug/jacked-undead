@@ -193,7 +193,7 @@ func _credit_juice() -> void:
 		return
 	var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
 	_juice_label.text = "+%d Juice earned  (total %d)" % [earned, profile.get_juice()]
-
+	_credit_achievements()
 
 func _dev_settings_changed() -> bool:
 	for row in DEV_LINES:
