@@ -990,3 +990,30 @@ func _update_reticle() -> void:
 				kind = _reticle_lib.default_for(optic)
 	var amount: float = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
 	_reticle_ctrl.show_reticle(kind, amount)
+	_hide_crosshair(kind != "" and amount > 0.0)
+
+
+var _crosshair: Node = null
+var _crosshair_searched: bool = false
+
+
+## Hides the old "+" crosshair while an optic reticle is showing.
+func _hide_crosshair(hide: bool) -> void:
+	if hide and not _crosshair_searched:
+		_crosshair_searched = true
+		_crosshair = _find_crosshair(get_tree().root)
+	if _crosshair != null and is_instance_valid(_crosshair):
+		_crosshair.visible = not hide
+
+
+func _find_crosshair(node: Node) -> Node:
+	if node is CanvasItem and node != _reticle_ctrl:
+		if node.name.to_lower().contains("crosshair"):
+			return node
+		if node is Label and (node as Label).text.strip_edges() == "+":
+			return node
+	for c in node.get_children():
+		var found: Node = _find_crosshair(c)
+		if found != null:
+			return found
+	return null
