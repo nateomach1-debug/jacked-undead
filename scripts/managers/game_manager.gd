@@ -29,6 +29,9 @@ var gains_earned: int = 0     # Gains from kills/damage only; refunds don't coun
 var headshot_kills: int = 0
 var revives: int = 0          # co-op: teammates you revived
 var deaths: int = 0           # co-op: times you went down
+var last_weapon: String = ""  # base name of the gun this player fired last (set by the player)
+var weapon_kills: Dictionary = {}       # base gun name -> kills this run
+var weapon_headshots: Dictionary = {}   # base gun name -> headshot kills this run
 var is_game_over: bool = false
 var unlocked_zones: Array = ["start"]
 var dev: Dictionary = DEV_DEFAULTS.duplicate()
@@ -58,9 +61,18 @@ func try_spend_gains(amount: int) -> bool:
 
 func add_kill(headshot: bool = false) -> void:
 	kills += 1
+	_track_weapon_kill(headshot)
 	if headshot:
 		headshot_kills += 1
 	kills_changed.emit(kills)
+
+
+## Credits the kill (and headshot) to the gun this player fired last.
+func _track_weapon_kill(headshot: bool) -> void:
+	var gun: String = last_weapon if last_weapon != "" else "Unknown"
+	weapon_kills[gun] = int(weapon_kills.get(gun, 0)) + 1
+	if headshot:
+		weapon_headshots[gun] = int(weapon_headshots.get(gun, 0)) + 1
 
 
 ## This player's numbers for the game over screen / co-op scoreboard.
@@ -109,6 +121,9 @@ func reset_run() -> void:
 	headshot_kills = 0
 	revives = 0
 	deaths = 0
+	last_weapon = ""
+	weapon_kills.clear()
+	weapon_headshots.clear()
 	is_game_over = false
 	unlocked_zones = ["start"]
 	gains_changed.emit(gains)
