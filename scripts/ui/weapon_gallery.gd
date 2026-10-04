@@ -196,8 +196,8 @@ func _build_ui() -> void:
 			sb.add_theme_font_size_override("font_size", 18)
 			sb.pressed.connect(_on_slot_pressed.bind(str(slot)))
 			slot_grid.add_child(sb)
-			_slot_buttons[str(slot)] = sb
-		    _add_reticle_button(slot_grid)
+	  _slot_buttons[str(slot)] = sb
+    _add_reticle_button(slot_grid)
 	# ---- right: stat bars
 	_stats_box = VBoxContainer.new()
 	_stats_box.custom_minimum_size = Vector2(400, 0)
@@ -253,7 +253,7 @@ func _update_slot_buttons() -> void:
 		return
 	var reg = reg_script.new()
 	var loadout: Dictionary = reg.get_loadout(w.get_base_name())
-		_update_reticle_button()
+	_update_reticle_button()
 	for slot in _slot_buttons.keys():
 		var id: String = str(loadout.get(slot, ""))
 		var label: String = "NONE"
