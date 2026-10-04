@@ -1,5 +1,5 @@
 extends Control
-## Weapon gallery: list of guns (left), spinning preview (middle), stats (right, next step).
+## Weapon gallery: list of guns (left), spinning preview (middle), stat bars (right).
 
 const GUN_PATHS: Array = [
 	"res://resources/weapons/pistol.tres",
@@ -13,9 +13,9 @@ const ATTACH_REGISTRY: String = "res://scripts/weapons/attachments.gd"
 const ATTACH_MODELS: String = "res://scripts/weapons/attachment_models.gd"
 const PREVIEW_FIT: float = 1.8
 # Turns each model so the gun points along +X (what the attachment graphics expect).
-# If attachments look sideways/backwards, try 90, -90 or 180 here.
 const MODEL_YAW: float = 0.0          # .gltf guns
 const PLACEHOLDER_YAW: float = -90.0  # procedural guns (they point toward -Z)
+const BAR_HEADROOM: float = 1.5       # bar is full at (best gun's stat x this)
 
 var _guns: Array = []          # {"w": WeaponData, "locker": bool}
 var _index: int = 0
@@ -25,12 +25,35 @@ var _name_label: Label
 var _stats_box: VBoxContainer
 var _spin: bool = true
 var _spin_button: Button
+var _max_scores: Dictionary = {}   # stat key -> best base score across all guns
+
+
+## A horizontal stat bar: white = base, green = gained, red = lost.
+class StatBar extends Control:
+	var base_frac: float = 0.0
+	var mod_frac: float = 0.0
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(0, 16)
+		size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	func _draw() -> void:
+		var w: float = size.x
+		var h: float = size.y
+		draw_rect(Rect2(0, 0, w, h), Color(0.15, 0.15, 0.18))
+		var lo: float = minf(base_frac, mod_frac)
+		var hi: float = maxf(base_frac, mod_frac)
+		draw_rect(Rect2(0, 0, w * lo, h), Color(0.85, 0.85, 0.9))
+		if hi > lo:
+			var col: Color = Color(0.3, 0.85, 0.35) if mod_frac > base_frac else Color(0.9, 0.3, 0.25)
+			draw_rect(Rect2(w * lo, 0, w * (hi - lo), h), col)
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_load_guns()
+	_compute_max_scores()
 	_build_ui()
 	if not _guns.is_empty():
 		_select(0)
@@ -156,14 +179,11 @@ func _build_ui() -> void:
 	mid.add_child(_spin_button)
 	_update_spin_button()
 
-	# ---- right: stats (filled in the next step)
+	# ---- right: stat bars
 	_stats_box = VBoxContainer.new()
-	_stats_box.custom_minimum_size = Vector2(320, 0)
+	_stats_box.custom_minimum_size = Vector2(400, 0)
+	_stats_box.add_theme_constant_override("separation", 6)
 	main.add_child(_stats_box)
-	var soon := Label.new()
-	soon.text = "STATS COMING NEXT"
-	soon.add_theme_font_size_override("font_size", 22)
-	_stats_box.add_child(soon)
 
 	# ---- bottom: back
 	var back := Button.new()
@@ -198,6 +218,7 @@ func _select(i: int) -> void:
 	var w: WeaponData = _guns[i]["w"]
 	_name_label.text = w.weapon_name
 	_rebuild_model(w)
+	_refresh_stats(w)
 
 
 func _rebuild_model(w: WeaponData) -> void:
@@ -238,6 +259,129 @@ func _add_attachments(model: Node3D, w: WeaponData) -> void:
 	var root = models_script.new().build_for(model, loadout, w.get_base_name())
 	if root != null:
 		_holder.add_child(root)
+
+
+# ------------------------------------------------------------------ stats
+
+func _ones() -> Dictionary:
+	return {
+		"damage_mult": 1.0, "range_mult": 1.0, "spread_mult": 1.0, "fire_rate_mult": 1.0,
+		"mag_mult": 1.0, "reserve_mult": 1.0, "reload_speed_mult": 1.0,
+	}
+
+
+## Multiplies together the mods of every equipped attachment.
+func _totals(reg, loadout: Dictionary) -> Dictionary:
+	var total: Dictionary = _ones()
+	for slot in reg.SLOTS:
+		var id: String = str(loadout.get(slot, ""))
+		if id == "" or not reg.ATTACHMENTS.has(id):
+			continue
+		var entry: Dictionary = reg.ATTACHMENTS[id]
+		if str(entry["slot"]) != slot:
+			continue
+		var mods: Dictionary = entry["mods"]
+		for key in mods.keys():
+			total[key] = float(total.get(key, 1.0)) * float(mods[key])
+	return total
+
+
+## The 7 gallery stats for a gun with the given multipliers. "score" is higher-is-better
+## (used for the bars); "text" is what's shown.
+func _calc(w: WeaponData, t: Dictionary) -> Array:
+	var damage: float = w.damage * float(maxi(w.pellets, 1)) * float(t["damage_mult"])
+	var rng: float = w.range * float(t["range_mult"])
+	var spread: float = w.spread_degrees * float(t["spread_mult"])
+	var accuracy: float = 100.0 / (1.0 + spread * 0.25)
+	var fr_mult: float = maxf(float(t["fire_rate_mult"]), 0.1)
+	var bursts: int = maxi(w.burst_count, 1)
+	var cycle: float = w.fire_rate / fr_mult + float(bursts - 1) * w.burst_interval / fr_mult
+	var rate: float = float(bursts) / maxf(cycle, 0.01)
+	var mag: int = maxi(1, int(round(float(w.mag_size) * float(t["mag_mult"]))))
+	var reload: float = 0.0
+	var reload_speed: float = 0.0
+	if w.reload_time > 0.0:
+		reload = w.reload_time / maxf(float(t["reload_speed_mult"]), 0.1)
+		reload_speed = 1.0 / reload
+	var reserve: int = maxi(0, int(round(float(w.max_reserve_ammo) * float(t["reserve_mult"]))))
+	return [
+		{"key": "damage", "label": "DAMAGE", "score": damage, "text": "%d" % int(round(damage))},
+		{"key": "range", "label": "RANGE", "score": rng, "text": "%dm" % int(round(rng))},
+		{"key": "accuracy", "label": "ACCURACY", "score": accuracy, "text": "%d%%" % int(round(accuracy))},
+		{"key": "rate", "label": "FIRE RATE", "score": rate, "text": "%.1f/s" % rate},
+		{"key": "mag", "label": "MAGAZINE", "score": float(mag), "text": "%d" % mag},
+		{"key": "reload", "label": "RELOAD", "score": reload_speed, "text": "%.1fs" % reload},
+		{"key": "reserve", "label": "RESERVE", "score": float(reserve), "text": "%d" % reserve},
+	]
+
+
+func _compute_max_scores() -> void:
+	_max_scores.clear()
+	for g in _guns:
+		for s in _calc(g["w"], _ones()):
+			var k: String = str(s["key"])
+			_max_scores[k] = maxf(float(_max_scores.get(k, 0.0)), float(s["score"]))
+
+
+func _bar_frac(key: String, score: float) -> float:
+	var best: float = float(_max_scores.get(key, 1.0)) * BAR_HEADROOM
+	if best <= 0.0:
+		return 0.0
+	return sqrt(clampf(score / best, 0.0, 1.0))
+
+
+func _refresh_stats(w: WeaponData) -> void:
+	for c in _stats_box.get_children():
+		_stats_box.remove_child(c)
+		c.queue_free()
+
+	var total: Dictionary = _ones()
+	var reg_script = load(ATTACH_REGISTRY)
+	if reg_script != null:
+		var reg = reg_script.new()
+		var l = reg.get_loadout(w.get_base_name())
+		if l is Dictionary:
+			total = _totals(reg, l)
+
+	var base: Array = _calc(w, _ones())
+	var mod: Array = _calc(w, total)
+	for i in range(base.size()):
+		var key: String = str(base[i]["key"])
+		var base_score: float = float(base[i]["score"])
+		var mod_score: float = float(mod[i]["score"])
+
+		var head := HBoxContainer.new()
+		var name_l := Label.new()
+		name_l.text = str(base[i]["label"])
+		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_l.add_theme_font_size_override("font_size", 18)
+		head.add_child(name_l)
+
+		var val_l := Label.new()
+		var txt: String = str(mod[i]["text"])
+		var color: Color = Color(1, 1, 1)
+		if base_score > 0.0:
+			var pct: int = int(round((mod_score / base_score - 1.0) * 100.0))
+			if pct != 0:
+				txt += " (%+d%%)" % pct
+				color = Color(0.4, 0.9, 0.4) if pct > 0 else Color(0.95, 0.4, 0.35)
+		val_l.text = txt
+		val_l.add_theme_font_size_override("font_size", 18)
+		val_l.add_theme_color_override("font_color", color)
+		head.add_child(val_l)
+		_stats_box.add_child(head)
+
+		var bar := StatBar.new()
+		bar.base_frac = _bar_frac(key, base_score)
+		bar.mod_frac = _bar_frac(key, mod_score)
+		_stats_box.add_child(bar)
+
+	var note := Label.new()
+	note.text = "Bars show the gun before PR upgrades. Attachments only work after a PR Rack upgrade."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 16)
+	note.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+	_stats_box.add_child(note)
 
 
 func _collect_aabb(node: Node, parent_xf: Transform3D, info: Dictionary) -> void:
