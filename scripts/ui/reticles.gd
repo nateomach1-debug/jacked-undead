@@ -3,7 +3,12 @@ extends RefCounted
 ## Loaded with load() + a null check.
 
 const KINDS: Array = ["dot", "cross", "chevron", "ring", "circle_dot", "diamond", "triangle"]
-const OPTIC_DEFAULTS: Dictionary = {"red_dot": "dot", "scope_4x": "cross"}
+const OPTIC_DEFAULTS: Dictionary = {
+	"red_dot": "dot",
+	"holo": "circle_dot",
+	"scope_4x": "cross",
+	"scope_8x": "cross",
+}
 
 
 ## The reticle an optic uses until you pick another.
