@@ -203,7 +203,43 @@ func _dev_settings_changed() -> bool:
 	return false
 
 
-## Saves this run's per-gun stats and shows any achievements it unlocked.
+## Saves this run's per-gun stats and shows any achievements it unlocked (or why not).
+func _credit_achievements() -> void:
+	var vbox: Node = kills_label.get_parent()
+	var banner := Label.new()
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override("font_size", 22)
+	banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
+	vbox.add_child(banner)
+	if _juice_label != null:
+		vbox.move_child(banner, _juice_label.get_index() + 1)
+
+	var script = load("res://scripts/managers/achievements.gd")
+	if script == null:
+		banner.text = "Achievements: achievements.gd failed to load"
+		banner.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
+		return
+	if not ("weapon_kills" in GameManager):
+		banner.text = "Achievements: game_manager.gd is the old version"
+		banner.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
+		return
+
+	var tracked: int = 0
+	for v in GameManager.weapon_kills.values():
+		tracked += int(v)
+	var ach = script.new()
+	var unlocked: Array = ach.record_run(GameManager.weapon_kills, GameManager.weapon_headshots, GameManager.round_number)
+	if unlocked.is_empty():
+		banner.text = "Achievements: progress saved (%d kills tracked this run)" % tracked
+		return
+	var lines := PackedStringArray()
+	for id in unlocked:
+		var line: String = "ACHIEVEMENT UNLOCKED: %s" % ach.title(str(id))
+		var reward: String = ach.reward_text(str(id))
+		if reward != "":
+			line += "\n" + reward
+		lines.append(line)
+	banner.text = "\n".join(lines)
 func _credit_achievements() -> void:
 	var script = load("res://scripts/managers/achievements.gd")
 	if script == null:
