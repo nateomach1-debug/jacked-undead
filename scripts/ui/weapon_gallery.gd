@@ -271,7 +271,7 @@ func _on_slot_pressed(slot: String) -> void:
 	var reg = reg_script.new()
 	var options: Array = [""]
 	for id in reg.ATTACHMENTS.keys():
-		if str(reg.ATTACHMENTS[id]["slot"]) == slot:
+		if str(reg.ATTACHMENTS[id]["slot"]) == slot and _owns_attachment(str(id)):
 			options.append(str(id))
 	var loadout: Dictionary = reg.get_loadout(w.get_base_name())
 	var current: String = str(loadout.get(slot, ""))
@@ -469,3 +469,12 @@ func _collect_aabb(node: Node, parent_xf: Transform3D, info: Dictionary) -> void
 func _process(delta: float) -> void:
 	if _spin and _stage != null and is_visible_in_tree():
 		_stage.rotation.y += delta * 0.9
+
+
+## True if the attachment is a starter or has been bought in the Market.
+func _owns_attachment(id: String) -> bool:
+	var market_script = load("res://scripts/managers/market.gd")
+	var profile_script = load(PROFILE_PATH)
+	if market_script == null or profile_script == null:
+		return true
+	return market_script.new().owns_attachment(profile_script.new(), id)
