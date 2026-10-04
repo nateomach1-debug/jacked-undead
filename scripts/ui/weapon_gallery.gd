@@ -196,8 +196,9 @@ func _build_ui() -> void:
 			sb.add_theme_font_size_override("font_size", 18)
 			sb.pressed.connect(_on_slot_pressed.bind(str(slot)))
 			slot_grid.add_child(sb)
-	  _slot_buttons[str(slot)] = sb
-    _add_reticle_button(slot_grid)
+			_slot_buttons[str(slot)] = sb
+	_add_reticle_button(slot_grid)
+
 	# ---- right: stat bars
 	_stats_box = VBoxContainer.new()
 	_stats_box.custom_minimum_size = Vector2(400, 0)
