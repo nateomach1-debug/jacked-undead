@@ -19,9 +19,7 @@ func _ready() -> void:
 	_add_character_picker()
 	_add_dev_button()
 	_add_coop_button()
-	_add_weapons_button()
-	_add_market_button()
-	_add_achievements_button()
+	_add_profile_button()
 	_add_juice_label()
 
 
@@ -146,66 +144,23 @@ func _add_juice_label() -> void:
 	label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 
 
-## Adds a WEAPONS button to the main menu, just below CO-OP.
-func _add_weapons_button() -> void:
+## Adds a PROFILE button to the main menu, just below CO-OP (WEAPONS, MARKET and
+## ACHIEVEMENTS live inside it).
+func _add_profile_button() -> void:
 	var vbox: Node = start_button.get_parent()
 	var b := Button.new()
-	b.text = "WEAPONS"
+	b.text = "PROFILE"
 	b.custom_minimum_size = start_button.custom_minimum_size
 	b.add_theme_font_size_override("font_size", 26)
-	b.pressed.connect(_on_weapons_pressed)
+	b.pressed.connect(_on_profile_pressed)
 	vbox.add_child(b)
 	vbox.move_child(b, start_button.get_index() + 2)
 
 
-func _on_weapons_pressed() -> void:
-	var menu_script = load("res://scripts/ui/weapon_gallery.gd")
+func _on_profile_pressed() -> void:
+	var menu_script = load("res://scripts/ui/profile_hub.gd")
 	if menu_script == null:
-		push_warning("weapon_gallery.gd is missing or broken.")
-		return
-	var menu := Control.new()
-	menu.set_script(menu_script)
-	add_child(menu)
-
-
-## Adds a MARKET button to the main menu, just below WEAPONS.
-func _add_market_button() -> void:
-	var vbox: Node = start_button.get_parent()
-	var b := Button.new()
-	b.text = "MARKET"
-	b.custom_minimum_size = start_button.custom_minimum_size
-	b.add_theme_font_size_override("font_size", 26)
-	b.pressed.connect(_on_market_pressed)
-	vbox.add_child(b)
-	vbox.move_child(b, start_button.get_index() + 3)
-
-
-func _on_market_pressed() -> void:
-	var menu_script = load("res://scripts/ui/market_menu.gd")
-	if menu_script == null:
-		push_warning("market_menu.gd is missing or broken.")
-		return
-	var menu := Control.new()
-	menu.set_script(menu_script)
-	add_child(menu)
-
-
-## Adds an ACHIEVEMENTS button to the main menu, just below MARKET.
-func _add_achievements_button() -> void:
-	var vbox: Node = start_button.get_parent()
-	var b := Button.new()
-	b.text = "ACHIEVEMENTS"
-	b.custom_minimum_size = start_button.custom_minimum_size
-	b.add_theme_font_size_override("font_size", 26)
-	b.pressed.connect(_on_achievements_pressed)
-	vbox.add_child(b)
-	vbox.move_child(b, start_button.get_index() + 4)
-
-
-func _on_achievements_pressed() -> void:
-	var menu_script = load("res://scripts/ui/achievements_menu.gd")
-	if menu_script == null:
-		push_warning("achievements_menu.gd is missing or broken.")
+		push_warning("profile_hub.gd is missing or broken.")
 		return
 	var menu := Control.new()
 	menu.set_script(menu_script)
