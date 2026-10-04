@@ -6,6 +6,7 @@ const DARK: Color = Color(0.10, 0.10, 0.12)
 const STEEL: Color = Color(0.35, 0.36, 0.40)
 const ORANGE: Color = Color(0.95, 0.5, 0.1)
 const RED: Color = Color(1.0, 0.1, 0.1)
+const TAN: Color = Color(0.45, 0.40, 0.25)
 
 # Where each slot sits on the gun's box: x = 0 rear .. 1 muzzle, y = 0 bottom .. 1 top.
 const ANCHORS: Dictionary = {
@@ -51,28 +52,64 @@ func build(id: String, s: float) -> Node3D:
 			n.add_child(_box(Vector3(0.10, 0.06, 0.012) * s, Vector3(0, 0.055, 0.024) * s, DARK))
 			n.add_child(_box(Vector3(0.10, 0.06, 0.012) * s, Vector3(0, 0.055, -0.024) * s, DARK))
 			n.add_child(_box(Vector3(0.008, 0.045, 0.04) * s, Vector3(0.04, 0.055, 0) * s, Color(1.0, 0.2, 0.2, 0.45), true))
+		"holo":
+			n.add_child(_box(Vector3(0.12, 0.02, 0.07) * s, Vector3(0, 0.01, 0) * s, DARK))
+			n.add_child(_box(Vector3(0.11, 0.075, 0.012) * s, Vector3(0, 0.0575, 0.032) * s, DARK))
+			n.add_child(_box(Vector3(0.11, 0.075, 0.012) * s, Vector3(0, 0.0575, -0.032) * s, DARK))
+			n.add_child(_box(Vector3(0.11, 0.012, 0.076) * s, Vector3(0, 0.1, 0) * s, DARK))
+			n.add_child(_box(Vector3(0.008, 0.06, 0.05) * s, Vector3(0.045, 0.057, 0) * s, Color(0.3, 0.8, 1.0, 0.35), true))
 		"scope_4x":
 			n.add_child(_cyl(0.032 * s, 0.30 * s, Vector3(0, 0.07, 0) * s, DARK))
 			n.add_child(_cyl(0.042 * s, 0.06 * s, Vector3(0.15, 0.07, 0) * s, STEEL))
 			n.add_child(_cyl(0.038 * s, 0.05 * s, Vector3(-0.15, 0.07, 0) * s, STEEL))
 			n.add_child(_box(Vector3(0.04, 0.05, 0.03) * s, Vector3(0.08, 0.025, 0) * s, STEEL))
 			n.add_child(_box(Vector3(0.04, 0.05, 0.03) * s, Vector3(-0.08, 0.025, 0) * s, STEEL))
+		"scope_8x":
+			n.add_child(_cyl(0.036 * s, 0.40 * s, Vector3(0, 0.075, 0) * s, DARK))
+			n.add_child(_cyl(0.052 * s, 0.07 * s, Vector3(0.20, 0.075, 0) * s, STEEL))
+			n.add_child(_cyl(0.042 * s, 0.05 * s, Vector3(-0.20, 0.075, 0) * s, STEEL))
+			n.add_child(_box(Vector3(0.03, 0.02, 0.03) * s, Vector3(0, 0.12, 0) * s, STEEL))
+			n.add_child(_box(Vector3(0.04, 0.055, 0.03) * s, Vector3(0.10, 0.027, 0) * s, STEEL))
+			n.add_child(_box(Vector3(0.04, 0.055, 0.03) * s, Vector3(-0.10, 0.027, 0) * s, STEEL))
 		"long_barrel":
 			n.add_child(_cyl(0.018 * s, 0.22 * s, Vector3(0.11, 0, 0) * s, STEEL))
 		"suppressor":
 			n.add_child(_cyl(0.032 * s, 0.20 * s, Vector3(0.10, 0, 0) * s, DARK))
 			n.add_child(_cyl(0.034 * s, 0.015 * s, Vector3(0.20, 0, 0) * s, STEEL))
+		"compensator":
+			n.add_child(_cyl(0.022 * s, 0.07 * s, Vector3(0.035, 0, 0) * s, STEEL))
+			n.add_child(_box(Vector3(0.015, 0.012, 0.03) * s, Vector3(0.02, 0.024, 0) * s, DARK))
+			n.add_child(_box(Vector3(0.015, 0.012, 0.03) * s, Vector3(0.05, 0.024, 0) * s, DARK))
+		"heavy_barrel":
+			n.add_child(_cyl(0.03 * s, 0.16 * s, Vector3(0.08, 0, 0) * s, DARK))
+			n.add_child(_cyl(0.034 * s, 0.012 * s, Vector3(0.04, 0, 0) * s, STEEL))
+			n.add_child(_cyl(0.034 * s, 0.012 * s, Vector3(0.15, 0, 0) * s, STEEL))
 		"ext_mag":
 			n.add_child(_box(Vector3(0.07, 0.26, 0.05) * s, Vector3(0, -0.13, 0) * s, DARK))
 			n.add_child(_box(Vector3(0.072, 0.02, 0.052) * s, Vector3(0, -0.25, 0) * s, STEEL))
 		"fast_mag":
 			n.add_child(_box(Vector3(0.07, 0.20, 0.05) * s, Vector3(0, -0.10, 0) * s, ORANGE))
+		"drum_mag":
+			n.add_child(_box(Vector3(0.05, 0.05, 0.045) * s, Vector3(0, -0.025, 0) * s, DARK))
+			n.add_child(_zcyl(0.075 * s, 0.05 * s, Vector3(0, -0.11, 0) * s, DARK))
+			n.add_child(_zcyl(0.04 * s, 0.054 * s, Vector3(0, -0.11, 0) * s, STEEL))
+		"ammo_pouch":
+			n.add_child(_box(Vector3(0.09, 0.12, 0.075) * s, Vector3(0.07, -0.06, 0) * s, TAN))
+			n.add_child(_box(Vector3(0.092, 0.03, 0.077) * s, Vector3(0.07, -0.015, 0) * s, DARK))
 		"foregrip":
 			n.add_child(_vcyl(0.022 * s, 0.14 * s, Vector3(0, -0.07, 0) * s, DARK))
 		"angled_grip":
 			var grip := _box(Vector3(0.05, 0.13, 0.04) * s, Vector3(0.03, -0.065, 0) * s, DARK)
 			grip.rotation.z = deg_to_rad(-25.0)
 			n.add_child(grip)
+		"vertical_grip":
+			n.add_child(_vcyl(0.022 * s, 0.20 * s, Vector3(0, -0.10, 0) * s, DARK))
+			n.add_child(_vcyl(0.026 * s, 0.02 * s, Vector3(0, -0.20, 0) * s, STEEL))
+		"ergo_grip":
+			var ergo := _box(Vector3(0.05, 0.14, 0.045) * s, Vector3(-0.025, -0.07, 0) * s, DARK)
+			ergo.rotation.z = deg_to_rad(20.0)
+			n.add_child(ergo)
+			n.add_child(_box(Vector3(0.052, 0.015, 0.047) * s, Vector3(-0.04, -0.13, 0) * s, ORANGE))
 		_:
 			return null
 	return n
@@ -123,6 +160,20 @@ func _vcyl(radius: float, height: float, pos: Vector3, color: Color) -> MeshInst
 	mesh.bottom_radius = radius
 	mesh.height = height
 	mi.mesh = mesh
+	mi.position = pos
+	mi.material_override = _material(color)
+	return mi
+
+
+## A disc facing sideways (axis across the gun, Z), like a drum magazine.
+func _zcyl(radius: float, width: float, pos: Vector3, color: Color) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius
+	mesh.bottom_radius = radius
+	mesh.height = width
+	mi.mesh = mesh
+	mi.rotation.x = deg_to_rad(90.0)
 	mi.position = pos
 	mi.material_override = _material(color)
 	return mi
