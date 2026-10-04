@@ -7,7 +7,7 @@ const SLOTS: Array = ["optic", "barrel", "magazine", "grip"]
 
 # TEST MODE: until the weapon gallery exists, every PR-upgraded gun gets this loadout.
 # Set TEST_MODE to false once attachments can be equipped from the gallery.
-const TEST_MODE: bool = true
+const TEST_MODE: bool = false
 const TEST_LOADOUT: Dictionary = {"optic": "red_dot", "barrel": "long_barrel", "magazine": "ext_mag", "grip": "foregrip"}
 
 # mods (all multipliers): damage_mult, range_mult, spread_mult (lower = tighter),
