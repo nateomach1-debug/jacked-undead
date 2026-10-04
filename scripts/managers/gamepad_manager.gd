@@ -1,191 +1,212 @@
 extends Node
-## Gamepad support (autoload "GamepadManager"). Nothing else depends on it.
+## GameManager (autoload singleton)
+## Tracks "Gains" (currency), the current round, kill count, unlocked zones,
+## global run state, and the developer-menu settings.
+## Access from anywhere as: GameManager.add_gains(50)
 
-const LOOK_DEG_PER_SEC: float = 200.0
-const ACTIVATE_AXIS_THRESHOLD: float = 0.5
+signal gains_changed(new_amount: int)
+signal round_changed(new_round: int)
+signal kills_changed(new_amount: int)
+signal player_died
+signal zone_unlocked(zone: String)
+signal barrier_opened
+signal dev_settings_changed
 
-var gamepad_active: bool = false
-var _sprint_on: bool = false
+const DEV_FILE: String = "user://dev_settings.cfg"
+const DEV_DEFAULTS: Dictionary = {
+	"zombie_damage": -1.0,  # flat HP per zombie hit; negative = the zombie's own value
+	"locker_cost": -1.0,    # flat Gains; negative = the scene's value
+	"pr_cost": -1.0,        # flat Gains; negative = the scene's value
+	"wall_scale": 1.0,      # multiplier on wall buy + ammo prices
+	"supp_scale": 1.0,      # multiplier on supplement prices
+	"show_nav": 0.0,        # 1.0 = nav polygons + NAV label visible
+}
 
+var gains: int = 500
+var round_number: int = 1
+var kills: int = 0
+var gains_earned: int = 0     # Gains from kills/damage only; refunds don't count
+var headshot_kills: int = 0
+var revives: int = 0          # co-op: teammates you revived
+var deaths: int = 0           # co-op: times you went down
+var last_weapon: String = ""  # base name of the gun this player fired last (set by the player)
+var weapon_kills: Dictionary = {}       # base gun name -> kills this run
+var weapon_headshots: Dictionary = {}   # base gun name -> headshot kills this run
+var is_game_over: bool = false
+var unlocked_zones: Array = ["start"]
+var dev: Dictionary = DEV_DEFAULTS.duplicate()
+var dev_override: Dictionary = {}   # co-op: the host's dev settings, used while online
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	_add_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
-	_add_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
-	_add_axis("move_forward", JOY_AXIS_LEFT_Y, -1.0)
-	_add_axis("move_back", JOY_AXIS_LEFT_Y, 1.0)
-	_add_axis("shoot", JOY_AXIS_TRIGGER_RIGHT, 1.0)
-	_add_axis("look_left", JOY_AXIS_RIGHT_X, -1.0)
-	_add_axis("look_right", JOY_AXIS_RIGHT_X, 1.0)
-	_add_axis("look_up", JOY_AXIS_RIGHT_Y, -1.0)
-	_add_axis("look_down", JOY_AXIS_RIGHT_Y, 1.0)
-	_add_button("jump", JOY_BUTTON_A)
-	_add_button("reload", JOY_BUTTON_X)
-	_add_button("interact", JOY_BUTTON_B)
-	_add_axis("aim", JOY_AXIS_TRIGGER_LEFT, 1.0)
-
-func _ensure_action(action: String) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action, 0.2)
+	_load_dev_settings()
+	_apply_nav_debug()
 
 
-func _add_axis(action: String, axis: JoyAxis, value: float) -> void:
-	_ensure_action(action)
-	var ev := InputEventJoypadMotion.new()
-	ev.axis = axis
-	ev.axis_value = value
-	InputMap.action_add_event(action, ev)
+## earned = false for refunds (like the co-op revive bonus): they add Gains
+## but don't count toward the "Gains earned" score.
+func add_gains(amount: int, earned: bool = true) -> void:
+	gains += amount
+	if earned and amount > 0:
+		gains_earned += amount
+	gains_changed.emit(gains)
 
 
-func _add_button(action: String, button: JoyButton) -> void:
-	_ensure_action(action)
-	var ev := InputEventJoypadButton.new()
-	ev.button_index = button
-	InputMap.action_add_event(action, ev)
+func try_spend_gains(amount: int) -> bool:
+	if gains >= amount:
+		gains -= amount
+		gains_changed.emit(gains)
+		return true
+	return false
 
 
-func _in_game() -> bool:
-	return not get_tree().paused and get_tree().get_first_node_in_group("player") != null
+func add_kill(headshot: bool = false) -> void:
+	kills += 1
+	_track_weapon_kill(headshot)
+	if headshot:
+		headshot_kills += 1
+	kills_changed.emit(kills)
 
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch and event.pressed:
-		_set_active(false)
+## Credits the kill (and headshot) to the gun this player fired last.
+func _track_weapon_kill(headshot: bool) -> void:
+	var gun: String = last_weapon if last_weapon != "" else "Unknown"
+	weapon_kills[gun] = int(weapon_kills.get(gun, 0)) + 1
+	if headshot:
+		weapon_headshots[gun] = int(weapon_headshots.get(gun, 0)) + 1
+
+
+## This player's numbers for the game over screen / co-op scoreboard.
+func get_stats() -> Dictionary:
+	return {
+		"kills": kills,
+		"gains_earned": gains_earned,
+		"headshots": headshot_kills,
+		"revives": revives,
+		"deaths": deaths,
+	}
+
+
+func start_next_round() -> void:
+	round_number += 1
+	round_changed.emit(round_number)
+
+
+## A spawn point with no zone tag is always active.
+func is_zone_unlocked(zone: String) -> bool:
+	return zone == "" or unlocked_zones.has(zone)
+
+
+## Called by a bought door: unlocks its zones, then announces the opening
+## (the nav baker listens to rebake the walkable area).
+func open_barrier(zones: PackedStringArray) -> void:
+	for zone in zones:
+		if zone != "" and not unlocked_zones.has(zone):
+			unlocked_zones.append(zone)
+			zone_unlocked.emit(zone)
+	barrier_opened.emit()
+
+
+func report_player_death() -> void:
+	if is_game_over:
 		return
-	var had_focus: bool = get_viewport().gui_get_focus_owner() != null
-	var used: bool = false
-	if event is InputEventJoypadButton and event.pressed:
-		used = true
-		_set_active(true)
-		_handle_button(event.button_index)
-	elif event is InputEventJoypadMotion and absf(event.axis_value) > ACTIVATE_AXIS_THRESHOLD:
-		used = true
-		_set_active(true)
-	if used and not _in_game():
-		_ensure_menu_focus()
-		# A presses the focused menu button directly (the engine's accept wasn't reaching it).
-		if event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A and had_focus:
-			_press_focused_button()
-			get_viewport().set_input_as_handled()
+	is_game_over = true
+	player_died.emit()
 
 
-func _set_active(on: bool) -> void:
-	if on == gamepad_active:
+func reset_run() -> void:
+	gains = 500
+	round_number = 1
+	kills = 0
+	gains_earned = 0
+	headshot_kills = 0
+	revives = 0
+	deaths = 0
+	last_weapon = ""
+	weapon_kills.clear()
+	weapon_headshots.clear()
+	is_game_over = false
+	unlocked_zones = ["start"]
+	gains_changed.emit(gains)
+	round_changed.emit(round_number)
+	kills_changed.emit(kills)
+
+
+# ---------- developer settings ----------
+
+func dev_get(key: String) -> float:
+	if dev_override.has(key) and _online():
+		return float(dev_override[key])
+	return float(dev.get(key, DEV_DEFAULTS.get(key, 0.0)))
+
+func dev_set(key: String, value: float) -> void:
+	dev[key] = value
+	_save_dev_settings()
+	if key == "show_nav":
+		_apply_nav_debug()
+	dev_settings_changed.emit()
+
+
+func dev_reset() -> void:
+	dev = DEV_DEFAULTS.duplicate()
+	_save_dev_settings()
+	_apply_nav_debug()
+	dev_settings_changed.emit()
+
+
+func dev_show_nav() -> bool:
+	return dev_get("show_nav") > 0.5
+
+
+func get_zombie_damage(base: float) -> float:
+	var v: float = dev_get("zombie_damage")
+	return base if v < 0.0 else v
+
+
+func wall_cost(base: int) -> int:
+	return int(round(base * dev_get("wall_scale")))
+
+
+func supplement_cost(base: int) -> int:
+	return int(round(base * dev_get("supp_scale")))
+
+
+func loot_locker_cost(base: int) -> int:
+	var v: float = dev_get("locker_cost")
+	return base if v < 0.0 else int(v)
+
+
+func pr_rack_cost(base: int) -> int:
+	var v: float = dev_get("pr_cost")
+	return base if v < 0.0 else int(v)
+
+
+func _apply_nav_debug() -> void:
+	NavigationServer3D.set_debug_enabled(dev_show_nav())
+
+
+func _load_dev_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(DEV_FILE) != OK:
 		return
-	gamepad_active = on
-	if not on and _sprint_on:
-		_sprint_on = false
-		Input.action_release("sprint")
+	for key in DEV_DEFAULTS.keys():
+		dev[key] = float(cfg.get_value("dev", key, DEV_DEFAULTS[key]))
 
 
-func _handle_button(button: int) -> void:
-	if not _in_game():
-		return
-	var player := get_tree().get_first_node_in_group("player")
-	if player == null:
-		return
-	match button:
-		JOY_BUTTON_Y, JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_DPAD_RIGHT:
-			if player.has_method("switch_weapon"):
-				player.switch_weapon(1)
-		JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_DPAD_LEFT:
-			if player.has_method("switch_weapon"):
-				player.switch_weapon(-1)
-		JOY_BUTTON_LEFT_STICK:
-			_sprint_on = not _sprint_on
-			if _sprint_on:
-				Input.action_press("sprint")
-			else:
-				Input.action_release("sprint")
+func _save_dev_settings() -> void:
+	var cfg := ConfigFile.new()
+	for key in dev.keys():
+		cfg.set_value("dev", key, dev[key])
+	cfg.save(DEV_FILE)
 
 
-func _process(delta: float) -> void:
-	# Keep the touch UI hidden while a pad is in use (new maps bring a fresh copy).
-	for n in get_tree().get_nodes_in_group("touch_ui"):
-		if bool(n.get("visible")) == gamepad_active:
-			n.set("visible", not gamepad_active)
-
-	if not _in_game():
-		return
-	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
-	if look.length() < 0.01:
-		return
-	var player := get_tree().get_first_node_in_group("player")
-	if player != null and player.has_method("apply_look_delta"):
-		player.apply_look_delta(look, deg_to_rad(_pad_look_speed()) * delta)
-
-# ---------- menus ----------
-
-## If nothing is focused, focuses a button so the d-pad / A button work.
-func _ensure_menu_focus() -> void:
-	var focused: Control = get_viewport().gui_get_focus_owner()
-	if focused != null and focused.is_visible_in_tree() and focused.can_process():
-		return
-	var scene := get_tree().current_scene
-	if scene == null:
-		return
-	# Newest top-level child first (overlays are added last), buttons in order inside it.
-	var kids: Array = scene.get_children()
-	kids.reverse()
-	for c in kids:
-		var b := _find_button(c)
-		if b != null:
-			b.grab_focus()
-			return
+## Co-op: called when the host starts a game, so every phone uses the host's settings.
+func dev_apply_override(settings: Dictionary) -> void:
+	dev_override = settings.duplicate()
+	_apply_nav_debug()
+	dev_settings_changed.emit()
 
 
-func _find_button(node: Node) -> Button:
-	var v = node.get("visible")
-	if v != null and not bool(v):
-		return null
-	if node is Button:
-		var b := node as Button
-		if not b.disabled and b.focus_mode != Control.FOCUS_NONE and b.is_visible_in_tree() and b.can_process():
-			return b
-	for c in node.get_children():
-		var found := _find_button(c)
-		if found != null:
-			return found
-	return null
-
-
-func _press_focused_button() -> void:
-	var f: Control = get_viewport().gui_get_focus_owner()
-	if f is BaseButton:
-		var b := f as BaseButton
-		if not b.disabled:
-			b.pressed.emit()
-
-
-var _settings = null
-var _next_settings_check: int = 0
-
-
-## Re-reads the saved settings every couple of seconds so menu changes apply.
-func _refresh_settings() -> void:
-	var now: int = Time.get_ticks_msec()
-	if now < _next_settings_check:
-		return
-	_next_settings_check = now + 2000
-	var script = load("res://scripts/managers/game_settings.gd")
-	_settings = script.new() if script != null else null
-
-
-func _pad_look_speed() -> float:
-	_refresh_settings()
-	if _settings == null:
-		return LOOK_DEG_PER_SEC
-	return float(_settings.get_value("pad_look"))
-
-
-func _sprint_hold_mode() -> bool:
-	_refresh_settings()
-	return _settings != null and _settings.get_value("sprint_hold") > 0.5
-
-
-## Hold mode: letting go of L3 stops sprinting.
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventJoypadButton and not event.pressed and event.button_index == JOY_BUTTON_LEFT_STICK:
-		if _sprint_hold_mode() and _sprint_on:
-			_sprint_on = false
-			Input.action_release("sprint")
+## True only while connected through a real network peer (not the default offline one).
+func _online() -> bool:
+	var peer: MultiplayerPeer = multiplayer.multiplayer_peer
+	return peer != null and not (peer is OfflineMultiplayerPeer)
