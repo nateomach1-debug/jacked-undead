@@ -9,12 +9,18 @@ const GUN_PATHS: Array = [
 	"res://resources/weapons/sniper.tres",
 ]
 const LOCKER_PATH: String = "res://scripts/weapons/locker_weapons.gd"
+const ATTACH_REGISTRY: String = "res://scripts/weapons/attachments.gd"
+const ATTACH_MODELS: String = "res://scripts/weapons/attachment_models.gd"
 const PREVIEW_FIT: float = 1.8
+# Turns each model so the gun points along +X (what the attachment graphics expect).
+# If attachments look sideways/backwards, try 90, -90 or 180 here.
+const MODEL_YAW: float = 0.0          # .gltf guns
+const PLACEHOLDER_YAW: float = -90.0  # procedural guns (they point toward -Z)
 
 var _guns: Array = []          # {"w": WeaponData, "locker": bool}
 var _index: int = 0
 var _stage: Node3D
-var _model: Node3D = null
+var _holder: Node3D = null
 var _name_label: Label
 var _stats_box: VBoxContainer
 
@@ -166,25 +172,43 @@ func _select(i: int) -> void:
 
 
 func _rebuild_model(w: WeaponData) -> void:
-	if _model != null:
-		_stage.remove_child(_model)
-		_model.queue_free()
-		_model = null
-	_model = w.create_model()
-	if _model == null:
+	if _holder != null:
+		_stage.remove_child(_holder)
+		_holder.queue_free()
+		_holder = null
+	var model: Node3D = w.create_model()
+	if model == null:
 		return
-	# Fit the gun to the preview: scale its longest side to PREVIEW_FIT and center it.
+	# Point the gun along +X, then scale it to PREVIEW_FIT and center it.
+	model.rotation.y = deg_to_rad(MODEL_YAW if w.model_scene != null else PLACEHOLDER_YAW)
 	var info: Dictionary = {"has": false, "box": AABB()}
-	_collect_aabb(_model, Transform3D.IDENTITY, info)
+	_collect_aabb(model, Transform3D.IDENTITY, info)
 	if bool(info["has"]):
 		var box: AABB = info["box"]
 		var longest: float = maxf(box.size.x, maxf(box.size.y, box.size.z))
 		if longest > 0.0001:
 			var s: float = PREVIEW_FIT / longest
-			_model.scale = Vector3.ONE * s
-			_model.position = -(box.position + box.size * 0.5) * s
-	_stage.add_child(_model)
+			model.scale = Vector3.ONE * s
+			model.position = -(box.position + box.size * 0.5) * s
+	_holder = Node3D.new()
+	_holder.add_child(model)
+	_add_attachments(model, w)
+	_stage.add_child(_holder)
 	_stage.rotation.y = 0.0
+
+
+## Draws the gun's equipped attachments (same builder the player uses).
+func _add_attachments(model: Node3D, w: WeaponData) -> void:
+	var reg_script = load(ATTACH_REGISTRY)
+	var models_script = load(ATTACH_MODELS)
+	if reg_script == null or models_script == null:
+		return
+	var loadout = reg_script.new().get_loadout(w.get_base_name())
+	if not (loadout is Dictionary) or loadout.is_empty():
+		return
+	var root = models_script.new().build_for(model, loadout, w.get_base_name())
+	if root != null:
+		_holder.add_child(root)
 
 
 func _collect_aabb(node: Node, parent_xf: Transform3D, info: Dictionary) -> void:
