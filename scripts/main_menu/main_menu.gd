@@ -20,6 +20,7 @@ func _ready() -> void:
 	_add_dev_button()
 	_add_coop_button()
 	_add_weapons_button()
+	_add_market_button()
 	_add_juice_label()
 
 
@@ -160,6 +161,28 @@ func _on_weapons_pressed() -> void:
 	var menu_script = load("res://scripts/ui/weapon_gallery.gd")
 	if menu_script == null:
 		push_warning("weapon_gallery.gd is missing or broken.")
+		return
+	var menu := Control.new()
+	menu.set_script(menu_script)
+	add_child(menu)
+
+
+## Adds a MARKET button to the main menu, just below WEAPONS.
+func _add_market_button() -> void:
+	var vbox: Node = start_button.get_parent()
+	var b := Button.new()
+	b.text = "MARKET"
+	b.custom_minimum_size = start_button.custom_minimum_size
+	b.add_theme_font_size_override("font_size", 26)
+	b.pressed.connect(_on_market_pressed)
+	vbox.add_child(b)
+	vbox.move_child(b, start_button.get_index() + 3)
+
+
+func _on_market_pressed() -> void:
+	var menu_script = load("res://scripts/ui/market_menu.gd")
+	if menu_script == null:
+		push_warning("market_menu.gd is missing or broken.")
 		return
 	var menu := Control.new()
 	menu.set_script(menu_script)
