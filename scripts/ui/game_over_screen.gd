@@ -201,3 +201,30 @@ func _dev_settings_changed() -> bool:
 		if not is_equal_approx(GameManager.dev_get(key), float(GameManager.DEV_DEFAULTS.get(key, 0.0))):
 			return true
 	return false
+
+
+## Saves this run's per-gun stats and shows any achievements it unlocked.
+func _credit_achievements() -> void:
+	var script = load("res://scripts/managers/achievements.gd")
+	if script == null:
+		return
+	var ach = script.new()
+	var unlocked: Array = ach.record_run(GameManager.weapon_kills, GameManager.weapon_headshots, GameManager.round_number)
+	if unlocked.is_empty():
+		return
+	var lines := PackedStringArray()
+	for id in unlocked:
+		var line: String = "ACHIEVEMENT UNLOCKED: %s" % ach.title(str(id))
+		var reward: String = ach.reward_text(str(id))
+		if reward != "":
+			line += "\n" + reward
+		lines.append(line)
+	var vbox: Node = kills_label.get_parent()
+	var banner := Label.new()
+	banner.text = "\n".join(lines)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override("font_size", 24)
+	banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
+	vbox.add_child(banner)
+	if _juice_label != null:
+		vbox.move_child(banner, _juice_label.get_index() + 1)
