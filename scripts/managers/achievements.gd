@@ -37,6 +37,7 @@ var weapon_kills: Dictionary = {}
 var weapon_headshots: Dictionary = {}
 var best_round: int = 0
 var unlocked: Array = []
+var reticle_choice: Dictionary = {}   # optic id -> chosen reticle id ("" = the optic's default)
 
 
 func _init() -> void:
@@ -53,6 +54,9 @@ func _init() -> void:
 	var u = cfg.get_value("stats", "unlocked", [])
 	if u is Array:
 		unlocked = u
+	var rc = cfg.get_value("stats", "reticle_choice", {})
+	if rc is Dictionary:
+		reticle_choice = rc
 
 
 func save() -> void:
@@ -61,6 +65,7 @@ func save() -> void:
 	cfg.set_value("stats", "weapon_headshots", weapon_headshots)
 	cfg.set_value("stats", "best_round", best_round)
 	cfg.set_value("stats", "unlocked", unlocked)
+	cfg.set_value("stats", "reticle_choice", reticle_choice)
 	cfg.save(FILE)
 
 
@@ -144,3 +149,20 @@ func unlocked_reticles() -> Array:
 		if r != "" and unlocked.has(str(a["id"])):
 			out.append(r)
 	return out
+
+
+## The reticle chosen for an optic ("" = use the optic's default). Only unlocked ones count.
+func get_reticle(optic_id: String) -> String:
+	var r: String = str(reticle_choice.get(optic_id, ""))
+	if r != "" and unlocked_reticles().has(r):
+		return r
+	return ""
+
+
+## Saves the reticle for an optic ("" = back to the optic's default).
+func set_reticle(optic_id: String, reticle_id: String) -> void:
+	if reticle_id == "":
+		reticle_choice.erase(optic_id)
+	elif unlocked_reticles().has(reticle_id):
+		reticle_choice[optic_id] = reticle_id
+	save()
