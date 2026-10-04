@@ -29,6 +29,7 @@ var _snapshot_interval: float = 0.1
 func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_left)
 	NetManager.character_changed.connect(_on_character_changed)
+	NetManager.badge_changed.connect(_on_badge_changed)
 
 
 func setup(local_player: Node3D, round_manager = null) -> void:
@@ -156,6 +157,7 @@ func _make_remote(id: int) -> Node3D:
 	tag.font_size = 64
 	tag.position = Vector3(0, 1.3, 0)
 	root.add_child(tag)
+	_apply_aura(root, id)
 	return _with_character(root, id)
 
 
@@ -412,3 +414,62 @@ func _style_tag(tag: Label3D, id: int) -> void:
 		tag.modulate = Color.from_hsv(hue, 0.7, 1.0)
 	else:
 		tag.modulate = reg.color(b)
+
+
+# ---------- badge effects ----------
+
+const REMOTE_FLASH_POS: Vector3 = Vector3(0.25, 0.35, -0.9)   # in front of a remote player
+
+var _badge_fx = null
+var _badge_fx_tried: bool = false
+
+
+func _get_badge_fx():
+	if not _badge_fx_tried:
+		_badge_fx_tried = true
+		var script = load("res://scripts/effects/badge_effects.gd")
+		if script != null:
+			_badge_fx = script.new()
+	return _badge_fx
+
+
+## Adds (or removes) the glowing aura under a remote player to match their badge.
+func _apply_aura(root: Node3D, id: int) -> void:
+	var old := root.get_node_or_null("Aura")
+	if old != null:
+		root.remove_child(old)
+		old.queue_free()
+	var fx = _get_badge_fx()
+	if fx == null:
+		return
+	var color: Color = fx.effect_color(NetManager.get_badge(id), "aura")
+	if color.a <= 0.0:
+		return
+	root.add_child(fx.make_aura(color))
+
+
+func _on_badge_changed(peer_id: int) -> void:
+	var node = _remotes.get(peer_id)
+	if node != null and is_instance_valid(node):
+		_apply_aura(node, peer_id)
+
+
+## Called by my player when it fires with a flash badge equipped.
+func send_shot() -> void:
+	if NetManager.is_online:
+		_remote_shot.rpc()
+
+
+@rpc("any_peer", "call_remote", "unreliable")
+func _remote_shot() -> void:
+	var id: int = multiplayer.get_remote_sender_id()
+	var node = _remotes.get(id)
+	if node == null or not is_instance_valid(node):
+		return
+	var fx = _get_badge_fx()
+	if fx == null:
+		return
+	var color: Color = fx.effect_color(NetManager.get_badge(id), "flash")
+	if color.a <= 0.0:
+		return
+	fx.flash(node, REMOTE_FLASH_POS, color)
