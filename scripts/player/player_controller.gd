@@ -298,6 +298,7 @@ func _try_trigger() -> void:
 
 
 func _fire_shot() -> void:
+	_track_weapon()
 	_badge_flash()
 	current_mag_ammo -= 1
 	ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
@@ -938,3 +939,9 @@ func _tint_hit_marker(marker: Node3D, is_headshot: bool) -> void:
 		return
 	var current: Color = marker.get("modulate")
 	marker.set("modulate", Color(color.r, color.g, color.b, current.a))
+
+
+## Remembers which gun I fired last, so kills are credited to it (achievements).
+func _track_weapon() -> void:
+	if current_weapon != null:
+		GameManager.last_weapon = current_weapon.get_base_name()
