@@ -1,5 +1,6 @@
 extends Control
-## Weapon gallery: list of guns (left), spinning preview (middle), stat bars (right).
+## Weapon gallery: list of guns (left), spinning preview + attachment slots (middle),
+## stat bars (right).
 
 const GUN_PATHS: Array = [
 	"res://resources/weapons/pistol.tres",
@@ -11,6 +12,7 @@ const GUN_PATHS: Array = [
 const LOCKER_PATH: String = "res://scripts/weapons/locker_weapons.gd"
 const ATTACH_REGISTRY: String = "res://scripts/weapons/attachments.gd"
 const ATTACH_MODELS: String = "res://scripts/weapons/attachment_models.gd"
+const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const PREVIEW_FIT: float = 1.8
 # Turns each model so the gun points along +X (what the attachment graphics expect).
 const MODEL_YAW: float = 0.0          # .gltf guns
@@ -25,7 +27,8 @@ var _name_label: Label
 var _stats_box: VBoxContainer
 var _spin: bool = true
 var _spin_button: Button
-var _max_scores: Dictionary = {}   # stat key -> best base score across all guns
+var _slot_buttons: Dictionary = {}   # slot name -> Button
+var _max_scores: Dictionary = {}     # stat key -> best base score across all guns
 
 
 ## A horizontal stat bar: white = base, green = gained, red = lost.
@@ -130,7 +133,7 @@ func _build_ui() -> void:
 		b.pressed.connect(_select.bind(i))
 		list.add_child(b)
 
-	# ---- middle: name + spinning preview
+	# ---- middle: name + spinning preview + slots
 	var mid := VBoxContainer.new()
 	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main.add_child(mid)
@@ -140,7 +143,7 @@ func _build_ui() -> void:
 	mid.add_child(_name_label)
 
 	var container := SubViewportContainer.new()
-	container.custom_minimum_size = Vector2(300, 300)
+	container.custom_minimum_size = Vector2(300, 200)
 	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	container.stretch = true
@@ -173,11 +176,27 @@ func _build_ui() -> void:
 	vp.add_child(_stage)
 
 	_spin_button = Button.new()
-	_spin_button.custom_minimum_size = Vector2(0, 60)
-	_spin_button.add_theme_font_size_override("font_size", 22)
+	_spin_button.custom_minimum_size = Vector2(0, 56)
+	_spin_button.add_theme_font_size_override("font_size", 20)
 	_spin_button.pressed.connect(_toggle_spin)
 	mid.add_child(_spin_button)
 	_update_spin_button()
+
+	var slot_grid := GridContainer.new()
+	slot_grid.columns = 2
+	slot_grid.add_theme_constant_override("h_separation", 8)
+	slot_grid.add_theme_constant_override("v_separation", 8)
+	mid.add_child(slot_grid)
+	var reg_script = load(ATTACH_REGISTRY)
+	if reg_script != null:
+		for slot in reg_script.new().SLOTS:
+			var sb := Button.new()
+			sb.custom_minimum_size = Vector2(0, 56)
+			sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			sb.add_theme_font_size_override("font_size", 18)
+			sb.pressed.connect(_on_slot_pressed.bind(str(slot)))
+			slot_grid.add_child(sb)
+			_slot_buttons[str(slot)] = sb
 
 	# ---- right: stat bars
 	_stats_box = VBoxContainer.new()
@@ -219,6 +238,52 @@ func _select(i: int) -> void:
 	_name_label.text = w.weapon_name
 	_rebuild_model(w)
 	_refresh_stats(w)
+	_update_slot_buttons()
+
+
+# ------------------------------------------------------------------ slots
+
+## Shows what's equipped in each slot on its button.
+func _update_slot_buttons() -> void:
+	if _guns.is_empty():
+		return
+	var w: WeaponData = _guns[_index]["w"]
+	var reg_script = load(ATTACH_REGISTRY)
+	if reg_script == null:
+		return
+	var reg = reg_script.new()
+	var loadout: Dictionary = reg.get_loadout(w.get_base_name())
+	for slot in _slot_buttons.keys():
+		var id: String = str(loadout.get(slot, ""))
+		var label: String = "NONE"
+		if id != "" and reg.ATTACHMENTS.has(id):
+			label = str(reg.ATTACHMENTS[id]["name"])
+		(_slot_buttons[slot] as Button).text = "%s: %s" % [str(slot).to_upper(), label]
+
+
+## Tap a slot: cycles NONE -> each attachment for that slot -> NONE, and saves it.
+func _on_slot_pressed(slot: String) -> void:
+	var w: WeaponData = _guns[_index]["w"]
+	var reg_script = load(ATTACH_REGISTRY)
+	var profile_script = load(PROFILE_PATH)
+	if reg_script == null or profile_script == null:
+		return
+	var reg = reg_script.new()
+	var options: Array = [""]
+	for id in reg.ATTACHMENTS.keys():
+		if str(reg.ATTACHMENTS[id]["slot"]) == slot:
+			options.append(str(id))
+	var loadout: Dictionary = reg.get_loadout(w.get_base_name())
+	var current: String = str(loadout.get(slot, ""))
+	var idx: int = maxi(options.find(current), 0)
+	var next_id: String = str(options[(idx + 1) % options.size()])
+	profile_script.new().set_attachment(w.get_base_name(), slot, next_id)
+
+	var keep_rot: float = _stage.rotation.y
+	_rebuild_model(w)
+	_stage.rotation.y = keep_rot
+	_refresh_stats(w)
+	_update_slot_buttons()
 
 
 func _rebuild_model(w: WeaponData) -> void:
