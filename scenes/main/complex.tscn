@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://gym_compound_complex_01"]
+[gd_scene load_steps=12 format=3 uid="uid://complex"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_gym"]
 sky_top_color = Color(0.18, 0.22, 0.32, 1)
