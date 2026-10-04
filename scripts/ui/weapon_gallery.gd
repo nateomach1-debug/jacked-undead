@@ -23,6 +23,8 @@ var _stage: Node3D
 var _holder: Node3D = null
 var _name_label: Label
 var _stats_box: VBoxContainer
+var _spin: bool = true
+var _spin_button: Button
 
 
 func _ready() -> void:
@@ -119,7 +121,8 @@ func _build_ui() -> void:
 	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	container.stretch = true
-	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	container.mouse_filter = Control.MOUSE_FILTER_STOP
+	container.gui_input.connect(_on_preview_input)
 	mid.add_child(container)
 
 	var vp := SubViewport.new()
@@ -146,6 +149,13 @@ func _build_ui() -> void:
 	_stage = Node3D.new()
 	vp.add_child(_stage)
 
+	_spin_button = Button.new()
+	_spin_button.custom_minimum_size = Vector2(0, 60)
+	_spin_button.add_theme_font_size_override("font_size", 22)
+	_spin_button.pressed.connect(_toggle_spin)
+	mid.add_child(_spin_button)
+	_update_spin_button()
+
 	# ---- right: stats (filled in the next step)
 	_stats_box = VBoxContainer.new()
 	_stats_box.custom_minimum_size = Vector2(320, 0)
@@ -162,6 +172,25 @@ func _build_ui() -> void:
 	back.add_theme_font_size_override("font_size", 26)
 	back.pressed.connect(queue_free)
 	outer.add_child(back)
+
+
+func _toggle_spin() -> void:
+	_spin = not _spin
+	if not _spin:
+		_stage.rotation.y = 0.0   # clean side view
+	_update_spin_button()
+
+
+func _update_spin_button() -> void:
+	_spin_button.text = "SPIN: ON" if _spin else "SPIN: OFF (drag to rotate)"
+
+
+## Drag on the preview to turn the gun by hand (only while spin is off).
+func _on_preview_input(event: InputEvent) -> void:
+	if _spin or _stage == null:
+		return
+	if event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		_stage.rotation.y += event.relative.x * 0.01
 
 
 func _select(i: int) -> void:
@@ -229,5 +258,5 @@ func _collect_aabb(node: Node, parent_xf: Transform3D, info: Dictionary) -> void
 
 
 func _process(delta: float) -> void:
-	if _stage != null and is_visible_in_tree():
+	if _spin and _stage != null and is_visible_in_tree():
 		_stage.rotation.y += delta * 0.9
