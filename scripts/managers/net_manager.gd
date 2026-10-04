@@ -14,6 +14,7 @@ var is_host: bool = false
 
 func _ready() -> void:
 	_load_character()
+	_load_badge()
 	_load_player_name()
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -126,6 +127,7 @@ func _on_peer_connected(id: int) -> void:
 	if is_online:
 		_set_name.rpc_id(id, player_name)
 		_set_character.rpc_id(id, character_id)
+		_set_badge.rpc_id(id, badge_id)
 	if is_host:
 		status_changed.emit("Player %d joined. Players: %d\n%s" % [id, _player_count(), _address_text()])
 
@@ -403,3 +405,40 @@ func _is_tailscale_ip(a: String) -> bool:
 @rpc("authority", "call_local", "reliable")
 func _apply_host_dev(settings: Dictionary) -> void:
 	GameManager.dev_apply_override(settings)
+
+
+# ---------- badges ----------
+
+signal badge_changed(peer_id: int)
+
+const BADGE_FILE: String = "user://badge.cfg"
+
+var badge_id: String = ""            # this phone's equipped badge ("" = none)
+var badges: Dictionary = {}          # peer id -> badge id from the other phones
+
+
+func _load_badge() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(BADGE_FILE) == OK:
+		badge_id = str(cfg.get_value("player", "badge", "")).left(32)
+
+
+func set_badge(new_id: String) -> void:
+	badge_id = new_id.left(32)
+	var cfg := ConfigFile.new()
+	cfg.set_value("player", "badge", badge_id)
+	cfg.save(BADGE_FILE)
+	if is_online:
+		_set_badge.rpc(badge_id)
+
+
+func get_badge(peer_id: int) -> String:
+	var own: bool = is_online and peer_id == multiplayer.get_unique_id()
+	return badge_id if own else str(badges.get(peer_id, ""))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _set_badge(new_id: String) -> void:
+	var id: int = multiplayer.get_remote_sender_id()
+	badges[id] = new_id.left(32)
+	badge_changed.emit(id)
