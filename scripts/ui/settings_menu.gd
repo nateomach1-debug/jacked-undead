@@ -51,6 +51,18 @@ func _ready() -> void:
 	title.add_theme_font_size_override("font_size", 34)
 	outer.add_child(title)
 
+	# Shows whether the touch fix (drag-to-scroll lists) is running.
+	var status := Label.new()
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.add_theme_font_size_override("font_size", 16)
+	if get_tree().get_nodes_in_group("touch_fix").size() > 0:
+		status.text = "Touch fix: ON"
+		status.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
+	else:
+		status.text = "Touch fix: NOT INSTALLED (check game_manager.gd and touch_fix.gd)"
+		status.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
+	outer.add_child(status)
+
 	# The list scrolls by dragging; BACK stays pinned at the bottom.
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
