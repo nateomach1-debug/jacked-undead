@@ -40,6 +40,19 @@ var dev_override: Dictionary = {}   # co-op: the host's dev settings, used while
 func _ready() -> void:
 	_load_dev_settings()
 	_apply_nav_debug()
+	_install_touch_fix()
+
+
+## Adds the touch fixes (drag-to-scroll lists and sliders) to the whole game.
+func _install_touch_fix() -> void:
+	var script = load("res://scripts/managers/touch_fix.gd")
+	if script == null:
+		push_warning("touch_fix.gd is missing or broken.")
+		return
+	var node := Node.new()
+	node.set_script(script)
+	node.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(node)
 
 
 ## earned = false for refunds (like the co-op revive bonus): they add Gains
