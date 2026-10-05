@@ -95,7 +95,7 @@ var _downed_state: Node = null
 
 # --- Weapon / ammo state ---
 @export var current_weapon: WeaponData  # fallback single starting gun if weapon_loadout is empty
-@export var weapon_loadout: Array = []  # assign multiple WeaponData .tres here to enable weapon switching
+@export var weapon_loadout: Array = [WeaponData]  # assign multiple WeaponData .tres here to enable weapon switching
 var current_weapon_index: int = 0
 var current_mag_ammo: int = 0
 var current_reserve_ammo: int = 0
