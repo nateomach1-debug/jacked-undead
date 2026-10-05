@@ -792,7 +792,7 @@ func _ads_zoom() -> float:
 	if current_weapon == null:
 		return ADS_DEFAULT_ZOOM
 	var zoom: float = float(ADS_ZOOM_BY_NAME.get(current_weapon.get_base_name().to_lower(), ADS_DEFAULT_ZOOM))
-		var total_zoom: float = zoom * float(current_weapon.get_meta("ads_zoom_mult", 1.0))
+	var total_zoom: float = zoom * float(current_weapon.get_meta("ads_zoom_mult", 1.0))
 	return 1.0 + (total_zoom - 1.0) * _setting_value("ads_zoom", 100.0) / 100.0
 
 func _is_scope_weapon() -> bool:
@@ -801,7 +801,7 @@ func _is_scope_weapon() -> bool:
 
 ## Look speed shrinks as you zoom in.
 func _look_scale() -> float:
-		var ads_sens: float = lerpf(1.0, _setting_value("ads_sens", 100.0) / 100.0, _aim_blend)
+	var ads_sens: float = lerpf(1.0, _setting_value("ads_sens", 100.0) / 100.0, _aim_blend)
 	return ads_sens / lerpf(1.0, _ads_zoom(), _aim_blend)
 
 func _update_ads(delta: float) -> void:
@@ -990,7 +990,7 @@ func _update_reticle() -> void:
 		if loadout is Dictionary:
 			var optic: String = str(loadout.get("optic", ""))
 			if optic != "":
-							kind = _reticle_kind_for(optic)
+			kind = _reticle_kind_for(optic)
 	var amount: float = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
 	_reticle_ctrl.show_reticle(kind, amount)
 	_hide_crosshair(kind != "" and amount > 0.0)
