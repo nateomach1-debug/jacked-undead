@@ -334,9 +334,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -28)
 cost = 950
 
 [node name="Player" parent="." instance=ExtResource("3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 20)
-current_weapon = ExtResource("10")
-weapon_loadout = [ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 20)
 
 [node name="HUD" parent="." instance=ExtResource("9")]
 
