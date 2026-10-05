@@ -6,7 +6,7 @@ const SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
 const SLIDER_PATH: String = "res://scripts/ui/touch_slider.gd"
 const ROWS: Array = [
 	{"key": "touch_look", "title": "Touch look speed", "min": 0.5, "max": 2.0, "step": 0.1, "fmt": "x%.1f"},
-	{"key": "pad_look", "title": "Gamepad look speed", "min": 90.0, "max": 400.0, "step": 20.0, "fmt": "%d deg/s"},
+	{"key": "pad_look", "title": "Gamepad look speed", "min": 100.0, "max": 400.0, "step": 20.0, "fmt": "%d deg/s"},
 	{"key": "fov", "title": "Field of view", "min": 60.0, "max": 110.0, "step": 5.0, "fmt": "%d"},
 	{"key": "ads_sens", "title": "ADS sensitivity", "min": 25.0, "max": 150.0, "step": 5.0, "fmt": "%d%%"},
 	{"key": "ads_zoom", "title": "ADS zoom", "min": 50.0, "max": 150.0, "step": 5.0, "fmt": "%d%%"},
@@ -113,10 +113,10 @@ func _add_stepper_row(parent: Control, row: Dictionary) -> void:
 	box.add_child(_step_button("-", key, -1))
 
 	if _slider_script != null:
-		var slider := Control.new()
+		var slider = Control.new()
 		slider.set_script(_slider_script)
 		slider.custom_minimum_size = Vector2(320, 60)
-		slider.setup(float(row["min"]), float(row["max"]), float(row["step"]) / 10.0 * 10.0 / 10.0 * 10.0, _settings.get_value(key))
+		slider.setup(float(row["min"]), float(row["max"]), float(row["step"]), _settings.get_value(key))
 		slider.value_changed.connect(_on_slider.bind(key))
 		box.add_child(slider)
 		_sliders[key] = slider
