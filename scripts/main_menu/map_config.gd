@@ -9,6 +9,7 @@ const ENABLED: Dictionary = {
 	"gym_compound": false,
 	"challenge": true,
 	"complex": true,
+    "solar_substation": true,
 }
 
 # coop = also offered on the Co-op host screen.
@@ -19,6 +20,7 @@ const MAPS: Array = [
 	{"id": "gym_compound", "title": "GYM COMPOUND", "path": "res://scenes/main/gym_compound.tscn", "coop": true},
 	{"id": "challenge", "title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn", "coop": true},
 	{"id": "complex", "title": "COMPLEX", "path": "res://scenes/main/complex.tscn", "coop": true},
+    {"id": "solar_substation", "title": "SOLAR SUBSTATION", "path": "res://scenes/main/solar_substation.tscn", "coop": true},
 ]
 
 
