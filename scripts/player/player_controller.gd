@@ -990,7 +990,7 @@ func _update_reticle() -> void:
 		if loadout is Dictionary:
 			var optic: String = str(loadout.get("optic", ""))
 			if optic != "":
-			kind = _reticle_kind_for(optic)
+			    kind = _reticle_kind_for(optic)
 	var amount: float = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
 	_reticle_ctrl.show_reticle(kind, amount)
 	_hide_crosshair(kind != "" and amount > 0.0)
