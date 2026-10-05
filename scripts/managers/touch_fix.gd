@@ -19,6 +19,7 @@ var _dragging: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("touch_fix")
 	_scan(get_tree().root)
 	get_tree().node_added.connect(_on_node_added)
 
