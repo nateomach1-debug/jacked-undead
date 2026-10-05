@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3 uid="uid://gym_compound_complex_01"]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -61,7 +61,7 @@ albedo_color = Color(0.15, 0.15, 0.17, 1)
 roughness = 0.45
 
 [sub_resource type="BoxMesh" id="BoxMesh_Floor"]
-material = SubResource("StandardMaterial3D_GymFloor")
+material = SubResource("Mat_GymFloor")
 size = Vector3(60, 0.5, 60)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_Floor"]
@@ -72,14 +72,14 @@ albedo_color = Color(0.32, 0.35, 0.38, 1)
 roughness = 0.7
 
 [sub_resource type="BoxMesh" id="BoxMesh_WallMain"]
-material = SubResource("StandardMaterial3D_GymWall")
+material = SubResource("Mat_GymWall")
 size = Vector3(60, 20, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_WallMain"]
 size = Vector3(60, 20, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_Catwalk"]
-material = SubResource("StandardMaterial3D_GymWall")
+material = SubResource("Mat_GymWall")
 size = Vector3(40, 0.4, 6)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_Catwalk"]
