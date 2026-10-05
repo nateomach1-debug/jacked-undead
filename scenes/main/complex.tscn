@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3]
+[gd_scene load_steps=41 format=3 uid="uid://gym_compound_complex_01"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -184,33 +184,100 @@ mesh = SubResource("BoxMesh_Catwalk")
 [node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Catwalk_Upper"]
 shape = SubResource("BoxShape3D_Catwalk")
 
-[node name="InteractiveStations" type="Node3D" parent="."]
+[node name="Stations" type="Node3D" parent="."]
 
-[node name="supplement_station" parent="InteractiveStations" instance=ExtResource("6")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -8)
+[node name="TRTStation" parent="Stations" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.9, 0)
+supplement_id = "trt"
+display_name = "TRT"
+cost = 1500
+body_color = Color(0.1647, 0.4235, 0.6902, 1)
+icon_texture = ExtResource("15")
 
-[node name="water_station" parent="InteractiveStations" instance=ExtResource("8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -8)
+[node name="CreatineStation" parent="Stations" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0.9, 0)
+supplement_id = "creatine"
+display_name = "Creatine"
+cost = 2000
+body_color = Color(0.867, 0.4196, 0.1255, 1)
+icon_texture = ExtResource("16")
 
-[node name="loot_locker" parent="InteractiveStations" instance=ExtResource("29")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -22)
+[node name="WheyStation" parent="Stations" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.9, 0)
+supplement_id = "whey"
+display_name = "Whey Protein"
+cost = 2500
+body_color = Color(0.4196, 0.2745, 0.7569, 1)
+icon_texture = ExtResource("17")
 
-[node name="pr_rack" parent="InteractiveStations" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+[node name="PreWorkoutStation" parent="Stations" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0.9, 0)
+supplement_id = "pre_workout"
+display_name = "Pre-Workout"
+cost = 2000
+body_color = Color(0.8392, 0.6196, 0.1804, 1)
+icon_texture = ExtResource("18")
 
-[node name="WallBuys" type="Node3D" parent="."]
+[node name="FishOilStation" parent="Stations" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13, 0.9, 0)
+supplement_id = "fish_oil"
+display_name = "Fish Oil"
+cost = 3000
+body_color = Color(0.1922, 0.5922, 0.5843, 1)
+icon_texture = ExtResource("19")
 
-[node name="WallBuy_SMG" parent="WallBuys" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29.2, 1.5, 0)
+[node name="BCAAsStation" parent="Stations" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.9, 0)
+supplement_id = "bcaas"
+display_name = "BCAAs"
+cost = 1500
+body_color = Color(0.2196, 0.6314, 0.4118, 1)
+icon_texture = ExtResource("20")
 
-[node name="WallBuy_Shotgun" parent="WallBuys" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.2, 1.5, 0)
+[node name="PRRack" parent="Stations" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 8)
 
-[node name="WallBuy_Sniper" parent="WallBuys" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -29.2)
+[node name="WaterStation1" parent="Stations" instance=ExtResource("8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 6)
 
-[node name="WallBuy_Crossbow" parent="WallBuys" instance=ExtResource("22")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.5, -20.8)
+[node name="WaterStation2" parent="Stations" instance=ExtResource("8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -6)
+
+[node name="SMGWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 6)
+weapon = ExtResource("12")
+display_model = ExtResource("23")
+display_name = "SMG"
+buy_cost = 3000
+ammo_cost = 500
+
+[node name="RifleWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 9)
+weapon = ExtResource("14")
+display_model = ExtResource("24")
+display_name = "Rifle"
+buy_cost = 4000
+ammo_cost = 600
+
+[node name="CrossbowWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 12)
+weapon = ExtResource("25")
+display_model = ExtResource("27")
+display_name = "Crossbow"
+buy_cost = 4500
+ammo_cost = 400
+
+[node name="SniperWallBuy" parent="Stations" instance=ExtResource("22")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -19.9, 0, 15)
+weapon = ExtResource("26")
+display_model = ExtResource("28")
+display_name = "Sniper"
+buy_cost = 5500
+ammo_cost = 450
+
+[node name="LootLocker" parent="Stations" instance=ExtResource("29")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -19.4)
+cost = 950
 
 [node name="BuyableDoors" type="Node3D" parent="."]
 
