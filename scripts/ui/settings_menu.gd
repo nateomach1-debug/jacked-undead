@@ -1,8 +1,9 @@
 extends Control
 ## Settings screen opened from OPTIONS: look speeds, field of view, ADS, reticle, sprint mode.
-## Values change with - / + buttons (easy on touch and with a controller).
+## Each value has a slider plus - / + buttons (the buttons also work great with a controller).
 
 const SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
+const SLIDER_PATH: String = "res://scripts/ui/touch_slider.gd"
 const ROWS: Array = [
 	{"key": "touch_look", "title": "Touch look speed", "min": 0.5, "max": 2.0, "step": 0.1, "fmt": "x%.1f"},
 	{"key": "pad_look", "title": "Gamepad look speed", "min": 90.0, "max": 400.0, "step": 20.0, "fmt": "%d deg/s"},
@@ -13,7 +14,9 @@ const ROWS: Array = [
 ]
 
 var _settings = null
+var _slider_script = null
 var _labels: Dictionary = {}
+var _sliders: Dictionary = {}
 var _sprint_button: Button
 var _color_button: Button
 var _hit_button: Button
@@ -25,6 +28,7 @@ func _ready() -> void:
 	var script = load(SETTINGS_PATH)
 	if script != null:
 		_settings = script.new()
+	_slider_script = load(SLIDER_PATH)
 
 	var bg := ColorRect.new()
 	bg.color = Color(0.05, 0.05, 0.07, 1.0)
@@ -47,7 +51,7 @@ func _ready() -> void:
 	title.add_theme_font_size_override("font_size", 34)
 	outer.add_child(title)
 
-	# The list scrolls (drag it); BACK stays pinned at the bottom.
+	# The list scrolls by dragging; BACK stays pinned at the bottom.
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -108,14 +112,23 @@ func _add_stepper_row(parent: Control, row: Dictionary) -> void:
 
 	box.add_child(_step_button("-", key, -1))
 
+	if _slider_script != null:
+		var slider := Control.new()
+		slider.set_script(_slider_script)
+		slider.custom_minimum_size = Vector2(320, 60)
+		slider.setup(float(row["min"]), float(row["max"]), float(row["step"]) / 10.0 * 10.0 / 10.0 * 10.0, _settings.get_value(key))
+		slider.value_changed.connect(_on_slider.bind(key))
+		box.add_child(slider)
+		_sliders[key] = slider
+
+	box.add_child(_step_button("+", key, 1))
+
 	var value_label := Label.new()
-	value_label.custom_minimum_size = Vector2(170, 0)
+	value_label.custom_minimum_size = Vector2(150, 0)
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	value_label.add_theme_font_size_override("font_size", 26)
 	box.add_child(value_label)
 	_labels[key] = value_label
-
-	box.add_child(_step_button("+", key, 1))
 	_update_label(key)
 
 
@@ -128,23 +141,44 @@ func _step_button(text: String, key: String, dir: int) -> Button:
 	return b
 
 
-func _on_step(key: String, dir: int) -> void:
+func _row_for(key: String) -> Dictionary:
 	for row in ROWS:
 		if row["key"] == key:
-			var step: float = float(row["step"])
-			var v: float = _settings.get_value(key) + float(dir) * step
-			v = snappedf(clampf(v, float(row["min"]), float(row["max"])), step / 10.0)
-			_settings.set_value(key, v)
+			return row
+	return {}
+
+
+func _on_step(key: String, dir: int) -> void:
+	var row: Dictionary = _row_for(key)
+	if row.is_empty():
+		return
+	var step: float = float(row["step"])
+	var v: float = _settings.get_value(key) + float(dir) * step
+	v = snappedf(clampf(v, float(row["min"]), float(row["max"])), step / 10.0)
+	_settings.set_value(key, v)
+	_update_label(key)
+	_sync_slider(key)
+
+
+## Dragging a slider changes the setting (it snaps to the same steps as - / +).
+func _on_slider(v: float, key: String) -> void:
+	_settings.set_value(key, v)
 	_update_label(key)
 
 
+func _sync_slider(key: String) -> void:
+	if _sliders.has(key):
+		_sliders[key].set_value_silent(_settings.get_value(key))
+
+
 func _update_label(key: String) -> void:
-	for row in ROWS:
-		if row["key"] == key:
-			var v: float = _settings.get_value(key)
-			var fmt: String = row["fmt"]
-			var shown: String = (fmt % v) if fmt.contains("%.") else (fmt % int(v))
-			(_labels[key] as Label).text = shown
+	var row: Dictionary = _row_for(key)
+	if row.is_empty():
+		return
+	var v: float = _settings.get_value(key)
+	var fmt: String = row["fmt"]
+	var shown: String = (fmt % v) if fmt.contains("%.") else (fmt % int(v))
+	(_labels[key] as Label).text = shown
 
 
 ## Cycles the reticle color through the list.
@@ -183,6 +217,7 @@ func _on_reset() -> void:
 	_settings.reset()
 	for key in _labels.keys():
 		_update_label(key)
+		_sync_slider(key)
 	_refresh_buttons()
 
 
