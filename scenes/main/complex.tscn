@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=41 format=3 uid="uid://gym_compound_complex_01"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -85,7 +85,7 @@ size = Vector3(40, 0.4, 6)
 [sub_resource type="BoxShape3D" id="BoxShape3D_Catwalk"]
 size = Vector3(40, 0.4, 6)
 
-[node name="GymCompound" type="Node3D"]
+[node name="GymCompound" type="Node3D" script=ExtResource("1")]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_opt")
@@ -186,30 +186,30 @@ shape = SubResource("BoxShape3D_Catwalk")
 
 [node name="InteractiveStations" type="Node3D" parent="."]
 
-[node name="supplement_station" type="Node3D" parent="InteractiveStations"]
+[node name="supplement_station" parent="InteractiveStations" instance=ExtResource("6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -8)
 
-[node name="water_station" type="Node3D" parent="InteractiveStations"]
+[node name="water_station" parent="InteractiveStations" instance=ExtResource("8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -8)
 
-[node name="loot_locker" type="Node3D" parent="InteractiveStations"]
-transform = Transform3D(1, 0, 0, 0, 1, -18, 0, -22)
+[node name="loot_locker" parent="InteractiveStations" instance=ExtResource("29")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, -22)
 
-[node name="pr_rack" type="Node3D" parent="InteractiveStations"]
+[node name="pr_rack" parent="InteractiveStations" instance=ExtResource("7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
 
 [node name="WallBuys" type="Node3D" parent="."]
 
-[node name="WallBuy_SMG" type="Node3D" parent="WallBuys"]
+[node name="WallBuy_SMG" parent="WallBuys" instance=ExtResource("22")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -29.2, 1.5, 0)
 
-[node name="WallBuy_Shotgun" type="Node3D" parent="WallBuys"]
+[node name="WallBuy_Shotgun" parent="WallBuys" instance=ExtResource("22")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.2, 1.5, 0)
 
-[node name="WallBuy_Sniper" type="Node3D" parent="WallBuys"]
+[node name="WallBuy_Sniper" parent="WallBuys" instance=ExtResource("22")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -29.2)
 
-[node name="WallBuy_Crossbow" type="Node3D" parent="WallBuys"]
+[node name="WallBuy_Crossbow" parent="WallBuys" instance=ExtResource("22")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.5, -20.8)
 
 [node name="BuyableDoors" type="Node3D" parent="."]
