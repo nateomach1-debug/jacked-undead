@@ -1,6 +1,7 @@
 extends Control
 ## A slider built for touch: tap or drag anywhere on the bar. Drawn by hand.
 ## Use: setup(min, max, step, start), then connect value_changed.
+## It reads raw touch input itself, so it works inside scrolling lists too.
 
 signal value_changed(new_value: float)
 
@@ -10,7 +11,8 @@ var min_value: float = 0.0
 var max_value: float = 1.0
 var step: float = 0.05
 var _value: float = 0.0
-var _dragging: bool = false
+var _dragging: bool = false   # mouse (desktop)
+var _finger: int = -1         # touch finger index, -1 = none
 
 
 func _ready() -> void:
@@ -54,6 +56,27 @@ func _snap(v: float) -> float:
 	return clampf(min_value + snappedf(v - min_value, s), min_value, max_value)
 
 
+## Touch: read the finger directly (works no matter how the engine routes touches).
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if _finger == -1 and is_visible_in_tree() and get_global_rect().has_point(event.position):
+				_finger = event.index
+				_set_from_x(event.position.x - get_global_rect().position.x)
+				get_viewport().set_input_as_handled()
+		elif event.index == _finger:
+			_finger = -1
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag:
+		if event.index == _finger:
+			_set_from_x(event.position.x - get_global_rect().position.x)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _finger != -1:
+		# Keeps a scrolling list from reacting while a finger is on the slider.
+		get_viewport().set_input_as_handled()
+
+
+## Mouse (desktop testing).
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed
