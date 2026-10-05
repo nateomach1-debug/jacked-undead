@@ -184,6 +184,21 @@ mesh = SubResource("BoxMesh_Catwalk")
 [node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Catwalk_Upper"]
 shape = SubResource("BoxShape3D_Catwalk")
 
+[node name="Player" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 18)
+current_weapon = ExtResource("10")
+weapon_loadout = [ExtResource("10")]
+
+[node name="HUD" parent="." instance=ExtResource("9")]
+[node name="TouchControls" parent="." instance=ExtResource("11")]
+
+[node name="GameOverScreen" parent="." instance=ExtResource("21")]
+
+[node name="RoundManager" type="Node" parent="."]
+script = ExtResource("2")
+zombie_scene = ExtResource("4")
+roid_rager_scene = ExtResource("5")
+
 [node name="Stations" type="Node3D" parent="."]
 
 [node name="TRTStation" parent="Stations" instance=ExtResource("6")]
