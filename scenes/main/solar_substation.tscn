@@ -29,6 +29,7 @@
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Crossbow_1.gltf" id="27"]
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
+[ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="30"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_Sun"]
 sky_top_color = Color(0.2, 0.4, 0.6, 1)
@@ -103,6 +104,10 @@ size = Vector3(8, 1, 18)
 [sub_resource type="BoxShape3D" id="Shape_Ramp"]
 size = Vector3(8, 1, 18)
 
+[sub_resource type="NavigationMesh" id="NavigationMesh_Solar"]
+agent_height = 1.8
+agent_radius = 0.4
+
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
 
@@ -114,100 +119,104 @@ transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -
 light_energy = 1.2
 shadow_enabled = true
 
-[node name="Geometry" type="Node3D" parent="."]
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavigationMesh_Solar")
+script = ExtResource("30")
 
-[node name="Floor" type="StaticBody3D" parent="Geometry"]
+[node name="Geometry" type="Node3D" parent="NavigationRegion3D"]
+
+[node name="Floor" type="StaticBody3D" parent="NavigationRegion3D/Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Floor"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Floor"]
 mesh = SubResource("Mesh_Floor")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Floor"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Floor"]
 shape = SubResource("Shape_Floor")
 
-[node name="Wall_North" type="StaticBody3D" parent="Geometry"]
+[node name="Wall_North" type="StaticBody3D" parent="NavigationRegion3D/Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.5, -31)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Wall_North"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Wall_North"]
 mesh = SubResource("Mesh_Wall")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Wall_North"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Wall_North"]
 shape = SubResource("Shape_Wall")
 
-[node name="Wall_South" type="StaticBody3D" parent="Geometry"]
+[node name="Wall_South" type="StaticBody3D" parent="NavigationRegion3D/Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.5, 31)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Wall_South"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Wall_South"]
 mesh = SubResource("Mesh_Wall")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Wall_South"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Wall_South"]
 shape = SubResource("Shape_Wall")
 
-[node name="Wall_East" type="StaticBody3D" parent="Geometry"]
+[node name="Wall_East" type="StaticBody3D" parent="NavigationRegion3D/Geometry"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 31, 7.5, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Wall_East"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Wall_East"]
 mesh = SubResource("Mesh_Wall")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Wall_East"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Wall_East"]
 shape = SubResource("Shape_Wall")
 
-[node name="Wall_West" type="StaticBody3D" parent="Geometry"]
+[node name="Wall_West" type="StaticBody3D" parent="NavigationRegion3D/Geometry"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -31, 7.5, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Wall_West"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Wall_West"]
 mesh = SubResource("Mesh_Wall")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Wall_West"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Wall_West"]
 shape = SubResource("Shape_Wall")
 
-[node name="Obstacles" type="Node3D" parent="Geometry"]
+[node name="Obstacles" type="Node3D" parent="NavigationRegion3D/Geometry"]
 
-[node name="LiFePO4_Bank_1" type="StaticBody3D" parent="Geometry/Obstacles"]
+[node name="LiFePO4_Bank_1" type="StaticBody3D" parent="NavigationRegion3D/Geometry/Obstacles"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 1.5, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Obstacles/LiFePO4_Bank_1"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Obstacles/LiFePO4_Bank_1"]
 mesh = SubResource("Mesh_BatteryBank")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Obstacles/LiFePO4_Bank_1"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Obstacles/LiFePO4_Bank_1"]
 shape = SubResource("Shape_BatteryBank")
 
-[node name="LiFePO4_Bank_2" type="StaticBody3D" parent="Geometry/Obstacles"]
+[node name="LiFePO4_Bank_2" type="StaticBody3D" parent="NavigationRegion3D/Geometry/Obstacles"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1.5, 0)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Obstacles/LiFePO4_Bank_2"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Obstacles/LiFePO4_Bank_2"]
 mesh = SubResource("Mesh_BatteryBank")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Obstacles/LiFePO4_Bank_2"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Obstacles/LiFePO4_Bank_2"]
 shape = SubResource("Shape_BatteryBank")
 
-[node name="Solar_Canopy" type="StaticBody3D" parent="Geometry/Obstacles"]
+[node name="Solar_Canopy" type="StaticBody3D" parent="NavigationRegion3D/Geometry/Obstacles"]
 transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 4, 15)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/Obstacles/Solar_Canopy"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/Obstacles/Solar_Canopy"]
 mesh = SubResource("Mesh_SolarPanel")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/Obstacles/Solar_Canopy"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/Obstacles/Solar_Canopy"]
 shape = SubResource("Shape_SolarPanel")
 
-[node name="UpperLevel" type="Node3D" parent="Geometry"]
+[node name="UpperLevel" type="Node3D" parent="NavigationRegion3D/Geometry"]
 
-[node name="Catwalk" type="StaticBody3D" parent="Geometry/UpperLevel"]
+[node name="Catwalk" type="StaticBody3D" parent="NavigationRegion3D/Geometry/UpperLevel"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, -25)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/UpperLevel/Catwalk"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/UpperLevel/Catwalk"]
 mesh = SubResource("Mesh_Catwalk")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/UpperLevel/Catwalk"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/UpperLevel/Catwalk"]
 shape = SubResource("Shape_Catwalk")
 
-[node name="Ramp" type="StaticBody3D" parent="Geometry/UpperLevel"]
+[node name="Ramp" type="StaticBody3D" parent="NavigationRegion3D/Geometry/UpperLevel"]
 transform = Transform3D(1, 0, 0, 0, 0.945519, 0.325568, 0, -0.325568, 0.945519, 0, 2.8, -12.5)
 
-[node name="Mesh" type="MeshInstance3D" parent="Geometry/UpperLevel/Ramp"]
+[node name="Mesh" type="MeshInstance3D" parent="NavigationRegion3D/Geometry/UpperLevel/Ramp"]
 mesh = SubResource("Mesh_Ramp")
 
-[node name="Collision" type="CollisionShape3D" parent="Geometry/UpperLevel/Ramp"]
+[node name="Collision" type="CollisionShape3D" parent="NavigationRegion3D/Geometry/UpperLevel/Ramp"]
 shape = SubResource("Shape_Ramp")
 
 [node name="BuyableDoors" type="Node3D" parent="."]
