@@ -66,7 +66,47 @@ const OVERRIDES: Dictionary = {
 		"optic": Vector2(0.68, 1.0),
 		"barrel": Vector2(1.0, 0.80),
 		"magazine": Vector2(0.59, 0.53),
-		"grip": Vector2(0.72, 0.48),
+				"grip": Vector2(0.72, 0.48),
+	},
+	"Burst Rifle": {
+		"optic": Vector2(0.42, 0.90),
+		"barrel": Vector2(1.0, 0.62),
+		"magazine": Vector2(0.465, 0.06),
+		"magazine_tilt": 10.0,
+		"grip": Vector2(0.73, 0.56),
+	},
+	"Rocket Launcher": {
+		"optic": Vector2(0.46, 0.87),
+		"barrel": Vector2(1.0, 0.69),
+		"magazine": Vector2(0.325, 0.115),
+		"magazine_tilt": -30.0,
+		"grip": Vector2(0.67, 0.51),
+	},
+	"LMG": {
+		"optic": Vector2(0.45, 0.83),
+		"barrel": Vector2(1.0, 0.63),
+		"magazine": Vector2(0.41, 0.09),
+		"grip": Vector2(0.69, 0.54),
+	},
+	"Flamethrower": {
+		"optic": Vector2(0.51, 0.83),
+		"barrel": Vector2(1.0, 0.75),
+		"magazine": Vector2(0.33, 0.11),
+		"grip": Vector2(0.73, 0.66),
+	},
+	"Magnum": {
+		"optic": Vector2(0.50, 0.94),
+		"barrel": Vector2(1.0, 0.78),
+		"magazine": Vector2(0.10, 0.05),
+		"magazine_tilt": -10.0,
+		"grip": Vector2(0.77, 0.55),
+	},
+	"Grenade Launcher": {
+		"optic": Vector2(0.585, 0.84),
+		"barrel": Vector2(1.0, 0.63),
+		"magazine": Vector2(0.365, 0.04),
+		"magazine_tilt": -25.0,
+		"grip": Vector2(0.88, 0.54),
 	},
 }
 
