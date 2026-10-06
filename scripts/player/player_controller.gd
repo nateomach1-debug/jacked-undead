@@ -26,6 +26,9 @@ var _hip_mount_pos: Vector3 = Vector3.ZERO
 var _scoped: bool = false
 var _scope_layer: CanvasLayer = null
 var _scope_ctrl: Control = null
+var _ads_pos: Vector3 = Vector3(0.05, -0.3, -0.7)
+var _ads_dirty: bool = true
+const ALIGN_OPTICS: Array = ["red_dot", "holo"]
 const STAMINA_MAX: float = 100.0
 const STAMINA_DRAIN: float = 25.0        # per second while sprinting (4s of sprint)
 const STAMINA_REGEN: float = 18.0        # per second while not sprinting
@@ -691,6 +694,7 @@ func _update_weapon_model() -> void:
 				# Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
 				_current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
 			_add_attachment_visuals()
+			_ads_dirty = true
 
 
 func _try_interact() -> void:
@@ -824,8 +828,10 @@ func _update_ads(delta: float) -> void:
 	_aim_blend = move_toward(_aim_blend, 1.0 if is_aiming else 0.0, delta * ADS_SPEED)
 	var eased: float = _aim_blend * _aim_blend * (3.0 - 2.0 * _aim_blend)
 	camera.fov = lerpf(_hip_fov, _hip_fov / _ads_zoom(), eased)
-	weapon_mount.position = _hip_mount_pos.lerp(ADS_MOUNT_POS, eased)
-
+		if _ads_dirty:
+		_ads_dirty = false
+		_ads_pos = _compute_ads_pos()
+	weapon_mount.position = _hip_mount_pos.lerp(_ads_pos, eased)
 	var scoped: bool = _is_scope_weapon() and _aim_blend > 0.85
 	if scoped != _scoped:
 		_scoped = scoped
@@ -835,6 +841,18 @@ func _update_ads(delta: float) -> void:
 		if scoped and _scope_ctrl != null:
 			_scope_ctrl.queue_redraw()
 
+## Where the gun mount must sit while aiming so the optic's sight point is dead center.
+func _compute_ads_pos() -> Vector3:
+	if _attach_root == null or not is_instance_valid(_attach_root):
+		return ADS_MOUNT_POS
+	var optic: Node3D = _attach_root.get_node_or_null("optic") as Node3D
+	if optic == null or not optic.has_meta("sight_local"):
+		return ADS_MOUNT_POS
+	if not ALIGN_OPTICS.has(str(optic.get_meta("optic_id", ""))):
+		return ADS_MOUNT_POS
+	var sight_world: Vector3 = optic.to_global(optic.get_meta("sight_local"))
+	var p: Vector3 = camera.global_transform.affine_inverse() * sight_world
+	return Vector3(weapon_mount.position.x - p.x, weapon_mount.position.y - p.y, ADS_MOUNT_POS.z)
 
 func _build_scope() -> void:
 	_scope_layer = CanvasLayer.new()
