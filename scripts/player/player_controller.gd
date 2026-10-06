@@ -994,6 +994,7 @@ func _update_reticle() -> void:
 	var amount: float = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
 	_reticle_ctrl.show_reticle(kind, amount)
 	_hide_crosshair(kind != "" and amount > 0.0)
+	_style_crosshair()
 
 
 var _crosshair: Node = null
@@ -1055,3 +1056,26 @@ func _setting_value(key: String, fallback: float) -> float:
 	if _game_settings == null:
 		return fallback
 	return float(_game_settings.get_value(key))
+
+
+var _crosshair_styled: bool = false
+var _crosshair_tries: int = 0
+
+
+## Applies the Settings reticle color and size to the old "+" crosshair too (once it exists).
+func _style_crosshair() -> void:
+	if _crosshair_styled or _crosshair_tries > 900:
+		return
+	_crosshair_tries += 1
+	if _crosshair_tries % 15 != 0:
+		return   # only look every 15th frame
+	var node: Node = _find_crosshair(get_tree().root)
+	if node == null or not (node is Control):
+		return
+	var pct: float = _setting_value("reticle_size", 100.0) / 100.0
+	var ctrl: Control = node as Control
+	ctrl.pivot_offset = ctrl.size * 0.5
+	ctrl.scale = Vector2.ONE * pct
+	if _game_settings != null:
+		ctrl.modulate = _game_settings.reticle_color()
+	_crosshair_styled = true
