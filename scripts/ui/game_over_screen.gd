@@ -204,36 +204,18 @@ func _dev_settings_changed() -> bool:
 	return false
 
 
-## Saves this run's per-gun stats and shows any achievements it unlocked (or why not).
+## Saves this run's per-gun stats and shows any achievements it unlocked.
 func _credit_achievements() -> void:
-	var vbox: Node = kills_label.get_parent()
-	var banner := Label.new()
-	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	banner.add_theme_font_size_override("font_size", 22)
-	banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
-	vbox.add_child(banner)
-	if _juice_label != null:
-		vbox.move_child(banner, _juice_label.get_index() + 1)
-
 	var script = load("res://scripts/managers/achievements.gd")
 	if script == null:
-		banner.text = "Achievements: achievements.gd failed to load"
-		banner.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
 		return
 	var run_kills = GameManager.get("weapon_kills")
 	var run_heads = GameManager.get("weapon_headshots")
 	if run_kills == null or run_heads == null:
-		banner.text = "Achievements: game_manager.gd is the old version"
-		banner.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3))
 		return
-
-	var tracked: int = 0
-	for v in run_kills.values():
-		tracked += int(v)
 	var ach = script.new()
 	var unlocked: Array = ach.record_run(run_kills, run_heads, GameManager.round_number)
 	if unlocked.is_empty():
-		banner.text = "Achievements: progress saved (%d kills tracked this run)" % tracked
 		return
 	var lines := PackedStringArray()
 	for id in unlocked:
@@ -242,4 +224,12 @@ func _credit_achievements() -> void:
 		if reward != "":
 			line += "\n" + reward
 		lines.append(line)
+	var vbox: Node = kills_label.get_parent()
+	var banner := Label.new()
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override("font_size", 22)
+	banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
 	banner.text = "\n".join(lines)
+	vbox.add_child(banner)
+	if _juice_label != null:
+		vbox.move_child(banner, _juice_label.get_index() + 1)
