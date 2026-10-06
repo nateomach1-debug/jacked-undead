@@ -16,7 +16,14 @@ const ANCHORS: Dictionary = {
 	"grip": Vector2(0.75, 0.25),
 }
 # Per-gun tweaks after checking screenshots, e.g. {"Rifle": {"optic": Vector2(0.5, 1.0)}}
-const OVERRIDES: Dictionary = {}
+const OVERRIDES: Dictionary = {
+	"Pistol": {
+		"optic": Vector2(0.58, 0.95),
+		"barrel": Vector2(1.0, 0.86),
+		"magazine": Vector2(0.46, 0.39),
+		"grip": Vector2(0.64, 0.39),
+	},
+}
 
 
 ## Builds all of a gun's attachments, placed using the model's bounding box.
