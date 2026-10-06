@@ -22,6 +22,9 @@ const BAR_HEADROOM: float = 1.5       # bar is full at (best gun's stat x this)
 var _guns: Array = []          # {"w": WeaponData, "locker": bool}
 var _index: int = 0
 var _stage: Node3D
+var _preview_box: Control = null
+var _dragging: bool = false
+var _touch_seen: bool = false
 var _holder: Node3D = null
 var _name_label: Label
 var _stats_box: VBoxContainer
@@ -148,7 +151,7 @@ func _build_ui() -> void:
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	container.stretch = true
 	container.mouse_filter = Control.MOUSE_FILTER_STOP
-	container.gui_input.connect(_on_preview_input)
+	_preview_box = container
 	mid.add_child(container)
 
 	var vp := SubViewport.new()
@@ -226,11 +229,20 @@ func _update_spin_button() -> void:
 
 
 ## Drag on the preview to turn the gun by hand (only while spin is off).
-func _on_preview_input(event: InputEvent) -> void:
-	if _spin or _stage == null:
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_touch_seen = true
+	if _spin or _stage == null or _preview_box == null or not is_visible_in_tree():
 		return
-	if event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
-		_stage.rotation.y += event.relative.x * 0.01
+	var rect: Rect2 = _preview_box.get_global_rect()
+	if event is InputEventScreenTouch:
+		_dragging = event.pressed and rect.has_point(event.position)
+	elif event is InputEventScreenDrag:
+		if _dragging:
+			_stage.rotation.y += event.relative.x * 0.01
+	elif event is InputEventMouseMotion and not _touch_seen:
+		if (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 and rect.has_point(event.position):
+			_stage.rotation.y += event.relative.x * 0.01
 
 
 func _select(i: int) -> void:
