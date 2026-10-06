@@ -12,7 +12,7 @@ const TAN: Color = Color(0.45, 0.40, 0.25)
 const ANCHORS: Dictionary = {
 	"optic": Vector2(0.45, 1.0),
 	"barrel": Vector2(1.0, 0.62),
-	"magazine": Vector2(0.40, 0.30),
+	"magazine": Vector2(0.11, 0.07),
 	"grip": Vector2(0.75, 0.25),
 }
 # Per-gun tweaks after checking screenshots, e.g. {"Rifle": {"optic": Vector2(0.5, 1.0)}}
