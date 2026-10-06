@@ -15,6 +15,8 @@ const ANCHORS: Dictionary = {
 	"magazine": Vector2(0.11, 0.07),
 	"grip": Vector2(0.75, 0.25),
 }
+# Height of the "look-through" point above each optic's origin (fraction of gun length).
+const SIGHT_HEIGHT: Dictionary = {"red_dot": 0.055, "holo": 0.057, "scope_4x": 0.07, "scope_8x": 0.075}
 # Per-gun tweaks after checking screenshots, e.g. {"Rifle": {"optic": Vector2(0.5, 1.0)}}
 const OVERRIDES: Dictionary = {
 	"Pistol": {
@@ -131,6 +133,9 @@ func build_for(model: Node3D, loadout: Dictionary, weapon_name: String) -> Node3
 			box.position.y + box.size.y * frac.y,
 			box.position.z + box.size.z * 0.5)
 		node.rotation_degrees = Vector3(0.0, 0.0, float(tweaks.get(str(slot) + "_tilt", 0.0)))
+		node.name = str(slot)
+		node.set_meta("optic_id", str(loadout[slot]))
+		node.set_meta("sight_local", Vector3(0.0, float(SIGHT_HEIGHT.get(str(loadout[slot]), 0.05)) * s, 0.0))
 		root.add_child(node)
 	return root
 
