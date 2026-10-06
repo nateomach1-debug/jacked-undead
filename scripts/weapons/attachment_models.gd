@@ -20,25 +20,28 @@ const OVERRIDES: Dictionary = {
 	"Pistol": {
 		"optic": Vector2(0.58, 0.95),
 		"barrel": Vector2(1.0, 0.86),
-		"magazine": Vector2(0.11, 0.07),
+		"magazine": Vector2(0.08, 0.06),
+		"magazine_tilt": -25.0,
 		"grip": Vector2(0.64, 0.39),
 	},
 	"Rifle": {
 		"optic": Vector2(0.50, 0.90),
 		"barrel": Vector2(1.0, 0.63),
-		"magazine": Vector2(0.57, 0.38),
+		"magazine": Vector2(0.45, 0.09),
+		"magazine_tilt": -40.0,
 		"grip": Vector2(0.83, 0.20),
 	},
 	"SMG": {
 		"optic": Vector2(0.66, 0.97),
 		"barrel": Vector2(1.0, 0.84),
 		"magazine": Vector2(0.86, 0.04),
-		"grip": Vector2(0.96, 0.58),
+		"grip": Vector2(0.95, 0.66),
 	},
 	"Revolver": {
 		"optic": Vector2(0.40, 0.86),
 		"barrel": Vector2(1.0, 0.76),
-		"magazine": Vector2(0.09, 0.06),
+		"magazine": Vector2(0.05, 0.07),
+		"magazine_tilt": -19.0,
 		"grip": Vector2(0.68, 0.60),
 	},
 	"Double-Barrel": {
@@ -60,13 +63,12 @@ const OVERRIDES: Dictionary = {
 		"grip": Vector2(0.76, 0.45),
 	},
 	"Crossbow": {
-		"optic": Vector2(0.44, 0.82),
+		"optic": Vector2(0.68, 1.0),
 		"barrel": Vector2(1.0, 0.80),
 		"magazine": Vector2(0.59, 0.53),
-		"grip": Vector2(0.85, 0.52),
+		"grip": Vector2(0.72, 0.48),
 	},
 }
-
 
 ## Builds all of a gun's attachments, placed using the model's bounding box.
 func build_for(model: Node3D, loadout: Dictionary, weapon_name: String) -> Node3D:
@@ -88,6 +90,7 @@ func build_for(model: Node3D, loadout: Dictionary, weapon_name: String) -> Node3
 			box.position.x + box.size.x * frac.x,
 			box.position.y + box.size.y * frac.y,
 			box.position.z + box.size.z * 0.5)
+		node.rotation_degrees = Vector3(0.0, 0.0, float(tweaks.get(str(slot) + "_tilt", 0.0)))
 		root.add_child(node)
 	return root
 
