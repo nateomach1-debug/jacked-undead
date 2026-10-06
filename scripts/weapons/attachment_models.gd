@@ -20,8 +20,50 @@ const OVERRIDES: Dictionary = {
 	"Pistol": {
 		"optic": Vector2(0.58, 0.95),
 		"barrel": Vector2(1.0, 0.86),
-		"magazine": Vector2(0.46, 0.39),
+		"magazine": Vector2(0.11, 0.07),
 		"grip": Vector2(0.64, 0.39),
+	},
+	"Rifle": {
+		"optic": Vector2(0.50, 0.90),
+		"barrel": Vector2(1.0, 0.63),
+		"magazine": Vector2(0.57, 0.38),
+		"grip": Vector2(0.83, 0.20),
+	},
+	"SMG": {
+		"optic": Vector2(0.66, 0.97),
+		"barrel": Vector2(1.0, 0.84),
+		"magazine": Vector2(0.86, 0.04),
+		"grip": Vector2(0.96, 0.58),
+	},
+	"Revolver": {
+		"optic": Vector2(0.40, 0.86),
+		"barrel": Vector2(1.0, 0.76),
+		"magazine": Vector2(0.09, 0.06),
+		"grip": Vector2(0.68, 0.60),
+	},
+	"Double-Barrel": {
+		"optic": Vector2(0.45, 1.0),
+		"barrel": Vector2(1.0, 0.78),
+		"magazine": Vector2(0.40, 0.44),
+		"grip": Vector2(0.62, 0.38),
+	},
+	"Pump Shotgun": {
+		"optic": Vector2(0.45, 1.0),
+		"barrel": Vector2(1.0, 0.83),
+		"magazine": Vector2(0.40, 0.52),
+		"grip": Vector2(0.63, 0.40),
+	},
+	"Sniper": {
+		"optic": Vector2(0.45, 1.0),
+		"barrel": Vector2(1.0, 0.69),
+		"magazine": Vector2(0.53, 0.44),
+		"grip": Vector2(0.76, 0.45),
+	},
+	"Crossbow": {
+		"optic": Vector2(0.44, 0.82),
+		"barrel": Vector2(1.0, 0.80),
+		"magazine": Vector2(0.59, 0.53),
+		"grip": Vector2(0.85, 0.52),
 	},
 }
 
