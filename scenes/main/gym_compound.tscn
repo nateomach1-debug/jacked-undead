@@ -163,29 +163,29 @@ shape = SubResource("BoxShape3D_upper_floor")
 mesh = SubResource("BoxMesh_upper_floor")
 
 [node name="LedgeLeftCol" type="CollisionShape3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 12.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 15.5)
 shape = SubResource("BoxShape3D_cw_ledge_side")
 
 [node name="LedgeLeftMesh" type="MeshInstance3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 12.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30, 1, 15.5)
 mesh = SubResource("BoxMesh_cw_ledge_side")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="LedgeMidCol" type="CollisionShape3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 12.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 15.5)
 shape = SubResource("BoxShape3D_cw_ledge_mid")
 
 [node name="LedgeMidMesh" type="MeshInstance3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 12.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 15.5)
 mesh = SubResource("BoxMesh_cw_ledge_mid")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="LedgeRightCol" type="CollisionShape3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, 12.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, 15.5)
 shape = SubResource("BoxShape3D_cw_ledge_side")
 
 [node name="LedgeRightMesh" type="MeshInstance3D" parent="UpperCatwalk"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, 12.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, 15.5)
 mesh = SubResource("BoxMesh_cw_ledge_side")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
@@ -430,7 +430,7 @@ display_name = "East Wing"
 unlocks_zones = PackedStringArray("east")
 
 [node name="DebrisWestStairs" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 3.2)
 size = Vector3(4, 10, 0.4)
 cost = 2000
 display_name = "West Stairs Debris"
@@ -438,7 +438,7 @@ unlocks_zones = PackedStringArray("upstairs")
 color = Color(0.35, 0.3, 0.25, 1)
 
 [node name="DebrisEastStairs" parent="BuyableDoors" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 3.2)
 size = Vector3(4, 10, 0.4)
 cost = 2000
 display_name = "East Stairs Debris"
