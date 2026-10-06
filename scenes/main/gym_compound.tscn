@@ -1,4 +1,4 @@
-[gd_scene load_steps=65 format=3]
+[gd_scene load_steps=69 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -39,10 +39,10 @@ size = Vector3(80, 1, 80)
 size = Vector3(80, 1, 80)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_upper_floor"]
-size = Vector3(80, 0.5, 24.5)
+size = Vector3(80, 0.5, 31.5)
 
 [sub_resource type="BoxMesh" id="BoxMesh_upper_floor"]
-size = Vector3(80, 0.5, 24.5)
+size = Vector3(80, 0.5, 31.5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_wall"]
 size = Vector3(1, 10, 20)
@@ -56,11 +56,23 @@ size = Vector3(1, 10, 10)
 [sub_resource type="BoxMesh" id="BoxMesh_wall_south"]
 size = Vector3(1, 10, 10)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_door_frame_1"]
+size = Vector3(1, 10, 4)
+
+[sub_resource type="BoxMesh" id="BoxMesh_door_frame_1"]
+size = Vector3(1, 10, 4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_door_frame_2"]
+size = Vector3(1, 10, 5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_door_frame_2"]
+size = Vector3(1, 10, 5)
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_choke_wall"]
-size = Vector3(25, 10, 2)
+size = Vector3(37, 10, 2)
 
 [sub_resource type="BoxMesh" id="BoxMesh_choke_wall"]
-size = Vector3(25, 10, 2)
+size = Vector3(37, 10, 2)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ramp"]
 size = Vector3(4, 0.5, 12.5)
@@ -142,7 +154,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 mesh = SubResource("BoxMesh_floor_main")
 
 [node name="UpperCatwalk" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -20.25)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, -23.75)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="UpperCatwalk"]
 shape = SubResource("BoxShape3D_upper_floor")
@@ -178,7 +190,7 @@ mesh = SubResource("BoxMesh_cw_ledge_side")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="WestRamp" type="StaticBody3D" parent="."]
-transform = Transform3D(-1, 0, 0, 0, 0.894427, 0.447214, 0, 0.447214, -0.894427, -25, 2.5, 0)
+transform = Transform3D(-1, 0, 0, 0, 0.894427, 0.447214, 0, 0.447214, -0.894427, -25, 2.5, -2.4)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="WestRamp"]
 shape = SubResource("BoxShape3D_ramp")
@@ -205,7 +217,7 @@ mesh = SubResource("BoxMesh_stair_ledge")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="EastStairs" type="StaticBody3D" parent="."]
-transform = Transform3D(-1, 0, 0, 0, 0.894427, 0.447214, 0, 0.447214, -0.894427, 25, 2.5, 0)
+transform = Transform3D(-1, 0, 0, 0, 0.894427, 0.447214, 0, 0.447214, -0.894427, 25, 2.5, -2.4)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="EastStairs"]
 shape = SubResource("BoxShape3D_ramp")
@@ -234,7 +246,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 [node name="Walls" type="Node3D" parent="."]
 
 [node name="ChokePointWest" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 5, 10)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 5, 10)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/ChokePointWest"]
 shape = SubResource("BoxShape3D_choke_wall")
@@ -244,7 +256,7 @@ mesh = SubResource("BoxMesh_choke_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_choke")
 
 [node name="ChokePointEast" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 5, 10)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 5, 10)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/ChokePointEast"]
 shape = SubResource("BoxShape3D_choke_wall")
@@ -271,6 +283,46 @@ shape = SubResource("BoxShape3D_wall_south")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DividerEastSouth"]
 mesh = SubResource("BoxMesh_wall_south")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="DoorFrameWestNorth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 5, 13)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DoorFrameWestNorth"]
+shape = SubResource("BoxShape3D_door_frame_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DoorFrameWestNorth"]
+mesh = SubResource("BoxMesh_door_frame_1")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="DoorFrameWestSouth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 5, 22.5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DoorFrameWestSouth"]
+shape = SubResource("BoxShape3D_door_frame_2")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DoorFrameWestSouth"]
+mesh = SubResource("BoxMesh_door_frame_2")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="DoorFrameEastNorth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 5, 13)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DoorFrameEastNorth"]
+shape = SubResource("BoxShape3D_door_frame_1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DoorFrameEastNorth"]
+mesh = SubResource("BoxMesh_door_frame_1")
+surface_material_override/0 = SubResource("StandardMaterial3D_wall")
+
+[node name="DoorFrameEastSouth" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 5, 22.5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/DoorFrameEastSouth"]
+shape = SubResource("BoxShape3D_door_frame_2")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/DoorFrameEastSouth"]
+mesh = SubResource("BoxMesh_door_frame_2")
 surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 
 [node name="PerimeterNorth" type="StaticBody3D" parent="Walls"]
