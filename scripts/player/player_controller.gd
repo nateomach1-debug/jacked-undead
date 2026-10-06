@@ -28,7 +28,10 @@ var _scope_layer: CanvasLayer = null
 var _scope_ctrl: Control = null
 var _ads_pos: Vector3 = Vector3(0.05, -0.3, -0.7)
 var _ads_dirty: bool = true
-const ALIGN_OPTICS: Array = ["red_dot", "holo"]
+const ALIGN_OPTICS: Array = ["red_dot", "holo", "scope_4x", "scope_8x"]
+const LENS_OPTICS: Dictionary = {"scope_4x": 4.0, "scope_8x": 8.0}   # optic id -> magnification
+const SCOPE_LENS_PATH: String = "res://scripts/weapons/scope_lens.gd"
+var _lens = null
 const STAMINA_MAX: float = 100.0
 const STAMINA_DRAIN: float = 25.0        # per second while sprinting (4s of sprint)
 const STAMINA_REGEN: float = 18.0        # per second while not sprinting
@@ -799,6 +802,47 @@ func _ads_zoom() -> float:
     var total_zoom: float = zoom * float(current_weapon.get_meta("ads_zoom_mult", 1.0))
     return 1.0 + (total_zoom - 1.0) * _setting_value("ads_zoom", 100.0) / 100.0
 
+## Magnification of the equipped lens optic (4 or 8), or 0 if there isn't one.
+func _lens_zoom() -> float:
+    if current_weapon == null:
+        return 0.0
+    var loadout = current_weapon.get_meta("attachments", {})
+    if not (loadout is Dictionary):
+        return 0.0
+    return float(LENS_OPTICS.get(str(loadout.get("optic", "")), 0.0))
+
+
+## The main camera doesn't zoom when a lens does the magnifying.
+func _view_zoom() -> float:
+    if _lens_zoom() > 0.0:
+        return 1.0
+    return _ads_zoom()
+
+
+func _look_zoom() -> float:
+    var lz: float = _lens_zoom()
+    if lz > 0.0:
+        return lz
+    return _ads_zoom()
+
+
+func _update_lens() -> void:
+    var zoom: float = _lens_zoom()
+    if _lens == null:
+        if zoom <= 0.0:
+            return
+        var script = load(SCOPE_LENS_PATH)
+        if script == null:
+            return
+        _lens = script.new()
+        add_child(_lens)
+        _lens.setup(camera, weapon_mount)
+    var amount: float = 0.0
+    if zoom > 0.0:
+        amount = clampf((_aim_blend - 0.6) / 0.4, 0.0, 1.0)
+    _lens.update_lens(zoom, _hip_fov, amount)
+
+
 func _is_scope_weapon() -> bool:
     return current_weapon != null and SCOPE_WEAPONS.has(current_weapon.get_base_name().to_lower())
 
@@ -806,8 +850,7 @@ func _is_scope_weapon() -> bool:
 ## Look speed shrinks as you zoom in.
 func _look_scale() -> float:
     var ads_sens: float = lerpf(1.0, _setting_value("ads_sens", 100.0) / 100.0, _aim_blend)
-    return ads_sens / lerpf(1.0, _ads_zoom(), _aim_blend)
-
+    return ads_sens / lerpf(1.0, _look_zoom(), _aim_blend)
 func _update_ads(delta: float) -> void:
     if not _ads_ready:
         _ads_ready = true
@@ -827,13 +870,14 @@ func _update_ads(delta: float) -> void:
 
     _aim_blend = move_toward(_aim_blend, 1.0 if is_aiming else 0.0, delta * ADS_SPEED)
     var eased: float = _aim_blend * _aim_blend * (3.0 - 2.0 * _aim_blend)
-    camera.fov = lerpf(_hip_fov, _hip_fov / _ads_zoom(), eased)
+    camera.fov = lerpf(_hip_fov, _hip_fov / _view_zoom(), eased)
+    _update_lens()
     if _ads_dirty:
         _ads_dirty = false
         _ads_pos = _compute_ads_pos()
     weapon_mount.position = _hip_mount_pos.lerp(_ads_pos, eased)
 
-    var scoped: bool = _is_scope_weapon() and _aim_blend > 0.85
+    var scoped: bool = _is_scope_weapon() and _lens_zoom() <= 0.0 and _aim_blend > 0.85
     if scoped != _scoped:
         _scoped = scoped
         weapon_mount.visible = not scoped
