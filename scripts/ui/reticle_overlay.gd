@@ -1,6 +1,7 @@
 extends Control
 ## Full-screen overlay that draws the current optic's reticle at the screen center.
-## The player calls show_reticle() every frame. Size and color come from Settings.
+## The player calls show_reticle() every frame. Size and color come from Settings and are
+## re-read each time you start aiming, so changes in Settings apply straight away.
 
 const RETICLES_PATH: String = "res://scripts/ui/reticles.gd"
 const SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
@@ -10,6 +11,7 @@ var _lib = null
 var _kind: String = ""
 var _color: Color = Color(1.0, 0.2, 0.2, 0.95)
 var _size_px: float = BASE_SIZE
+var _was_visible: bool = false
 
 
 func _ready() -> void:
@@ -18,19 +20,30 @@ func _ready() -> void:
 	var script = load(RETICLES_PATH)
 	if script != null:
 		_lib = script.new()
-	var settings_script = load(SETTINGS_PATH)
-	if settings_script != null:
-		var s = settings_script.new()
-		_color = s.reticle_color()
-		_size_px = BASE_SIZE * s.get_value("reticle_size") / 100.0
+	_load_settings()
 	visible = false
+
+
+## Reads the reticle color and size from the saved Settings.
+func _load_settings() -> void:
+	var settings_script = load(SETTINGS_PATH)
+	if settings_script == null:
+		return
+	var s = settings_script.new()
+	_color = s.reticle_color()
+	_size_px = BASE_SIZE * s.get_value("reticle_size") / 100.0
+	queue_redraw()
 
 
 ## kind "" = hidden. amount 0..1 fades the reticle in as you finish aiming.
 func show_reticle(kind: String, amount: float) -> void:
+	var now_visible: bool = kind != "" and amount > 0.0
+	if now_visible and not _was_visible:
+		_load_settings()
+	_was_visible = now_visible
 	var changed: bool = kind != _kind
 	_kind = kind
-	visible = kind != "" and amount > 0.0
+	visible = now_visible
 	modulate.a = clampf(amount, 0.0, 1.0)
 	if changed:
 		queue_redraw()
