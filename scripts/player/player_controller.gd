@@ -1144,8 +1144,6 @@ func _style_crosshair() -> void:
     if _game_settings != null:
         ctrl.modulate = _game_settings.reticle_color()
     _crosshair_styled = true
-
-
 const CLOSE_SIGHT_OPTICS: Array = ["red_dot", "holo"]
 const ADS_SIGHT_DISTANCE: float = 5.0   # camera-to-sight distance in sight heights; smaller = closer = bigger window
 var _hip_near: float = -1.0
