@@ -145,16 +145,19 @@ func build(id: String, s: float) -> Node3D:
     var n := Node3D.new()
     match id:
         "red_dot":
-            n.add_child(_box(Vector3(0.14, 0.025, 0.06) * s, Vector3(0, 0.0125, 0) * s, DARK))
-            n.add_child(_box(Vector3(0.10, 0.06, 0.012) * s, Vector3(0, 0.055, 0.024) * s, DARK))
-            n.add_child(_box(Vector3(0.10, 0.06, 0.012) * s, Vector3(0, 0.055, -0.024) * s, DARK))
-            n.add_child(_box(Vector3(0.008, 0.045, 0.04) * s, Vector3(0.04, 0.055, 0) * s, Color(1.0, 0.2, 0.2, 0.45), true))
+            # Open frame: base plate, two thin side walls, a short bar at each end of the top.
+            # The window (z -0.045..0.045, y 0.025..0.085) is completely clear.
+            n.add_child(_box(Vector3(0.14, 0.025, 0.10) * s, Vector3(0, 0.0125, 0) * s, DARK))
+            n.add_child(_box(Vector3(0.12, 0.06, 0.010) * s, Vector3(0, 0.055, 0.05) * s, DARK))
+            n.add_child(_box(Vector3(0.12, 0.06, 0.010) * s, Vector3(0, 0.055, -0.05) * s, DARK))
+            n.add_child(_box(Vector3(0.02, 0.008, 0.10) * s, Vector3(-0.05, 0.089, 0) * s, DARK))
+            n.add_child(_box(Vector3(0.02, 0.008, 0.10) * s, Vector3(0.05, 0.089, 0) * s, DARK))
         "holo":
-            n.add_child(_box(Vector3(0.12, 0.02, 0.07) * s, Vector3(0, 0.01, 0) * s, DARK))
-            n.add_child(_box(Vector3(0.11, 0.075, 0.012) * s, Vector3(0, 0.0575, 0.032) * s, DARK))
-            n.add_child(_box(Vector3(0.11, 0.075, 0.012) * s, Vector3(0, 0.0575, -0.032) * s, DARK))
-            n.add_child(_box(Vector3(0.11, 0.012, 0.076) * s, Vector3(0, 0.1, 0) * s, DARK))
-            n.add_child(_box(Vector3(0.008, 0.06, 0.05) * s, Vector3(0.045, 0.057, 0) * s, Color(0.3, 0.8, 1.0, 0.35), true))
+            # Open frame with a full hood on top. Window z -0.05..0.05, y 0.02..0.095.
+            n.add_child(_box(Vector3(0.12, 0.02, 0.11) * s, Vector3(0, 0.01, 0) * s, DARK))
+            n.add_child(_box(Vector3(0.11, 0.075, 0.010) * s, Vector3(0, 0.0575, 0.055) * s, DARK))
+            n.add_child(_box(Vector3(0.11, 0.075, 0.010) * s, Vector3(0, 0.0575, -0.055) * s, DARK))
+            n.add_child(_box(Vector3(0.11, 0.010, 0.11) * s, Vector3(0, 0.100, 0) * s, DARK))
         "scope_4x":
             n.add_child(_cyl(0.032 * s, 0.30 * s, Vector3(0, 0.07, 0) * s, DARK))
             n.add_child(_cyl(0.042 * s, 0.06 * s, Vector3(0.15, 0.07, 0) * s, STEEL))
