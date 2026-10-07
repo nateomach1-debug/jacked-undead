@@ -870,7 +870,7 @@ func _update_ads(delta: float) -> void:
 
     _aim_blend = move_toward(_aim_blend, 1.0 if is_aiming else 0.0, delta * ADS_SPEED)
     var eased: float = _aim_blend * _aim_blend * (3.0 - 2.0 * _aim_blend)
-    camera.fov = lerpf(_hip_fov, _hip_fov / _view_zoom(), eased)
+    _apply_ads_camera(eased)
     _update_lens()
     if _ads_dirty:
         _ads_dirty = false
@@ -898,7 +898,7 @@ func _compute_ads_pos() -> Vector3:
         return ADS_MOUNT_POS
     var sight_world: Vector3 = optic.to_global(optic.get_meta("sight_local"))
     var p: Vector3 = camera.global_transform.affine_inverse() * sight_world
-    return Vector3(weapon_mount.position.x - p.x, weapon_mount.position.y - p.y, ADS_MOUNT_POS.z)
+    return Vector3(weapon_mount.position.x - p.x, weapon_mount.position.y - p.y, _ads_z(optic, p)))
 
 
 func _build_scope() -> void:
@@ -1144,3 +1144,25 @@ func _style_crosshair() -> void:
     if _game_settings != null:
         ctrl.modulate = _game_settings.reticle_color()
     _crosshair_styled = true
+
+
+const CLOSE_SIGHT_OPTICS: Array = ["red_dot", "holo"]
+const ADS_SIGHT_DISTANCE: float = 5.0   # camera-to-sight distance in sight heights; smaller = closer = bigger window
+var _hip_near: float = -1.0
+
+
+## Z for the gun mount while aiming. Red dot and holo pull the camera in close behind the sight.
+func _ads_z(optic: Node3D, p: Vector3) -> float:
+    if not CLOSE_SIGHT_OPTICS.has(str(optic.get_meta("optic_id", ""))):
+        return ADS_MOUNT_POS.z
+    var sight: Vector3 = optic.get_meta("sight_local")
+    var dist: float = maxf(sight.y * ADS_SIGHT_DISTANCE, 0.06)
+    return weapon_mount.position.z + (-dist - p.z)
+
+
+## Zoom plus a smaller near-clip while aiming, so the camera can sit right behind the sight.
+func _apply_ads_camera(eased: float) -> void:
+    camera.fov = lerpf(_hip_fov, _hip_fov / _view_zoom(), eased)
+    if _hip_near < 0.0:
+        _hip_near = camera.near
+    camera.near = lerpf(_hip_near, minf(_hip_near, 0.02), eased)
