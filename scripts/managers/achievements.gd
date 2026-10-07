@@ -41,6 +41,7 @@ const RETICLES: Dictionary = {
     "double_chevron": "Double Chevron",
     "ladder": "Ladder",
     "brackets": "Brackets",
+    "zombie": "Zombie",
 }
 
 var weapon_kills: Dictionary = {}
