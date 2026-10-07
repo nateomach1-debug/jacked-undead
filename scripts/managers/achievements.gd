@@ -31,6 +31,16 @@ const RETICLES: Dictionary = {
 	"circle_dot": "Circle-Dot",
 	"diamond": "Diamond",
 	"triangle": "Triangle",
+    "x_cross": "X-Cross",
+    "corners": "Corners",
+    "t_post": "T-Post",
+    "horseshoe": "Horseshoe",
+    "mil_dot": "Mil-Dot",
+    "bullseye": "Bullseye",
+    "ring_cross": "Ring Cross",
+    "double_chevron": "Double Chevron",
+    "ladder": "Ladder",
+    "brackets": "Brackets",
 }
 
 var weapon_kills: Dictionary = {}
@@ -142,7 +152,13 @@ func reward_text(id: String) -> String:
 
 
 ## Reticle ids earned so far.
-func unlocked_reticles() -> Array:
+const TEST_UNLOCK_ALL: bool = true
+
+
+func unlocked_reticles() -> Array: return RETICLES.keys() if TEST_UNLOCK_ALL else _earned_reticles()
+
+
+func _earned_reticles() -> Array:
 	var out: Array = []
 	for a in ACHIEVEMENTS:
 		var r: String = str(a["reticle"])
