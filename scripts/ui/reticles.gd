@@ -6,6 +6,7 @@ const KINDS: Array = [
     "dot", "cross", "chevron", "ring", "circle_dot", "diamond", "triangle",
     "x_cross", "corners", "t_post", "horseshoe", "mil_dot",
     "bullseye", "ring_cross", "double_chevron", "ladder", "brackets",
+    "zombie",
 ]
 const OPTIC_DEFAULTS: Dictionary = {
     "red_dot": "dot",
@@ -22,6 +23,71 @@ func default_for(optic_id: String) -> String:
 
 ## `s` is the reticle's size in pixels (about its half-width).
 func draw_reticle(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
+    if CUSTOM.has(kind):
+        _draw_custom(ctrl, center, CUSTOM[kind], s, color)
+    else:
+        _draw_builtin(ctrl, center, kind, s, color)
+
+
+## Custom reticles are lists of shapes. All numbers are in units of the reticle size `s`
+## (x right, y down, 0,0 = aim point), so they scale with the Settings size slider.
+## t: "line" (p1, p2), "polyline" (p), "poly" (p, closed), "circle" (c, r),
+## "arc" (c, r, from, to in degrees).
+## Optional on any shape: w = line width, fill = true (circle/poly), alpha = 0..1.
+const CUSTOM: Dictionary = {
+    "zombie": [
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.45},
+        {"t": "circle", "c": [-0.17, -0.12], "r": 0.06, "fill": true},
+        {"t": "circle", "c": [0.17, -0.12], "r": 0.1, "fill": true},
+        {"t": "circle", "c": [0.0, 0.07], "r": 0.05, "fill": true},
+        {"t": "polyline", "p": [[-0.22, 0.24], [-0.11, 0.32], [0.0, 0.24], [0.11, 0.32], [0.22, 0.24]], "w": 1.5},
+        {"t": "polyline", "p": [[-0.22, 0.48], [-0.5, 0.95], [0.5, 0.95], [0.22, 0.48]]},
+        {"t": "polyline", "p": [[-0.38, 0.65], [-0.95, 0.55], [-1.1, 0.15], [-1.0, 0.0]]},
+        {"t": "polyline", "p": [[0.38, 0.65], [0.95, 0.55], [1.1, 0.15], [1.0, 0.0]]},
+    ],
+}
+
+
+func _pt(center: Vector2, v: Array, s: float) -> Vector2:
+    return center + Vector2(float(v[0]), float(v[1])) * s
+
+
+func _pts(center: Vector2, list: Array, s: float) -> PackedVector2Array:
+    var out := PackedVector2Array()
+    for v in list:
+        out.append(_pt(center, v, s))
+    return out
+
+
+func _draw_custom(ctrl: CanvasItem, center: Vector2, shapes: Array, s: float, color: Color) -> void:
+    for sh: Dictionary in shapes:
+        var col: Color = color
+        col.a *= float(sh.get("alpha", 1.0))
+        var w: float = float(sh.get("w", 2.0))
+        var fill: bool = bool(sh.get("fill", false))
+        match str(sh.get("t", "")):
+            "line":
+                ctrl.draw_line(_pt(center, sh["p1"], s), _pt(center, sh["p2"], s), col, w)
+            "polyline":
+                ctrl.draw_polyline(_pts(center, sh["p"], s), col, w, true)
+            "poly":
+                var pts: PackedVector2Array = _pts(center, sh["p"], s)
+                if fill:
+                    ctrl.draw_colored_polygon(pts, col)
+                else:
+                    pts.append(pts[0])
+                    ctrl.draw_polyline(pts, col, w, true)
+            "circle":
+                var c: Vector2 = _pt(center, sh["c"], s)
+                if fill:
+                    ctrl.draw_circle(c, float(sh["r"]) * s, col)
+                else:
+                    ctrl.draw_arc(c, float(sh["r"]) * s, 0.0, TAU, 40, col, w, true)
+            "arc":
+                ctrl.draw_arc(_pt(center, sh["c"], s), float(sh["r"]) * s, deg_to_rad(float(sh["from"])), deg_to_rad(float(sh["to"])), 32, col, w, true)
+
+
+func _draw_builtin(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
     match kind:
         "dot":
             ctrl.draw_circle(center, s * 0.18, color)
