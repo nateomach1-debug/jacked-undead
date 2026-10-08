@@ -25,6 +25,7 @@ const RETARGET_INTERVAL: float = 0.5      # how often to re-pick the nearest pla
 const SEPARATION_RADIUS: float = 1.0      # zombies closer than this push each other apart
 const SEPARATION_STRENGTH: float = 1.5
 const SEPARATION_INTERVAL: float = 0.12   # separation is recalculated this often (cheaper)
+const LOS_INTERVAL: float = 0.25          # how often to check for a wall between us and the target
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
@@ -54,282 +55,325 @@ var _detour_time: float = 0.0
 var _detour_direction: Vector3 = Vector3.ZERO
 var _sep_timer: float = 0.0
 var _sep_vector: Vector3 = Vector3.ZERO
+var _los_timer: float = 0.0
+var _has_los: bool = true
 
 
 func _ready() -> void:
-	current_health = max_health
-	add_to_group("zombies")
-	_repath_timer = randf() * repath_interval  # stagger so zombies don't all repath on the same frame
-	_sep_timer = randf() * SEPARATION_INTERVAL
-	_find_target()
+    current_health = max_health
+    add_to_group("zombies")
+    _repath_timer = randf() * repath_interval  # stagger so zombies don't all repath on the same frame
+    _sep_timer = randf() * SEPARATION_INTERVAL
+    _los_timer = randf() * LOS_INTERVAL
+    _find_target()
 
 
 ## Picks the nearest player who is still up: this phone's player plus any
 ## co-op players. Becomes null if everyone is downed or dead.
 func _find_target() -> void:
-	var best: Node3D = null
-	var best_dist: float = INF
-	for group_name in ["player", "remote_players"]:
-		for n in get_tree().get_nodes_in_group(group_name):
-			var p := n as Node3D
-			if p == null or not is_instance_valid(p):
-				continue
-			if _is_out(p):
-				continue
-			var d: float = p.global_position.distance_squared_to(global_position)
-			if d < best_dist:
-				best_dist = d
-				best = p
-	_target = best
+    var best: Node3D = null
+    var best_dist: float = INF
+    for group_name in ["player", "remote_players"]:
+        for n in get_tree().get_nodes_in_group(group_name):
+            var p := n as Node3D
+            if p == null or not is_instance_valid(p):
+                continue
+            if _is_out(p):
+                continue
+            var d: float = p.global_position.distance_squared_to(global_position)
+            if d < best_dist:
+                best_dist = d
+                best = p
+    _target = best
 
 
 func _physics_process(delta: float) -> void:
-	if is_puppet:
-		return
+    if is_puppet:
+        return
 
-	# Drop a target that went down / died / left right away; re-pick regularly.
-	if _target != null and (not is_instance_valid(_target) or _is_out(_target)):
-		_target = null
-		_retarget_timer = 0.0
-	_retarget_timer -= delta
-	if _retarget_timer <= 0.0:
-		_retarget_timer = RETARGET_INTERVAL
-		_find_target()
+    # Drop a target that went down / died / left right away; re-pick regularly.
+    if _target != null and (not is_instance_valid(_target) or _is_out(_target)):
+        _target = null
+        _retarget_timer = 0.0
+    _retarget_timer -= delta
+    if _retarget_timer <= 0.0:
+        _retarget_timer = RETARGET_INTERVAL
+        _find_target()
 
-	if not is_on_floor():
-		velocity.y -= GRAVITY * delta
+    if not is_on_floor():
+        velocity.y -= GRAVITY * delta
 
-	if _attack_timer > 0.0:
-		_attack_timer -= delta
+    if _attack_timer > 0.0:
+        _attack_timer -= delta
 
-	_update_separation(delta)
+    _update_separation(delta)
+    _update_line_of_sight(delta)
 
-	if _target != null and is_instance_valid(_target):
-		var to_target := _target.global_position - global_position
-		var vertical_gap: float = absf(to_target.y)
-		to_target.y = 0.0
-		var distance := to_target.length()
+    if _target != null and is_instance_valid(_target):
+        var to_target := _target.global_position - global_position
+        var vertical_gap: float = absf(to_target.y)
+        to_target.y = 0.0
+        var distance := to_target.length()
 
-		if distance > attack_range or vertical_gap > MAX_ATTACK_HEIGHT_GAP:
-			var direction := _get_move_direction(to_target, delta)
-			direction = _apply_unstuck(direction, delta)
-			direction = _apply_separation(direction)
-			velocity.x = direction.x * move_speed
-			velocity.z = direction.z * move_speed
-			if direction.length() > 0.01:
-				look_at(global_position + Vector3(direction.x, 0.0, direction.z), Vector3.UP)
-		else:
-			velocity.x = 0.0
-			velocity.z = 0.0
-			_stuck_timer = 0.0
-			_detour_time = 0.0
-			# Heavily overlapped with another zombie: shuffle sideways (around the player).
-			if _sep_vector.length() > 0.5 and distance > 0.01:
-				var toward: Vector3 = to_target.normalized()
-				var sideways: Vector3 = _sep_vector - toward * _sep_vector.dot(toward)
-				velocity.x = sideways.x * move_speed * 0.4
-				velocity.z = sideways.z * move_speed * 0.4
-			if distance > 0.01:
-				look_at(Vector3(_target.global_position.x, global_position.y, _target.global_position.z), Vector3.UP)
-			_try_attack()
-	else:
-		# Nobody to chase (everyone downed or dead): stand still.
-		velocity.x = 0.0
-		velocity.z = 0.0
+        # Only attack when close in all three axes AND nothing solid is between us
+        # (otherwise keep pathing, e.g. around the stair wall to get up to you).
+        if distance > attack_range or vertical_gap > MAX_ATTACK_HEIGHT_GAP or not _has_los:
+            var direction := _get_move_direction(to_target, delta)
+            direction = _apply_unstuck(direction, delta)
+            direction = _apply_separation(direction)
+            velocity.x = direction.x * move_speed
+            velocity.z = direction.z * move_speed
+            if direction.length() > 0.01:
+                look_at(global_position + Vector3(direction.x, 0.0, direction.z), Vector3.UP)
+        else:
+            velocity.x = 0.0
+            velocity.z = 0.0
+            _stuck_timer = 0.0
+            _detour_time = 0.0
+            # Heavily overlapped with another zombie: shuffle sideways (around the player).
+            if _sep_vector.length() > 0.5 and distance > 0.01:
+                var toward: Vector3 = to_target.normalized()
+                var sideways: Vector3 = _sep_vector - toward * _sep_vector.dot(toward)
+                velocity.x = sideways.x * move_speed * 0.4
+                velocity.z = sideways.z * move_speed * 0.4
+            if distance > 0.01:
+                look_at(Vector3(_target.global_position.x, global_position.y, _target.global_position.z), Vector3.UP)
+            _try_attack()
+    else:
+        # Nobody to chase (everyone downed or dead): stand still.
+        velocity.x = 0.0
+        velocity.z = 0.0
 
-	_step_up_if_blocked(delta)
-	move_and_slide()
+    _step_up_if_blocked(delta)
+    move_and_slide()
+
+
+## A few times a second, checks whether map geometry (walls, rails, closed doors:
+## anything under a "navmesh_source" node) sits between us and the target.
+func _update_line_of_sight(delta: float) -> void:
+    _los_timer -= delta
+    if _los_timer > 0.0:
+        return
+    _los_timer = LOS_INTERVAL
+    _has_los = true
+    if _target == null or not is_instance_valid(_target):
+        return
+    var from_pos: Vector3 = global_position + Vector3(0.0, 0.4, 0.0)
+    var to_pos: Vector3 = _target.global_position + Vector3(0.0, 0.4, 0.0)
+    var query := PhysicsRayQueryParameters3D.create(from_pos, to_pos)
+    query.exclude = [get_rid()]
+    query.collision_mask = 1
+    var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+    if hit.is_empty():
+        return
+    if _blocks_sight(hit.get("collider")):
+        _has_los = false
+
+
+func _blocks_sight(collider: Object) -> bool:
+    var n := collider as Node
+    while n != null:
+        if n.is_in_group("navmesh_source"):
+            return true
+        n = n.get_parent()
+    return false
 
 
 ## Recalculates the push away from nearby zombies a few times a second.
 func _update_separation(delta: float) -> void:
-	_sep_timer -= delta
-	if _sep_timer > 0.0:
-		return
-	_sep_timer = SEPARATION_INTERVAL
-	var push := Vector3.ZERO
-	var radius_sq: float = SEPARATION_RADIUS * SEPARATION_RADIUS
-	for n in get_tree().get_nodes_in_group("zombies"):
-		if n == self:
-			continue
-		var other := n as Node3D
-		if other == null or not is_instance_valid(other):
-			continue
-		var offset: Vector3 = global_position - other.global_position
-		offset.y = 0.0
-		var d_sq: float = offset.length_squared()
-		if d_sq >= radius_sq:
-			continue
-		if d_sq < 0.0001:
-			offset = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
-			d_sq = maxf(offset.length_squared(), 0.0001)
-		var d: float = sqrt(d_sq)
-		push += (offset / d) * (1.0 - d / SEPARATION_RADIUS)
-	_sep_vector = push
+    _sep_timer -= delta
+    if _sep_timer > 0.0:
+        return
+    _sep_timer = SEPARATION_INTERVAL
+    var push := Vector3.ZERO
+    var radius_sq: float = SEPARATION_RADIUS * SEPARATION_RADIUS
+    for n in get_tree().get_nodes_in_group("zombies"):
+        if n == self:
+            continue
+        var other := n as Node3D
+        if other == null or not is_instance_valid(other):
+            continue
+        var offset: Vector3 = global_position - other.global_position
+        offset.y = 0.0
+        var d_sq: float = offset.length_squared()
+        if d_sq >= radius_sq:
+            continue
+        if d_sq < 0.0001:
+            offset = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
+            d_sq = maxf(offset.length_squared(), 0.0001)
+        var d: float = sqrt(d_sq)
+        push += (offset / d) * (1.0 - d / SEPARATION_RADIUS)
+    _sep_vector = push
 
 
 ## Bends the walking direction away from nearby zombies so they don't stack.
 func _apply_separation(direction: Vector3) -> Vector3:
-	if _sep_vector == Vector3.ZERO:
-		return direction
-	var mixed: Vector3 = direction + _sep_vector * SEPARATION_STRENGTH
-	mixed.y = 0.0
-	if mixed.length() < 0.01:
-		return direction
-	return mixed.normalized()
+    if _sep_vector == Vector3.ZERO:
+        return direction
+    var mixed: Vector3 = direction + _sep_vector * SEPARATION_STRENGTH
+    mixed.y = 0.0
+    if mixed.length() < 0.01:
+        return direction
+    return mixed.normalized()
 
 
 ## Which way to walk this frame: along the navigation path if there is one,
 ## otherwise straight at the player.
 func _get_move_direction(to_target: Vector3, delta: float) -> Vector3:
-	_repath_timer -= delta
-	if _repath_timer <= 0.0:
-		_repath_timer = repath_interval
-		_refresh_path()
+    _repath_timer -= delta
+    if _repath_timer <= 0.0:
+        _repath_timer = repath_interval
+        _refresh_path()
 
-	while _path_index < _path.size():
-		var point := _path[_path_index]
-		var flat := Vector3(point.x - global_position.x, 0.0, point.z - global_position.z)
-		if flat.length() < waypoint_reach_distance and absf(point.y - _feet_y()) < 1.0:
-			_path_index += 1
-		else:
-			return flat.normalized()
+    while _path_index < _path.size():
+        var point := _path[_path_index]
+        var flat := Vector3(point.x - global_position.x, 0.0, point.z - global_position.z)
+        var dy: float = absf(point.y - _feet_y())
+        if flat.length() < waypoint_reach_distance and dy < 1.0:
+            _path_index += 1
+        elif flat.length() < 0.05:
+            _path_index += 1  # straight above/below this point: skip it instead of freezing
+        else:
+            return flat.normalized()
 
-	return to_target.normalized()
+    if to_target.length() < 0.05:
+        return -global_transform.basis.z  # target straight above/below: keep moving, never freeze
+    return to_target.normalized()
 
 
 ## World Y of this zombie's feet (the body origin is the middle of its capsule).
 func _feet_y() -> float:
-	var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
-	if shape_node and shape_node.shape is CapsuleShape3D:
-		return global_position.y - (shape_node.shape as CapsuleShape3D).height * 0.5
-	return global_position.y - 0.95
+    var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
+    if shape_node and shape_node.shape is CapsuleShape3D:
+        return global_position.y - (shape_node.shape as CapsuleShape3D).height * 0.5
+    return global_position.y - 0.95
 
 
 func _refresh_path() -> void:
-	_path = PackedVector3Array()
-	_path_index = 0
-	if _target == null or not is_instance_valid(_target):
-		return
-	var nav_map: RID = get_world_3d().navigation_map
-	if NavigationServer3D.map_get_regions(nav_map).is_empty():
-		return  # this map has no navigation mesh: walk straight at the player
-	if NavigationServer3D.map_get_iteration_id(nav_map) == 0:
-		return  # navigation mesh not ready yet
-	var from_pos := Vector3(global_position.x, _feet_y(), global_position.z)
-	var to_pos := Vector3(_target.global_position.x, _target.global_position.y - 0.9, _target.global_position.z)
-	_path = NavigationServer3D.map_get_path(nav_map, from_pos, to_pos, true)
+    _path = PackedVector3Array()
+    _path_index = 0
+    if _target == null or not is_instance_valid(_target):
+        return
+    var nav_map: RID = get_world_3d().navigation_map
+    if NavigationServer3D.map_get_regions(nav_map).is_empty():
+        return  # this map has no navigation mesh: walk straight at the player
+    if NavigationServer3D.map_get_iteration_id(nav_map) == 0:
+        return  # navigation mesh not ready yet
+    var from_pos := Vector3(global_position.x, _feet_y(), global_position.z)
+    var to_pos := Vector3(_target.global_position.x, _target.global_position.y - 0.9, _target.global_position.z)
+    _path = NavigationServer3D.map_get_path(nav_map, from_pos, to_pos, true)
+
 
 ## If we've barely moved for half a second while trying to chase, get a fresh
 ## route and slide sideways along the wall for a moment to clear the corner.
 func _apply_unstuck(direction: Vector3, delta: float) -> Vector3:
-	_stuck_timer += delta
-	if _stuck_timer >= STUCK_CHECK_INTERVAL:
-		_stuck_timer = 0.0
-		var moved: float = global_position.distance_to(_last_check_position)
-		_last_check_position = global_position
-		if moved < STUCK_MOVE_THRESHOLD and _detour_time <= 0.0:
-			_refresh_path()
-			_start_detour(direction)
+    _stuck_timer += delta
+    if _stuck_timer >= STUCK_CHECK_INTERVAL:
+        _stuck_timer = 0.0
+        var moved: float = global_position.distance_to(_last_check_position)
+        _last_check_position = global_position
+        if moved < STUCK_MOVE_THRESHOLD and _detour_time <= 0.0:
+            _refresh_path()
+            _start_detour(direction)
 
-	if _detour_time > 0.0:
-		_detour_time -= delta
-		return _detour_direction
-	return direction
+    if _detour_time > 0.0:
+        _detour_time -= delta
+        return _detour_direction
+    return direction
 
 
 func _start_detour(direction: Vector3) -> void:
-	var tangent: Vector3 = Vector3.ZERO
-	var away: Vector3 = Vector3.ZERO
-	if is_on_wall():
-		var normal: Vector3 = get_wall_normal()
-		normal.y = 0.0
-		if normal.length() > 0.01:
-			normal = normal.normalized()
-			tangent = normal.cross(Vector3.UP).normalized()
-			var side: float = tangent.dot(direction)
-			if absf(side) < 0.1:
-				if randf() < 0.5:
-					tangent = -tangent
-			elif side < 0.0:
-				tangent = -tangent
-			away = normal * 0.3  # a little push off the wall so we clear the corner
-	if tangent.length() < 0.01:
-		tangent = Vector3(-direction.z, 0.0, direction.x)
-		if randf() < 0.5:
-			tangent = -tangent
-	_detour_direction = (tangent + away).normalized()
-	_detour_time = DETOUR_DURATION
+    var tangent: Vector3 = Vector3.ZERO
+    var away: Vector3 = Vector3.ZERO
+    if is_on_wall():
+        var normal: Vector3 = get_wall_normal()
+        normal.y = 0.0
+        if normal.length() > 0.01:
+            normal = normal.normalized()
+            tangent = normal.cross(Vector3.UP).normalized()
+            var side: float = tangent.dot(direction)
+            if absf(side) < 0.1:
+                if randf() < 0.5:
+                    tangent = -tangent
+            elif side < 0.0:
+                tangent = -tangent
+            away = normal * 0.3  # a little push off the wall so we clear the corner
+    if tangent.length() < 0.01:
+        tangent = Vector3(-direction.z, 0.0, direction.x)
+        if randf() < 0.5:
+            tangent = -tangent
+    _detour_direction = (tangent + away).normalized()
+    _detour_time = DETOUR_DURATION
 
 
 ## Same trick as the player: CharacterBody3D can't climb steps on its own, so
 ## if walking forward would hit something but stepping up clears it, nudge up.
 func _step_up_if_blocked(delta: float) -> void:
-	if not is_on_floor():
-		return
-	var motion := Vector3(velocity.x, 0.0, velocity.z) * delta
-	if motion.length() < 0.001:
-		return
-	if not test_move(global_transform, motion):
-		return
-	var raised := global_transform
-	raised.origin += Vector3(0.0, step_height, 0.0)
-	if test_move(raised, motion):
-		return  # still blocked even raised: a real wall, not a step
-	global_position.y += step_height
+    if not is_on_floor():
+        return
+    var motion := Vector3(velocity.x, 0.0, velocity.z) * delta
+    if motion.length() < 0.001:
+        return
+    if not test_move(global_transform, motion):
+        return
+    var raised := global_transform
+    raised.origin += Vector3(0.0, step_height, 0.0)
+    if test_move(raised, motion):
+        return  # still blocked even raised: a real wall, not a step
+    global_position.y += step_height
 
 
 ## Hits whoever we're chasing. A co-op player on another phone is a capsule
 ## here, so the damage is sent over the network to that phone.
 func _try_attack() -> void:
-	if _attack_timer > 0.0 or _target == null:
-		return
-	var dmg: float = GameManager.get_zombie_damage(attack_damage)
-	if _target.has_method("take_damage"):
-		_target.take_damage(dmg)
-	elif _target.has_meta("peer_id"):
-		NetManager.damage_peer(int(_target.get_meta("peer_id")), dmg)
-	else:
-		return
-	_attack_timer = attack_cooldown
+    if _attack_timer > 0.0 or _target == null:
+        return
+    var dmg: float = GameManager.get_zombie_damage(attack_damage)
+    if _target.has_method("take_damage"):
+        _target.take_damage(dmg)
+    elif _target.has_meta("peer_id"):
+        NetManager.damage_peer(int(_target.get_meta("peer_id")), dmg)
+    else:
+        return
+    _attack_timer = attack_cooldown
 
 
 func is_headshot(world_hit_position: Vector3) -> bool:
-	return (world_hit_position.y - global_position.y) >= head_height_threshold
+    return (world_hit_position.y - global_position.y) >= head_height_threshold
 
 
 func take_damage(amount: float, source: Node = null, was_headshot: bool = false) -> void:
-	if _is_dead:
-		return
-	if is_puppet:
-		_forward_hit_to_host(amount, was_headshot)
-		return
-	_last_source = source
-	current_health -= amount
-	if current_health <= 0.0:
-		_die(was_headshot)
+    if _is_dead:
+        return
+    if is_puppet:
+        _forward_hit_to_host(amount, was_headshot)
+        return
+    _last_source = source
+    current_health -= amount
+    if current_health <= 0.0:
+        _die(was_headshot)
 
 
 ## Co-op: a puppet can't die on its own, so it tells the host it was hit.
 func _forward_hit_to_host(amount: float, was_headshot: bool) -> void:
-	var coop = get_tree().current_scene.get_node_or_null("CoopSync")
-	if coop != null and coop.has_method("send_hit") and has_meta("net_id"):
-		coop.send_hit(int(get_meta("net_id")), amount, was_headshot)
+    var coop = get_tree().current_scene.get_node_or_null("CoopSync")
+    if coop != null and coop.has_method("send_hit") and has_meta("net_id"):
+        coop.send_hit(int(get_meta("net_id")), amount, was_headshot)
 
 
 func _die(was_headshot: bool = false) -> void:
-	_is_dead = true
-	var reward: int = HEADSHOT_KILL_GAINS if was_headshot else gains_on_death
-	# A kill by a co-op player pays that player's phone; otherwise it pays the host.
-	if _last_source != null and is_instance_valid(_last_source) and _last_source.has_meta("peer_id"):
-		NetManager.reward_kill(int(_last_source.get_meta("peer_id")), reward, was_headshot)
-	else:
-		GameManager.add_gains(reward)
-		GameManager.add_kill(was_headshot)
-	died.emit(self)
-	queue_free()
+    _is_dead = true
+    var reward: int = HEADSHOT_KILL_GAINS if was_headshot else gains_on_death
+    # A kill by a co-op player pays that player's phone; otherwise it pays the host.
+    if _last_source != null and is_instance_valid(_last_source) and _last_source.has_meta("peer_id"):
+        NetManager.reward_kill(int(_last_source.get_meta("peer_id")), reward, was_headshot)
+    else:
+        GameManager.add_gains(reward)
+        GameManager.add_kill(was_headshot)
+    died.emit(self)
+    queue_free()
 
 
 ## True for a co-op player who is downed or dead: zombies ignore them.
 func _is_out(p: Node) -> bool:
-	return bool(p.get("is_downed")) or bool(p.get("is_dead")) or bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false))
+    return bool(p.get("is_downed")) or bool(p.get("is_dead")) or bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false))
