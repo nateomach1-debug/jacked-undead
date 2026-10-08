@@ -1,0 +1,96 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/zombies/zombie.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/zombies/roid_rager.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/main/hud.tscn" id="6"]
+[ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/main/touch_controls.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="9"]
+[ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/managers/cheese_cube_builder.gd" id="11"]
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 1
+background_color = Color(0.04, 0.04, 0.06, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.8, 0.8, 0.85, 1)
+ambient_light_energy = 0.7
+
+[node name="CheeseCube" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="CheeseCubeBuilder" type="Node3D" parent="."]
+script = ExtResource("11")
+
+[node name="Player" parent="." instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1, 4)
+current_weapon = ExtResource("7")
+weapon_loadout = [ExtResource("7")]
+
+[node name="HUD" parent="." instance=ExtResource("6")]
+
+[node name="TouchControls" parent="." instance=ExtResource("8")]
+
+[node name="GameOverScreen" parent="." instance=ExtResource("9")]
+
+[node name="RoundManager" type="Node" parent="."]
+script = ExtResource("2")
+zombie_scene = ExtResource("4")
+roid_rager_scene = ExtResource("5")
+
+[node name="SpawnPoints" type="Node3D" parent="."]
+
+[node name="FloorSpawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1, -10)
+
+[node name="FloorSpawn2" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1, -10)
+
+[node name="FloorSpawn3" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1, 10)
+
+[node name="FloorSpawn4" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -8)
+
+[node name="Lap1Spawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 4, 17)
+metadata/zone = "lap1"
+
+[node name="Lap1Spawn2" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 7, -17)
+metadata/zone = "lap1"
+
+[node name="Lap1Spawn3" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 10, -17)
+metadata/zone = "lap1"
+
+[node name="Lap2Spawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 13, 17)
+metadata/zone = "lap2"
+
+[node name="Lap2Spawn2" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 16, 16.5)
+metadata/zone = "lap2"
+
+[node name="Lap2Spawn3" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 19, -17)
+metadata/zone = "lap2"
+
+[node name="SummitSpawn1" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 22, -17)
+metadata/zone = "summit"
+
+[node name="SummitSpawn2" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 25, 16.5)
+metadata/zone = "summit"
+
+[node name="NavBaker" type="NavigationRegion3D" parent="."]
+script = ExtResource("10")
+source_path = NodePath("../CheeseCubeBuilder/Geometry")
+cell_size = 0.3
