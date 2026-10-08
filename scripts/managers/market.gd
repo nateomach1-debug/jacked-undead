@@ -10,6 +10,21 @@ const RETICLE_COSTS: Dictionary = {
     "bullseye": 250,
     "brackets": 250,
     "ladder": 350,
+    "dumbbell": 300,
+    "kettlebell": 300,
+    "lightning": 350,
+    "tombstone": 350,
+    "skull": 400,
+    "bicep": 400,
+    "bones": 400,
+    "plate": 450,
+    "biohazard": 500,
+    "bite": 500,
+    "flame": 500,
+    "blood_drip": 550,
+    "brain": 550,
+    "radar": 600,
+    "lock_on": 600,
 }
 
 const CHARACTER_REGISTRY: String = "res://scripts/managers/character_registry.gd"
