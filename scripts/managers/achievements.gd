@@ -57,6 +57,21 @@ const RETICLES: Dictionary = {
     "ladder": "Ladder",
     "brackets": "Brackets",
     "zombie": "Zombie",
+    "dumbbell": "Dumbbell",
+    "skull": "Skull",
+    "plate": "Barbell Plate",
+    "bicep": "Bicep",
+    "biohazard": "Biohazard",
+    "bite": "Crosshair Bite",
+    "blood_drip": "Blood Drip",
+    "kettlebell": "Kettlebell",
+    "brain": "Brain",
+    "tombstone": "Tombstone",
+    "bones": "Bones",
+    "radar": "Radar",
+    "lock_on": "Lock-On",
+    "lightning": "Lightning",
+    "flame": "Flame",
 }
 
 var weapon_kills: Dictionary = {}
