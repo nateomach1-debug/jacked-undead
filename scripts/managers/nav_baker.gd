@@ -95,7 +95,7 @@ func _process(delta: float) -> void:
 		var pts: int = -1
 		if path != null:
 			pts = path.size()
-		line2 = "nearest zombie %.0fm away, path points: %d" % [best, pts]
+		line2 = "nearest zombie %.0fm away at (%.0f, %.0f, %.0f), path points: %d" % [best, nearest.global_position.x, nearest.global_position.y, nearest.global_position.z, pts]
 	_label.text = _base_text + "\n" + line2
 
 
