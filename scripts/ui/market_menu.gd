@@ -1,5 +1,5 @@
 extends Control
-## Market: spend Juice on characters, attachments and badges.
+## Market: spend Juice on characters, attachments, badges and reticles.
 
 const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const MARKET_PATH: String = "res://scripts/managers/market.gd"
@@ -15,6 +15,13 @@ const STAT_LABELS: Dictionary = {
     "reload_speed_mult": "reload speed", "ads_zoom_mult": "ADS zoom",
 }
 
+const COL_GOLD: Color = Color(1.0, 0.85, 0.3)
+const COL_GREEN: Color = Color(0.3, 0.75, 0.4)
+const COL_BLUE: Color = Color(0.35, 0.7, 1.0)
+const COL_RED: Color = Color(0.75, 0.3, 0.3)
+const COL_CARD: Color = Color(0.11, 0.11, 0.15)
+const COL_CARD_BORDER: Color = Color(0.28, 0.28, 0.36)
+
 var _profile = null
 var _market = null
 var _reg = null      # attachments registry
@@ -24,7 +31,8 @@ var _ach = null      # achievements (reticle names)
 var _ret = null      # reticle drawing script (previews)
 var _juice_label: Label
 var _list: VBoxContainer
-# {"btn": Button, "label": Label, "name": String, "kind": "att"/"char"/"badge", "id": String, "cost": int}
+# {"btn": Button, "label": Label, "card_style": StyleBoxFlat, "name": String,
+#  "kind": "att"/"char"/"badge"/"ret", "id": String, "cost": int}
 var _rows: Array = []
 
 
@@ -78,11 +86,11 @@ func _build_ui() -> void:
     title.text = "MARKET"
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     title.add_theme_font_size_override("font_size", 32)
-    title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    title.add_theme_color_override("font_color", COL_GOLD)
     top.add_child(title)
     _juice_label = Label.new()
     _juice_label.add_theme_font_size_override("font_size", 28)
-    _juice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    _juice_label.add_theme_color_override("font_color", COL_GOLD)
     top.add_child(_juice_label)
 
     var tabs := HBoxContainer.new()
@@ -100,7 +108,7 @@ func _build_ui() -> void:
     outer.add_child(scroll)
     _list = VBoxContainer.new()
     _list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _list.add_theme_constant_override("separation", 8)
+    _list.add_theme_constant_override("separation", 14)
     scroll.add_child(_list)
 
     var back := Button.new()
@@ -162,8 +170,8 @@ func _build_attachment_rows() -> void:
     for slot in _reg.SLOTS:
         var header := Label.new()
         header.text = str(slot).to_upper()
-        header.add_theme_font_size_override("font_size", 22)
-        header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+        header.add_theme_font_size_override("font_size", 24)
+        header.add_theme_color_override("font_color", COL_GOLD)
         _list.add_child(header)
         for id in _reg.ATTACHMENTS.keys():
             var entry: Dictionary = _reg.ATTACHMENTS[id]
@@ -196,45 +204,78 @@ func _build_reticle_rows() -> void:
                 int(_market.RETICLE_COSTS[id]))
 
 
-## Small picture of a reticle for the Market rows.
+## Small picture of a reticle for the Market rows (animated ones keep redrawing).
 func _draw_preview(ctrl: Control, id: String) -> void:
     if _ret != null:
-        _ret.draw_reticle(ctrl, ctrl.size * 0.5, id, 18.0, Color(1, 1, 1))
+        _ret.draw_reticle(ctrl, ctrl.size * 0.5, id, 22.0, Color(1, 1, 1))
 
 
 func _add_row(kind: String, id: String, item_name: String, desc: String, cost: int,
         tint: Color = Color(1, 1, 1)) -> void:
+    var card := PanelContainer.new()
+    var card_style := StyleBoxFlat.new()
+    card_style.bg_color = COL_CARD
+    card_style.border_color = COL_CARD_BORDER
+    card_style.set_border_width_all(3)
+    card_style.set_corner_radius_all(10)
+    card_style.set_content_margin_all(12)
+    card.add_theme_stylebox_override("panel", card_style)
+    _list.add_child(card)
+
     var row := HBoxContainer.new()
-    row.add_theme_constant_override("separation", 10)
-    _list.add_child(row)
+    row.add_theme_constant_override("separation", 14)
+    card.add_child(row)
+
     if kind == "ret":
         var prev := Control.new()
-        prev.custom_minimum_size = Vector2(70, 70)
+        prev.custom_minimum_size = Vector2(84, 84)
+        prev.clip_contents = true
+        prev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         prev.draw.connect(_draw_preview.bind(prev, id))
         row.add_child(prev)
 
     var info := VBoxContainer.new()
     info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     row.add_child(info)
     var name_l := Label.new()
     name_l.text = item_name
-    name_l.add_theme_font_size_override("font_size", 24)
+    name_l.add_theme_font_size_override("font_size", 26)
     name_l.add_theme_color_override("font_color", tint)
     info.add_child(name_l)
     if desc != "":
         var d := Label.new()
         d.text = desc
-        d.add_theme_font_size_override("font_size", 16)
+        d.add_theme_font_size_override("font_size", 17)
         d.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
         d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         info.add_child(d)
 
     var b := Button.new()
-    b.custom_minimum_size = Vector2(190, 60)
-    b.add_theme_font_size_override("font_size", 20)
+    b.custom_minimum_size = Vector2(250, 76)
+    b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    b.add_theme_font_size_override("font_size", 22)
     b.pressed.connect(_buy.bind(kind, id, cost))
     row.add_child(b)
-    _rows.append({"btn": b, "label": name_l, "name": item_name, "kind": kind, "id": id, "cost": cost})
+    _rows.append({"btn": b, "label": name_l, "card_style": card_style, "name": item_name,
+            "kind": kind, "id": id, "cost": cost})
+
+
+## Gives a button a solid colored look (all states).
+func _style_button(b: Button, bg: Color, border: Color, text_col: Color) -> void:
+    var states: Dictionary = {
+        "normal": bg, "hover": bg.lightened(0.15), "pressed": bg.lightened(0.25), "disabled": bg,
+    }
+    for state in states.keys():
+        var sb := StyleBoxFlat.new()
+        sb.bg_color = states[state]
+        sb.border_color = border
+        sb.set_border_width_all(3)
+        sb.set_corner_radius_all(8)
+        sb.set_content_margin_all(8)
+        b.add_theme_stylebox_override(state, sb)
+    for cname in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color", "font_focus_color"]:
+        b.add_theme_color_override(cname, text_col)
 
 
 ## "+20% range, +10% damage, -10% fire rate"
@@ -293,20 +334,34 @@ func _update_buttons() -> void:
         var kind: String = str(r["kind"])
         var id: String = str(r["id"])
         var label: Label = r["label"]
+        var card_style: StyleBoxFlat = r["card_style"]
         label.text = str(r["name"])
         if _owned(kind, id):
             if kind == "badge":
                 var equipped: bool = NetManager.badge_id == id
                 b.text = "UNEQUIP" if equipped else "EQUIP"
                 b.disabled = false
+                _style_button(b, Color(0.08, 0.16, 0.26), COL_BLUE, Color(0.65, 0.85, 1.0))
+                card_style.border_color = COL_BLUE
                 if equipped:
                     label.text = str(r["name"]) + "  (EQUIPPED)"
             else:
                 b.text = "OWNED"
                 b.disabled = true
+                _style_button(b, Color(0.07, 0.16, 0.09), COL_GREEN, Color(0.5, 0.9, 0.55))
+                card_style.border_color = COL_GREEN
         else:
-            b.text = "%d JUICE" % int(r["cost"])
-            b.disabled = juice < int(r["cost"])
+            var cost: int = int(r["cost"])
+            if juice >= cost:
+                b.text = "BUY  %d JUICE" % cost
+                b.disabled = false
+                _style_button(b, Color(0.25, 0.2, 0.04), COL_GOLD, COL_GOLD)
+                card_style.border_color = Color(0.6, 0.5, 0.15)
+            else:
+                b.text = "%d JUICE" % cost
+                b.disabled = true
+                _style_button(b, Color(0.16, 0.08, 0.08), COL_RED, Color(0.85, 0.45, 0.45))
+                card_style.border_color = COL_CARD_BORDER
 
 
 ## Refreshes the main menu's Juice label, then closes.
