@@ -628,11 +628,15 @@ func has_weapon(w: WeaponData) -> bool:
 
 
 ## Called by a GunWallBuy station the first time that gun is purchased.
-## Adds it to the loadout and immediately equips it.
+## Adds it to the loadout and immediately equips it. The gun in your
+## hands keeps its current ammo for when you swap back to it.
 func add_weapon_to_loadout(w: WeaponData) -> void:
     if has_weapon(w):
         return
     _cancel_actions()
+    if current_weapon_index < _saved_mag_ammo.size():
+        _saved_mag_ammo[current_weapon_index] = current_mag_ammo
+        _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
     owned_weapon_names.append(w.weapon_name)
     weapon_loadout.append(w)
     _saved_mag_ammo.append(w.mag_size)
