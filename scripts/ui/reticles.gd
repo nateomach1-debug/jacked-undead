@@ -311,7 +311,7 @@ func _draw_custom(ctrl: CanvasItem, center: Vector2, shapes: Array, s: float, co
             "arc":
                 ctrl.draw_arc(_pt(center, sh["c"], s, xf), float(sh["r"]) * s * sc, deg_to_rad(float(sh["from"])) + rot, deg_to_rad(float(sh["to"])) + rot, 32, col, w, true)
     if animated:
-        ctrl.queue_redraw()
+        if not ctrl.get_tree().process_frame.is_connected(ctrl.queue_redraw): ctrl.get_tree().process_frame.connect(ctrl.queue_redraw, CONNECT_ONE_SHOT)
 
 
 func _draw_builtin(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
