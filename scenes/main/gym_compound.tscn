@@ -510,7 +510,7 @@ buy_cost = 3500
 ammo_cost = 400
 
 [node name="SniperWallBuy" parent="Stations" instance=ExtResource("22")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 6, -39.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -18.5)
 weapon = ExtResource("26")
 display_model = ExtResource("28")
 display_name = "Sniper"
@@ -550,7 +550,7 @@ body_color = Color(0.2196, 0.6314, 0.4118, 1)
 icon_texture = ExtResource("20")
 
 [node name="TRTStation" parent="Stations" instance=ExtResource("6")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 5.9, -39)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 5.9, -18.8)
 supplement_id = "trt"
 display_name = "TRT"
 cost = 1500
@@ -558,7 +558,7 @@ body_color = Color(0.1647, 0.4235, 0.6902, 1)
 icon_texture = ExtResource("15")
 
 [node name="FishOilStation" parent="Stations" instance=ExtResource("6")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 5.9, -39)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 5.9, -18.8)
 supplement_id = "fish_oil"
 display_name = "Fish Oil"
 cost = 3000
