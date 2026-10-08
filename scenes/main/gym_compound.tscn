@@ -69,10 +69,10 @@ size = Vector3(1, 10, 5)
 size = Vector3(1, 10, 5)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_choke_wall"]
-size = Vector3(37, 5, 2)
+size = Vector3(37, 10, 2)
 
 [sub_resource type="BoxMesh" id="BoxMesh_choke_wall"]
-size = Vector3(37, 5, 2)
+size = Vector3(37, 10, 2)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ramp"]
 size = Vector3(4, 0.5, 11.18)
@@ -246,7 +246,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 [node name="Walls" type="Node3D" parent="."]
 
 [node name="ChokePointWest" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 7.5, -20)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 5, 10)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/ChokePointWest"]
 shape = SubResource("BoxShape3D_choke_wall")
@@ -256,7 +256,7 @@ mesh = SubResource("BoxMesh_choke_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_choke")
 
 [node name="ChokePointEast" type="StaticBody3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 7.5, -20)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 5, 10)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/ChokePointEast"]
 shape = SubResource("BoxShape3D_choke_wall")
@@ -282,6 +282,26 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 2.5, -11.5)
 shape = SubResource("BoxShape3D_choke_wall")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/FirstFloorWallEast"]
+mesh = SubResource("BoxMesh_choke_wall")
+surface_material_override/0 = SubResource("StandardMaterial3D_choke")
+
+[node name="SecondFloorWallWest" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, 7.5, -20)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/SecondFloorWallWest"]
+shape = SubResource("BoxShape3D_choke_wall")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/SecondFloorWallWest"]
+mesh = SubResource("BoxMesh_choke_wall")
+surface_material_override/0 = SubResource("StandardMaterial3D_choke")
+
+[node name="SecondFloorWallEast" type="StaticBody3D" parent="Walls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 7.5, -20)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Walls/SecondFloorWallEast"]
+shape = SubResource("BoxShape3D_choke_wall")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Walls/SecondFloorWallEast"]
 mesh = SubResource("BoxMesh_choke_wall")
 surface_material_override/0 = SubResource("StandardMaterial3D_choke")
 
