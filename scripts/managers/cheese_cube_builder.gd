@@ -10,8 +10,9 @@ const WALL_T: float = 1.0
 const LANE: float = 4.0
 const RISE: float = 3.0
 const SLAB: float = 0.5
-const RAIL_H: float = 1.4
+const RAIL_H: float = 2.6
 const RAIL_T: float = 0.4
+const RAIL_PROUD: float = 0.05
 const STATION_Y: float = 0.9
 const FLIGHTS: int = 8
 
@@ -23,7 +24,6 @@ const LANDING_SIZE: Array = [8.0, 4.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0]
 const FLOOR_COL := Color(0.35, 0.35, 0.38)
 const WALL_COL := Color(0.8, 0.8, 0.76)
 const CHEESE := Color(0.96, 0.78, 0.22)
-const TREAD_COL := Color(0.75, 0.5, 0.1)
 const RAIL_COL := Color(0.2, 0.2, 0.24)
 const DOOR_COL := Color(0.5, 0.15, 0.12)
 
@@ -93,28 +93,9 @@ func _flight_basis(a: Vector3, b: Vector3) -> Basis:
 
 ## Tilted slab whose TOP surface runs from a to b.
 func _slab(a: Vector3, b: Vector3, width: float, color: Color) -> void:
-    var basis: Basis = _flight_basis(a, b)
-    var center: Vector3 = (a + b) * 0.5 - basis.y * (SLAB * 0.5)
-    _solid(Transform3D(basis, center), Vector3(a.distance_to(b), SLAB, width), color)
-
-
-## Thin tread lines across a flight (visual only, not baked).
-func _treads(a: Vector3, b: Vector3) -> void:
-    var basis: Basis = _flight_basis(a, b)
-    var count: int = int(a.distance_to(b))
-    var mm := MultiMesh.new()
-    mm.transform_format = MultiMesh.TRANSFORM_3D
-    var bm := BoxMesh.new()
-    bm.size = Vector3(0.12, 0.03, LANE - 0.6)
-    mm.mesh = bm
-    mm.instance_count = count
-    for i in range(count):
-        var p: Vector3 = a + basis.x * (float(i) + 0.5) + basis.y * 0.015
-        mm.set_instance_transform(i, Transform3D(basis, p))
-    var mmi := MultiMeshInstance3D.new()
-    mmi.multimesh = mm
-    mmi.material_override = _material(TREAD_COL)
-    _decor.add_child(mmi)
+    var bs: Basis = _flight_basis(a, b)
+    var center: Vector3 = (a + b) * 0.5 - bs.y * (SLAB * 0.5)
+    _solid(Transform3D(bs, center), Vector3(a.distance_to(b), SLAB, width), color)
 
 
 func _yaw_front_pos_z(dir: Vector2) -> float:
@@ -189,7 +170,6 @@ func _build_stairs() -> void:
         _compute_flight(k)
     for k in range(FLIGHTS):
         _slab(_f_start[k], _f_end[k], LANE, CHEESE)
-        _treads(_f_start[k], _f_end[k])
         _rails(k)
     _landing_rails()
 
@@ -221,12 +201,24 @@ func _compute_flight(k: int) -> void:
     _f_in.append(inward)
 
 
-## Inner-edge railing. Lap 1 (flights 0-3) is a solid wall down to the floor
-## so nobody can hide under the stairs; lap 2 is a plain railing.
+## Inner-edge railing: ONE smooth sloped rail that follows the ramp (sticks out
+## RAIL_PROUD past the ramp side so the faces don't flicker). Lap 1 (flights
+## 0-3) also gets hidden blocks under the ramp down to the floor, so nobody can
+## hide under the stairs.
 func _rails(k: int) -> void:
     var s: Vector3 = _f_start[k]
     var e: Vector3 = _f_end[k]
     var n: Vector2 = _f_in[k]
+    var off: float = LANE * 0.5 - RAIL_T * 0.5 + RAIL_PROUD
+    var shift: Vector3 = Vector3(n.x, 0.0, n.y) * off
+    var a: Vector3 = s + shift
+    var b: Vector3 = e + shift
+    var bs: Basis = _flight_basis(a, b)
+    var thick: float = RAIL_H + SLAB + 0.3
+    var center: Vector3 = (a + b) * 0.5 + bs.y * (RAIL_H - thick * 0.5)
+    _solid(Transform3D(bs, center), Vector3(a.distance_to(b), thick, RAIL_T), RAIL_COL)
+    if k >= 4:
+        return
     var along_x: bool = absf(n.y) > 0.5
     var run: float = Vector2(e.x - s.x, e.z - s.z).length()
     var segs: int = int(ceil(run / 2.0))
@@ -235,17 +227,15 @@ func _rails(k: int) -> void:
         var p0: Vector3 = s.lerp(e, float(i) / float(segs))
         var p1: Vector3 = s.lerp(e, float(i + 1) / float(segs))
         var mid: Vector3 = (p0 + p1) * 0.5
-        var top: float = maxf(p0.y, p1.y) + RAIL_H
-        var bottom: float = minf(p0.y, p1.y) - 0.3
-        if k < 4 and not (k == 3 and mid.z > 12.0):
-            bottom = 0.0
-        var h: float = top - bottom
-        var cx: float = mid.x + n.x * (LANE * 0.5 - RAIL_T * 0.5)
-        var cz: float = mid.z + n.y * (LANE * 0.5 - RAIL_T * 0.5)
-        var size: Vector3 = Vector3(RAIL_T, h, seg_len + 0.02)
+        var top: float = minf(p0.y, p1.y) - 0.3
+        if top <= 0.1:
+            continue
+        if k == 3 and mid.z > 12.0:
+            continue
+        var size: Vector3 = Vector3(RAIL_T, top, seg_len + 0.02)
         if along_x:
-            size = Vector3(seg_len + 0.02, h, RAIL_T)
-        _box(Vector3(cx, bottom + h * 0.5, cz), size, RAIL_COL)
+            size = Vector3(seg_len + 0.02, top, RAIL_T)
+        _box(Vector3(mid.x + shift.x, top * 0.5, mid.z + shift.z), size, RAIL_COL)
 
 
 func _landing_rails() -> void:
@@ -264,7 +254,7 @@ func _landing_rails() -> void:
     _box(Vector3(-14.2, y8 + RAIL_H * 0.5, 12.2), Vector3(4.4, RAIL_H, RAIL_T), RAIL_COL)
     _box(Vector3(-12.2, y8 + RAIL_H * 0.5, 16.0), Vector3(RAIL_T, RAIL_H, 8.0), RAIL_COL)
     # closes the gap under the end of flight 3, next to the start landing
-    _box(Vector3(-18.0, 5.8, 12.2), Vector3(4.0, 11.6, RAIL_T), RAIL_COL)
+    _box(Vector3(-17.975, 5.7, 12.2), Vector3(4.05, 11.4, RAIL_T), RAIL_COL)
 
 
 # ---------------------------------------------------------------- doors
