@@ -10,6 +10,7 @@ const MAPS: Array = [
 	{"title": "MULTI-ROOM", "path": "res://scenes/main/multi_room_map.tscn"},
 	{"title": "GYM COMPOUND", "path": "res://scenes/main/gym_compound.tscn"},
 	{"title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn"},
+    {"title": "CHEESE CUBE", "path": "res://scenes/main/cheese_cube_map.tscn"},
 ]
 
 const NAME_KEYS: Array = [
