@@ -7,6 +7,9 @@ const KINDS: Array = [
     "x_cross", "corners", "t_post", "horseshoe", "mil_dot",
     "bullseye", "ring_cross", "double_chevron", "ladder", "brackets",
     "zombie",
+    "dumbbell", "skull", "plate", "bicep", "biohazard", "bite", "blood_drip",
+    "kettlebell", "brain", "tombstone", "bones", "radar", "lock_on",
+    "lightning", "flame",
 ]
 const OPTIC_DEFAULTS: Dictionary = {
     "red_dot": "dot",
@@ -31,9 +34,14 @@ func draw_reticle(ctrl: CanvasItem, center: Vector2, kind: String, s: float, col
 
 ## Custom reticles are lists of shapes. All numbers are in units of the reticle size `s`
 ## (x right, y down, 0,0 = aim point), so they scale with the Settings size slider.
-## t: "line" (p1, p2), "polyline" (p), "poly" (p, closed), "circle" (c, r),
+## t: "line" (p1, p2), "polyline" (p, open), "poly" (p, closed), "circle" (c, r),
 ## "arc" (c, r, from, to in degrees).
 ## Optional on any shape: w = line width, fill = true (circle/poly), alpha = 0..1.
+## Optional effects on any shape (they animate by themselves):
+##   "spin": degrees per second, rotates around the aim point
+##   "pulse": [amount, hz], grows and shrinks around the aim point
+##   "flicker": hz, random blinking like a bad light
+##   "drip": [distance, speed, phase 0..1], slides down and fades, then repeats
 const CUSTOM: Dictionary = {
     # Front view of the in-game zombie (zombie.tscn), head center = aim point.
     "zombie": [
@@ -66,46 +74,244 @@ const CUSTOM: Dictionary = {
         {"t": "line", "p1": [0.578, 1.45], "p2": [0.578, 2.716]},
         {"t": "arc", "c": [0.378, 2.716], "r": 0.2, "from": 0, "to": 180},
     ],
+    # Dumbbell with a gap in the handle for the aim point.
+    "dumbbell": [
+        {"t": "line", "p1": [-0.5, 0.0], "p2": [-0.14, 0.0]},
+        {"t": "line", "p1": [0.14, 0.0], "p2": [0.5, 0.0]},
+        {"t": "poly", "p": [[-0.5, -0.32], [-0.62, -0.32], [-0.62, 0.32], [-0.5, 0.32]]},
+        {"t": "poly", "p": [[-0.62, -0.5], [-0.8, -0.5], [-0.8, 0.5], [-0.62, 0.5]]},
+        {"t": "line", "p1": [-0.8, 0.0], "p2": [-0.95, 0.0]},
+        {"t": "poly", "p": [[0.5, -0.32], [0.62, -0.32], [0.62, 0.32], [0.5, 0.32]]},
+        {"t": "poly", "p": [[0.62, -0.5], [0.8, -0.5], [0.8, 0.5], [0.62, 0.5]]},
+        {"t": "line", "p1": [0.8, 0.0], "p2": [0.95, 0.0]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.05, "fill": true},
+    ],
+    # Skull, aim point between the eyes.
+    "skull": [
+        {"t": "arc", "c": [0.0, 0.0], "r": 0.6, "from": 180, "to": 360},
+        {"t": "polyline", "p": [[-0.6, 0.0], [-0.45, 0.3], [-0.3, 0.3], [-0.3, 0.6], [0.3, 0.6], [0.3, 0.3], [0.45, 0.3], [0.6, 0.0]]},
+        {"t": "circle", "c": [-0.25, -0.02], "r": 0.12, "fill": true},
+        {"t": "circle", "c": [0.25, -0.02], "r": 0.12, "fill": true},
+        {"t": "poly", "p": [[0.0, 0.2], [-0.07, 0.34], [0.07, 0.34]], "fill": true},
+        {"t": "line", "p1": [-0.15, 0.42], "p2": [-0.15, 0.6], "w": 1.5},
+        {"t": "line", "p1": [0.0, 0.42], "p2": [0.0, 0.6], "w": 1.5},
+        {"t": "line", "p1": [0.15, 0.42], "p2": [0.15, 0.6], "w": 1.5},
+        {"t": "circle", "c": [0.0, -0.02], "r": 0.04, "fill": true},
+    ],
+    # Barbell plate (fx): the spokes spin slowly.
+    "plate": [
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.9},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.4},
+        {"t": "line", "p1": [0.4, 0.0], "p2": [0.9, 0.0], "spin": 40},
+        {"t": "line", "p1": [0.2, 0.346], "p2": [0.45, 0.779], "spin": 40},
+        {"t": "line", "p1": [-0.2, 0.346], "p2": [-0.45, 0.779], "spin": 40},
+        {"t": "line", "p1": [-0.4, 0.0], "p2": [-0.9, 0.0], "spin": 40},
+        {"t": "line", "p1": [-0.2, -0.346], "p2": [-0.45, -0.779], "spin": 40},
+        {"t": "line", "p1": [0.2, -0.346], "p2": [0.45, -0.779], "spin": 40},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.06, "fill": true},
+    ],
+    # Flexed arm, aim point on the bicep.
+    "bicep": [
+        {"t": "circle", "c": [0.65, -0.62], "r": 0.22},
+        {"t": "line", "p1": [0.45, 0.2], "p2": [0.45, -0.45]},
+        {"t": "line", "p1": [0.85, 0.55], "p2": [0.85, -0.45]},
+        {"t": "arc", "c": [0.0, 0.2], "r": 0.45, "from": 180, "to": 360},
+        {"t": "line", "p1": [-0.8, 0.2], "p2": [-0.45, 0.2]},
+        {"t": "line", "p1": [-0.8, 0.55], "p2": [0.85, 0.55]},
+        {"t": "line", "p1": [-0.8, 0.2], "p2": [-0.8, 0.55]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.05, "fill": true},
+    ],
+    # Biohazard (fx): pulses.
+    "biohazard": [
+        {"t": "circle", "c": [0.0, -0.45], "r": 0.36, "pulse": [0.08, 1.2]},
+        {"t": "circle", "c": [0.39, 0.225], "r": 0.36, "pulse": [0.08, 1.2]},
+        {"t": "circle", "c": [-0.39, 0.225], "r": 0.36, "pulse": [0.08, 1.2]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.14, "pulse": [0.08, 1.2]},
+        {"t": "arc", "c": [0.0, 0.0], "r": 0.9, "from": 70, "to": 110, "pulse": [0.08, 1.2]},
+        {"t": "arc", "c": [0.0, 0.0], "r": 0.9, "from": 310, "to": 350, "pulse": [0.08, 1.2]},
+        {"t": "arc", "c": [0.0, 0.0], "r": 0.9, "from": 190, "to": 230, "pulse": [0.08, 1.2]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.03, "fill": true, "pulse": [0.08, 1.2]},
+    ],
+    # Crosshair bite (fx): a ring with a jagged bite out of it, flickers like a bad light.
+    "bite": [
+        {"t": "arc", "c": [0.0, 0.0], "r": 0.8, "from": 60, "to": 340, "flicker": 7},
+        {"t": "polyline", "p": [[0.75, -0.27], [0.55, -0.1], [0.72, 0.1], [0.5, 0.3], [0.4, 0.69]], "flicker": 7},
+        {"t": "line", "p1": [-0.45, 0.0], "p2": [-0.15, 0.0], "flicker": 7},
+        {"t": "line", "p1": [0.0, -0.45], "p2": [0.0, -0.15], "flicker": 7},
+        {"t": "line", "p1": [0.0, 0.15], "p2": [0.0, 0.45], "flicker": 7},
+        {"t": "line", "p1": [0.15, 0.0], "p2": [0.3, 0.0], "flicker": 7},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.04, "fill": true, "flicker": 7},
+    ],
+    # Blood drip (fx): drops run down from the ring and fade.
+    "blood_drip": [
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.6},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.04, "fill": true},
+        {"t": "line", "p1": [-0.85, 0.0], "p2": [-0.7, 0.0]},
+        {"t": "line", "p1": [0.7, 0.0], "p2": [0.85, 0.0]},
+        {"t": "line", "p1": [0.0, -0.85], "p2": [0.0, -0.7]},
+        {"t": "line", "p1": [-0.25, 0.545], "p2": [-0.25, 0.8], "w": 1.5, "alpha": 0.6},
+        {"t": "line", "p1": [0.1, 0.592], "p2": [0.1, 0.85], "w": 1.5, "alpha": 0.6},
+        {"t": "line", "p1": [0.35, 0.487], "p2": [0.35, 0.7], "w": 1.5, "alpha": 0.6},
+        {"t": "circle", "c": [-0.25, 0.85], "r": 0.05, "fill": true, "drip": [0.6, 0.4, 0.0]},
+        {"t": "circle", "c": [0.1, 0.9], "r": 0.05, "fill": true, "drip": [0.6, 0.5, 0.35]},
+        {"t": "circle", "c": [0.35, 0.75], "r": 0.05, "fill": true, "drip": [0.6, 0.35, 0.7]},
+    ],
+    # Kettlebell, aim point in the middle of the bell.
+    "kettlebell": [
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.55},
+        {"t": "arc", "c": [0.0, -0.65], "r": 0.32, "from": 180, "to": 360},
+        {"t": "line", "p1": [-0.32, -0.65], "p2": [-0.32, -0.45]},
+        {"t": "line", "p1": [0.32, -0.65], "p2": [0.32, -0.45]},
+        {"t": "arc", "c": [0.0, -0.65], "r": 0.17, "from": 180, "to": 360},
+        {"t": "line", "p1": [-0.17, -0.65], "p2": [-0.17, -0.52]},
+        {"t": "line", "p1": [0.17, -0.65], "p2": [0.17, -0.52]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.07, "fill": true},
+    ],
+    # Brain (fx): throbs gently.
+    "brain": [
+        {"t": "arc", "c": [-0.27, 0.0], "r": 0.55, "from": 95, "to": 265, "pulse": [0.07, 1.6]},
+        {"t": "arc", "c": [0.27, 0.0], "r": 0.55, "from": 275, "to": 445, "pulse": [0.07, 1.6]},
+        {"t": "polyline", "p": [[-0.318, -0.548], [0.0, -0.45], [0.318, -0.548]], "pulse": [0.07, 1.6]},
+        {"t": "polyline", "p": [[-0.318, 0.548], [0.0, 0.45], [0.318, 0.548]], "pulse": [0.07, 1.6]},
+        {"t": "line", "p1": [0.0, -0.45], "p2": [0.0, -0.12], "pulse": [0.07, 1.6]},
+        {"t": "line", "p1": [0.0, 0.12], "p2": [0.0, 0.45], "pulse": [0.07, 1.6]},
+        {"t": "polyline", "p": [[-0.78, -0.1], [-0.62, -0.22], [-0.47, -0.06], [-0.32, -0.2], [-0.14, -0.08]], "w": 1.5, "pulse": [0.07, 1.6]},
+        {"t": "polyline", "p": [[-0.7, 0.25], [-0.52, 0.15], [-0.38, 0.3], [-0.18, 0.2]], "w": 1.5, "pulse": [0.07, 1.6]},
+        {"t": "polyline", "p": [[0.78, -0.1], [0.62, -0.22], [0.47, -0.06], [0.32, -0.2], [0.14, -0.08]], "w": 1.5, "pulse": [0.07, 1.6]},
+        {"t": "polyline", "p": [[0.7, 0.25], [0.52, 0.15], [0.38, 0.3], [0.18, 0.2]], "w": 1.5, "pulse": [0.07, 1.6]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.035, "fill": true, "pulse": [0.07, 1.6]},
+    ],
+    # Tombstone with a cross.
+    "tombstone": [
+        {"t": "arc", "c": [0.0, -0.3], "r": 0.5, "from": 180, "to": 360},
+        {"t": "line", "p1": [-0.5, -0.3], "p2": [-0.5, 0.7]},
+        {"t": "line", "p1": [0.5, -0.3], "p2": [0.5, 0.7]},
+        {"t": "line", "p1": [-0.65, 0.7], "p2": [0.65, 0.7]},
+        {"t": "line", "p1": [0.0, -0.6], "p2": [0.0, -0.2]},
+        {"t": "line", "p1": [-0.17, -0.45], "p2": [0.17, -0.45]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.06, "fill": true},
+    ],
+    # Crossed bones with a gap in the middle.
+    "bones": [
+        {"t": "line", "p1": [0.25, 0.25], "p2": [0.65, 0.65]},
+        {"t": "line", "p1": [-0.25, -0.25], "p2": [-0.65, -0.65]},
+        {"t": "line", "p1": [0.25, -0.25], "p2": [0.65, -0.65]},
+        {"t": "line", "p1": [-0.25, 0.25], "p2": [-0.65, 0.65]},
+        {"t": "circle", "c": [0.72, 0.58], "r": 0.08},
+        {"t": "circle", "c": [0.58, 0.72], "r": 0.08},
+        {"t": "circle", "c": [-0.72, -0.58], "r": 0.08},
+        {"t": "circle", "c": [-0.58, -0.72], "r": 0.08},
+        {"t": "circle", "c": [0.72, -0.58], "r": 0.08},
+        {"t": "circle", "c": [0.58, -0.72], "r": 0.08},
+        {"t": "circle", "c": [-0.72, 0.58], "r": 0.08},
+        {"t": "circle", "c": [-0.58, 0.72], "r": 0.08},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.04, "fill": true},
+    ],
+    # Radar (fx): a sweep line with a fading trail goes round.
+    "radar": [
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.8},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.4, "alpha": 0.7},
+        {"t": "line", "p1": [-0.8, 0.0], "p2": [-0.15, 0.0], "w": 1.0, "alpha": 0.4},
+        {"t": "line", "p1": [0.15, 0.0], "p2": [0.8, 0.0], "w": 1.0, "alpha": 0.4},
+        {"t": "line", "p1": [0.0, -0.8], "p2": [0.0, -0.15], "w": 1.0, "alpha": 0.4},
+        {"t": "line", "p1": [0.0, 0.15], "p2": [0.0, 0.8], "w": 1.0, "alpha": 0.4},
+        {"t": "line", "p1": [0.0, 0.0], "p2": [0.8, 0.0], "spin": 120},
+        {"t": "line", "p1": [0.0, 0.0], "p2": [0.77, -0.207], "alpha": 0.45, "spin": 120},
+        {"t": "line", "p1": [0.0, 0.0], "p2": [0.693, -0.4], "alpha": 0.2, "spin": 120},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.04, "fill": true},
+    ],
+    # Lock-on (fx): four corners turn and breathe around the aim point.
+    "lock_on": [
+        {"t": "line", "p1": [0.7, 0.7], "p2": [0.4, 0.7], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [0.7, 0.7], "p2": [0.7, 0.4], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [-0.7, 0.7], "p2": [-0.4, 0.7], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [-0.7, 0.7], "p2": [-0.7, 0.4], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [0.7, -0.7], "p2": [0.4, -0.7], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [0.7, -0.7], "p2": [0.7, -0.4], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [-0.7, -0.7], "p2": [-0.4, -0.7], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "line", "p1": [-0.7, -0.7], "p2": [-0.7, -0.4], "spin": 60, "pulse": [0.06, 1.0]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.12},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.03, "fill": true},
+    ],
+    # Lightning bolt.
+    "lightning": [
+        {"t": "poly", "p": [[0.15, -0.9], [-0.35, 0.05], [-0.02, 0.05], [-0.2, 0.9], [0.38, -0.1], [0.04, -0.1]]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.04, "fill": true},
+    ],
+    # Flame (fx): flickers in size.
+    "flame": [
+        {"t": "poly", "p": [[0.0, -0.95], [0.22, -0.55], [0.5, -0.2], [0.55, 0.25], [0.35, 0.65], [0.0, 0.85], [-0.35, 0.65], [-0.55, 0.25], [-0.45, -0.1], [-0.2, -0.35]], "pulse": [0.05, 4.0]},
+        {"t": "poly", "p": [[0.0, -0.3], [0.2, 0.1], [0.2, 0.4], [0.0, 0.55], [-0.2, 0.4], [-0.2, 0.1]], "pulse": [0.05, 4.0]},
+        {"t": "circle", "c": [0.0, 0.0], "r": 0.04, "fill": true},
+    ],
 }
 
 
-func _pt(center: Vector2, v: Array, s: float) -> Vector2:
-    return center + Vector2(float(v[0]), float(v[1])) * s
+func _pt(center: Vector2, v: Array, s: float, xf: Transform2D = Transform2D.IDENTITY) -> Vector2:
+    return center + (xf * Vector2(float(v[0]), float(v[1]))) * s
 
 
-func _pts(center: Vector2, list: Array, s: float) -> PackedVector2Array:
+func _pts(center: Vector2, list: Array, s: float, xf: Transform2D = Transform2D.IDENTITY) -> PackedVector2Array:
     var out := PackedVector2Array()
     for v in list:
-        out.append(_pt(center, v, s))
+        out.append(_pt(center, v, s, xf))
     return out
 
 
 func _draw_custom(ctrl: CanvasItem, center: Vector2, shapes: Array, s: float, color: Color) -> void:
+    var t: float = float(Time.get_ticks_msec()) / 1000.0
+    var animated: bool = false
     for sh: Dictionary in shapes:
         var col: Color = color
-        col.a *= float(sh.get("alpha", 1.0))
+        var a: float = float(sh.get("alpha", 1.0))
+        var rot: float = 0.0
+        var sc: float = 1.0
+        var off: Vector2 = Vector2.ZERO
+        if sh.has("spin"):
+            animated = true
+            rot = deg_to_rad(float(sh["spin"]) * t)
+        if sh.has("pulse"):
+            animated = true
+            var pu: Array = sh["pulse"]
+            sc = 1.0 + float(pu[0]) * sin(t * TAU * float(pu[1]))
+        if sh.has("flicker"):
+            animated = true
+            var idx: float = floor(t * float(sh["flicker"]))
+            var hsh: float = fposmod(sin(idx * 12.9898) * 43758.5453, 1.0)
+            if hsh < 0.3:
+                a *= 0.25
+        if sh.has("drip"):
+            animated = true
+            var dr: Array = sh["drip"]
+            var frac: float = fposmod(t * float(dr[1]) + float(dr[2]), 1.0)
+            off = Vector2(0.0, float(dr[0]) * frac)
+            a *= 1.0 - frac
+        col.a *= a
+        var xf := Transform2D(Vector2(cos(rot), sin(rot)) * sc, Vector2(-sin(rot), cos(rot)) * sc, off)
         var w: float = float(sh.get("w", 2.0))
         var fill: bool = bool(sh.get("fill", false))
         match str(sh.get("t", "")):
             "line":
-                ctrl.draw_line(_pt(center, sh["p1"], s), _pt(center, sh["p2"], s), col, w)
+                ctrl.draw_line(_pt(center, sh["p1"], s, xf), _pt(center, sh["p2"], s, xf), col, w)
             "polyline":
-                ctrl.draw_polyline(_pts(center, sh["p"], s), col, w, true)
+                ctrl.draw_polyline(_pts(center, sh["p"], s, xf), col, w, true)
             "poly":
-                var pts: PackedVector2Array = _pts(center, sh["p"], s)
+                var pts: PackedVector2Array = _pts(center, sh["p"], s, xf)
                 if fill:
                     ctrl.draw_colored_polygon(pts, col)
                 else:
                     pts.append(pts[0])
                     ctrl.draw_polyline(pts, col, w, true)
             "circle":
-                var c: Vector2 = _pt(center, sh["c"], s)
+                var c: Vector2 = _pt(center, sh["c"], s, xf)
                 if fill:
-                    ctrl.draw_circle(c, float(sh["r"]) * s, col)
+                    ctrl.draw_circle(c, float(sh["r"]) * s * sc, col)
                 else:
-                    ctrl.draw_arc(c, float(sh["r"]) * s, 0.0, TAU, 40, col, w, true)
+                    ctrl.draw_arc(c, float(sh["r"]) * s * sc, 0.0, TAU, 40, col, w, true)
             "arc":
-                ctrl.draw_arc(_pt(center, sh["c"], s), float(sh["r"]) * s, deg_to_rad(float(sh["from"])), deg_to_rad(float(sh["to"])), 32, col, w, true)
+                ctrl.draw_arc(_pt(center, sh["c"], s, xf), float(sh["r"]) * s * sc, deg_to_rad(float(sh["from"])) + rot, deg_to_rad(float(sh["to"])) + rot, 32, col, w, true)
+    if animated:
+        ctrl.queue_redraw()
 
 
 func _draw_builtin(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
