@@ -182,7 +182,7 @@ static func _revolver(p: Node3D) -> void:
 	_cyl_z(p, 0.011, 0.011, 0.025, Vector3(0, 0.0, -0.075), STEEL)
 	_box(p, Vector3(0.006, 0.012, 0.012), Vector3(0, 0.056, -0.262), BLACK)
 	# hammer
-	_box(p, Vector3(0.012, 0.035, 0.014), Vector3(0, 0.06, 0.1), GUNMETAL, Vector3(-25, 0, 0))
+	_box(p, Vector3(0.012, 0.02, 0.014), Vector3(0, 0.04, 0.108), GUNMETAL, Vector3(-25, 0, 0))
 	# wooden grip
 	_box(p, Vector3(0.032, 0.11, 0.05), Vector3(0, -0.07, 0.105), WOOD, Vector3(-18, 0, 0))
 	_trigger_guard(p, Vector3(0, -0.04, 0.02))
