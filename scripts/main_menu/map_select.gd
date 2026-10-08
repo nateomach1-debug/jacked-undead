@@ -8,6 +8,7 @@ const EXTRA_MAPS: Array = [
 	{"title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn"},
     {"title": "COMPLEX", "path": "res://scenes/main/complex.tscn"},
     {"title": "SOLAR SUBSTATION", "path": "res://scenes/main/solar_substation.tscn"},
+    {"title": "CHEESE CUBE", "path": "res://scenes/main/cheese_cube_map.tscn"},
     ]
 
 @onready var arena_button: Button = $CenterContainer/VBox/ArenaButton
