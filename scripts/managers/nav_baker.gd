@@ -19,94 +19,108 @@ var _debug_timer: float = 0.0
 
 
 func _ready() -> void:
-	var nav := NavigationMesh.new()
-	nav.cell_size = cell_size
-	nav.cell_height = cell_height
-	nav.agent_radius = agent_radius
-	nav.agent_height = agent_height
-	nav.agent_max_climb = agent_max_climb
-	nav.agent_max_slope = agent_max_slope
-	# Build from the meshes of the group below (the building model).
-	nav.set("geometry_parsed_geometry_type", 0)
-	nav.set("geometry_source_geometry_mode", 1)
-	nav.set("geometry_source_group_name", &"navmesh_source")
-	navigation_mesh = nav
+    var nav := NavigationMesh.new()
+    nav.cell_size = cell_size
+    nav.cell_height = cell_height
+    nav.agent_radius = agent_radius
+    nav.agent_height = agent_height
+    nav.agent_max_climb = agent_max_climb
+    nav.agent_max_slope = agent_max_slope
+    # Build from the meshes of the group below (the building model).
+    nav.set("geometry_parsed_geometry_type", 0)
+    nav.set("geometry_source_geometry_mode", 1)
+    nav.set("geometry_source_group_name", &"navmesh_source")
+    navigation_mesh = nav
 
-	var source := get_node_or_null(source_path)
-	if source:
-		source.add_to_group("navmesh_source")
+    var source := get_node_or_null(source_path)
+    if source:
+        source.add_to_group("navmesh_source")
 
-	bake_finished.connect(_on_bake_finished)
-	GameManager.barrier_opened.connect(_on_barrier_opened)
-	GameManager.dev_settings_changed.connect(_on_dev_settings_changed)
-	_make_debug_label()
-	bake_navigation_mesh(true)
+    bake_finished.connect(_on_bake_finished)
+    GameManager.barrier_opened.connect(_on_barrier_opened)
+    GameManager.dev_settings_changed.connect(_on_dev_settings_changed)
+    _make_debug_label()
+    bake_navigation_mesh(true)
 
 
 ## A bought door frees itself: wait for that to finish, then rebake so the
 ## opening becomes walkable for zombies.
 func _on_barrier_opened() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
-	_base_text = "NAV: rebaking..."
-	bake_navigation_mesh(true)
+    await get_tree().process_frame
+    await get_tree().process_frame
+    _base_text = "NAV: rebaking..."
+    bake_navigation_mesh(true)
 
 
 ## Dev menu toggle: the NAV label only shows when "Nav data" is on.
 func _on_dev_settings_changed() -> void:
-	if _label:
-		_label.visible = GameManager.dev_show_nav()
+    if _label:
+        _label.visible = GameManager.dev_show_nav()
 
 
 func _on_bake_finished() -> void:
-	var polygons: int = 0
-	if navigation_mesh:
-		polygons = navigation_mesh.get_polygon_count()
-	print("NavBaker: bake finished, polygons = ", polygons)
-	if polygons > 0:
-		_base_text = "NAV: ready (%d polygons)" % polygons
-	else:
-		_base_text = "NAV: FAILED (0 polygons)"
+    var polygons: int = 0
+    if navigation_mesh:
+        polygons = navigation_mesh.get_polygon_count()
+    print("NavBaker: bake finished, polygons = ", polygons)
+    if polygons > 0:
+        _base_text = "NAV: ready (%d polygons)" % polygons
+    else:
+        _base_text = "NAV: FAILED (0 polygons)"
 
 
 func _process(delta: float) -> void:
-	if _label == null:
-		return
-	_debug_timer -= delta
-	if _debug_timer > 0.0:
-		return
-	_debug_timer = 0.5
+    if _label == null:
+        return
+    _debug_timer -= delta
+    if _debug_timer > 0.0:
+        return
+    _debug_timer = 0.5
 
-	var player := get_tree().get_first_node_in_group("player") as Node3D
-	var nearest = null
-	var best: float = INF
-	for z in get_tree().get_nodes_in_group("zombies"):
-		var zn := z as Node3D
-		if zn == null or player == null:
-			continue
-		var d: float = zn.global_position.distance_to(player.global_position)
-		if d < best:
-			best = d
-			nearest = zn
+    var player := get_tree().get_first_node_in_group("player") as Node3D
+    var nearest = null
+    var best: float = INF
+    for z in get_tree().get_nodes_in_group("zombies"):
+        var zn := z as Node3D
+        if zn == null or player == null:
+            continue
+        var d: float = zn.global_position.distance_to(player.global_position)
+        if d < best:
+            best = d
+            nearest = zn
 
-	var line2: String = "no zombies"
-	if nearest != null:
-		var path = nearest.get("_path")
-		var pts: int = -1
-		if path != null:
-			pts = path.size()
-		line2 = "nearest zombie %.0fm away at (%.0f, %.0f, %.0f), path points: %d" % [best, nearest.global_position.x, nearest.global_position.y, nearest.global_position.z, pts]
-	_label.text = _base_text + "\n" + line2
+    var line2: String = "no zombies"
+    var line3: String = ""
+    if nearest != null:
+        var path = nearest.get("_path")
+        var pts: int = -1
+        var end_gap: float = -1.0
+        var my_feet: Vector3 = player.global_position - Vector3(0.0, 0.9, 0.0)
+        if path != null:
+            pts = path.size()
+            if pts > 0:
+                end_gap = (path[pts - 1] as Vector3).distance_to(my_feet)
+        var speed: float = 0.0
+        var vel = nearest.get("velocity")
+        if vel != null:
+            speed = Vector2(vel.x, vel.z).length()
+        var nav_map: RID = get_world_3d().navigation_map
+        var you_gap: float = NavigationServer3D.map_get_closest_point(nav_map, my_feet).distance_to(my_feet)
+        var z_feet: Vector3 = nearest.global_position - Vector3(0.0, 0.95, 0.0)
+        var z_gap: float = NavigationServer3D.map_get_closest_point(nav_map, z_feet).distance_to(z_feet)
+        line2 = "nearest zombie %.0fm away at (%.0f, %.0f, %.0f), path points: %d" % [best, nearest.global_position.x, nearest.global_position.y, nearest.global_position.z, pts]
+        line3 = "you off nav: %.1fm | zombie off nav: %.1fm | path end to you: %.1fm | zombie speed: %.1f" % [you_gap, z_gap, end_gap, speed]
+    _label.text = _base_text + "\n" + line2 + "\n" + line3
 
 
 func _make_debug_label() -> void:
-	if not show_debug_label:
-		return
-	var layer := CanvasLayer.new()
-	add_child(layer)
-	_label = Label.new()
-	_label.text = _base_text
-	_label.position = Vector2(900.0, 6.0)
-	_label.add_theme_font_size_override("font_size", 20)
-	_label.visible = GameManager.dev_show_nav()
-	layer.add_child(_label)
+    if not show_debug_label:
+        return
+    var layer := CanvasLayer.new()
+    add_child(layer)
+    _label = Label.new()
+    _label.text = _base_text
+    _label.position = Vector2(900.0, 6.0)
+    _label.add_theme_font_size_override("font_size", 20)
+    _label.visible = GameManager.dev_show_nav()
+    layer.add_child(_label)
