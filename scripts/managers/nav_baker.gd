@@ -13,6 +13,26 @@ extends NavigationRegion3D
 @export var agent_max_climb: float = 0.5   # tallest stair step the path may cross
 @export var agent_max_slope: float = 60.0
 
+# Temporary Cheese Cube probes: label + a point on that flight/landing surface.
+const PROBES: Array = [
+    ["F0", Vector3(2, 1.5, 18)],
+    ["F1", Vector3(18, 4.5, 0)],
+    ["F2", Vector3(0, 7.5, -18)],
+    ["F3", Vector3(-18, 10.5, 0)],
+    ["F4", Vector3(-2, 13.5, 18)],
+    ["F5", Vector3(18, 16.5, -2)],
+    ["F6", Vector3(0, 19.5, -18)],
+    ["F7", Vector3(-18, 22.5, -2)],
+    ["L1", Vector3(18, 3, 18)],
+    ["L2", Vector3(18, 6, -18)],
+    ["L3", Vector3(-18, 9, -18)],
+    ["L4", Vector3(-18, 12, 18)],
+    ["L5", Vector3(16, 15, 16)],
+    ["L6", Vector3(18, 18, -18)],
+    ["L7", Vector3(-18, 21, -18)],
+    ["L8", Vector3(-16, 24, 16)],
+]
+
 var _label: Label
 var _base_text: String = "NAV: baking..."
 var _debug_timer: float = 0.0
@@ -77,6 +97,7 @@ func _process(delta: float) -> void:
         return
     _debug_timer = 0.5
 
+    var nav_map: RID = get_world_3d().navigation_map
     var player := get_tree().get_first_node_in_group("player") as Node3D
     var nearest = null
     var best: float = INF
@@ -104,13 +125,18 @@ func _process(delta: float) -> void:
         var vel = nearest.get("velocity")
         if vel != null:
             speed = Vector2(vel.x, vel.z).length()
-        var nav_map: RID = get_world_3d().navigation_map
         var you_gap: float = NavigationServer3D.map_get_closest_point(nav_map, my_feet).distance_to(my_feet)
         var z_feet: Vector3 = nearest.global_position - Vector3(0.0, 0.95, 0.0)
         var z_gap: float = NavigationServer3D.map_get_closest_point(nav_map, z_feet).distance_to(z_feet)
         line2 = "nearest zombie %.0fm away at (%.0f, %.0f, %.0f), path points: %d" % [best, nearest.global_position.x, nearest.global_position.y, nearest.global_position.z, pts]
         line3 = "you off nav: %.1fm | zombie off nav: %.1fm | path end to you: %.1fm | zombie speed: %.1f" % [you_gap, z_gap, end_gap, speed]
-    _label.text = _base_text + "\n" + line2 + "\n" + line3
+
+    var probe_text: String = "off nav:"
+    for pr in PROBES:
+        var pv: Vector3 = pr[1]
+        var g: float = NavigationServer3D.map_get_closest_point(nav_map, pv).distance_to(pv)
+        probe_text += " %s %.1f" % [pr[0], g]
+    _label.text = _base_text + "\n" + line2 + "\n" + line3 + "\n" + probe_text
 
 
 func _make_debug_label() -> void:
