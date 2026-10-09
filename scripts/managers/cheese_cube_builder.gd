@@ -348,4 +348,4 @@ func _build_stations() -> void:
         _yaw_front_pos_z(Vector2(1, 1)), {})
     _supplement(6, "whey", "Whey Protein", 2500, Color(0.4196, 0.2745, 0.7569))
     _supplement(7, "bcaas", "BCAAs", 1500, Color(0.2196, 0.6314, 0.4118))
-    _supplement(8, "fish_oil", "Fish Oil", 3000, Color(0.1922, 0.5922, 0.5843))
+    _supplement(8, "fish_oil", "Fish Oil", 3000, Color(0.1922, 0.5922, 0.5843)); _place("res://scenes/stations/loot_locker.tscn", "LootLockerPR", Vector3(18.8, RISE * 5.0, 18.8), _yaw_front_pos_z(_corner_face(5)), {}); _place("res://scenes/stations/loot_locker.tscn", "LootLockerSummit", Vector3(-14.5, RISE * 8.0, 19.4), PI, {})
