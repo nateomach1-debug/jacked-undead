@@ -263,6 +263,9 @@ func _build_doors() -> void:
     _door(0, 0.07, "Gym Gate", 750, "lap1", "DoorLap1")
     _door(3, 0.93, "Locker Room Gate", 1500, "lap2", "DoorLap2")
     _door(6, 0.93, "Summit Gate", 2500, "summit", "DoorSummit")
+    _door_link(0, 0.07, "DoorLap1")
+    _door_link(3, 0.93, "DoorLap2")
+    _door_link(6, 0.93, "DoorSummit")
 
 
 func _door(k: int, t: float, label: String, cost: int, zone: String, node_name: String) -> void:
@@ -281,6 +284,27 @@ func _door(k: int, t: float, label: String, cost: int, zone: String, node_name: 
 
 
 # ---------------------------------------------------------------- stations
+
+## A nav link across a door, switched on when the door is bought and freed.
+func _door_link(k: int, t: float, door_name: String) -> void:
+    var p: Vector3 = _f_start[k].lerp(_f_end[k], t)
+    var u: Vector3 = (_f_end[k] - _f_start[k]).normalized() * 1.3
+    var link := NavigationLink3D.new()
+    link.name = door_name + "Link"
+    link.bidirectional = true
+    link.enabled = false
+    link.start_position = p - u
+    link.end_position = p + u
+    add_child(link)
+    var door: Node = get_node_or_null(door_name)
+    if door != null:
+        door.tree_exited.connect(_on_door_gone.bind(link))
+
+
+func _on_door_gone(link: NavigationLink3D) -> void:
+    if is_instance_valid(link) and link.is_inside_tree():
+        link.enabled = true
+
 
 func _supplement(k: int, id: String, label: String, cost: int, color: Color) -> void:
     var tex: Texture2D = load("res://resources/icons/%s.svg" % id) as Texture2D
