@@ -124,6 +124,7 @@ var _flame_marker_cooldown: float = 0.0
 
 func _ready() -> void:
     add_to_group("player")
+    floor_snap_length = 0.4
     var indicator_script = load(DAMAGE_INDICATOR_PATH)
     if indicator_script:
         _damage_indicator = indicator_script.new()
@@ -206,6 +207,8 @@ func _handle_movement(delta: float) -> void:
         velocity.y -= GRAVITY * delta
     elif Input.is_action_just_pressed("jump") and not is_downed:
         velocity.y = JUMP_VELOCITY
+    else:
+        velocity.y = 0.0
 
     var input_dir := Vector2(
         Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
@@ -235,6 +238,21 @@ func _handle_movement(delta: float) -> void:
     move_and_slide()
 
 
+## True only if something ahead would stop us AND it is not a walkable slope.
+func _blocked_by_steep(motion: Vector3) -> bool:
+    var params := PhysicsTestMotionParameters3D.new()
+    params.from = global_transform
+    params.motion = motion
+    params.max_collisions = 4
+    var result := PhysicsTestMotionResult3D.new()
+    if not PhysicsServer3D.body_test_motion(get_rid(), params, result):
+        return false
+    for i in result.get_collision_count():
+        if result.get_collision_normal(i).angle_to(Vector3.UP) > deg_to_rad(30.0):
+            return true
+    return false
+
+
 ## CharacterBody3D has no built-in stair-climbing: a step taller than a
 ## tiny lip acts like a wall. If moving forward this frame would hit
 ## something, and stepping up by STEP_HEIGHT would clear it, nudge the
@@ -247,7 +265,7 @@ func _step_up_if_blocked(delta: float) -> void:
     var motion := Vector3(velocity.x, 0, velocity.z) * delta
     if motion.length() < 0.001:
         return
-    if not test_move(global_transform, motion):
+    if not _blocked_by_steep(motion):
         return
     var raised_transform := global_transform
     raised_transform.origin += Vector3(0, STEP_HEIGHT, 0)
