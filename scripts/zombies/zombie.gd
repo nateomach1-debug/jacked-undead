@@ -169,7 +169,7 @@ func _update_line_of_sight(delta: float) -> void:
     var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
     if hit.is_empty():
         return
-    if _blocks_sight(hit.get("collider")):
+    if _blocks_sight(hit.get("collider")) and not (hit.get("collider") is CharacterBody3D):
         _has_los = false
 
 
