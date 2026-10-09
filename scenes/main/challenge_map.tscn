@@ -29,6 +29,7 @@
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Crossbow_1.gltf" id="27"]
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
+[ext_resource type="PackedScene" path="res://scenes/stations/ending_station.tscn" id="30"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(40, 1, 40)
@@ -731,3 +732,7 @@ ammo_cost = 450
 [node name="LootLocker" parent="Stations" instance=ExtResource("29")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -19.2)
 cost = 950
+
+[node name="EndingStation" parent="Stations" instance=ExtResource("30")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 19.8)
+cost = 50000
