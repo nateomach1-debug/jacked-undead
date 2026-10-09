@@ -12,6 +12,7 @@ extends NavigationRegion3D
 @export var agent_height: float = 2.0
 @export var agent_max_climb: float = 0.5   # tallest stair step the path may cross
 @export var agent_max_slope: float = 60.0
+@export var rebake_on_barrier: bool = true  # off for maps that join areas with NavigationLink3D instead
 
 # Temporary Cheese Cube probes: label + a point on that flight/landing surface.
 const PROBES: Array = [
@@ -71,6 +72,8 @@ func _ready() -> void:
 ## A bought door frees itself: wait for that to finish, then rebake so the
 ## opening becomes walkable for zombies.
 func _on_barrier_opened() -> void:
+    if not rebake_on_barrier:
+        return
     await get_tree().process_frame
     await get_tree().process_frame
     _base_text = "NAV: rebaking..."
