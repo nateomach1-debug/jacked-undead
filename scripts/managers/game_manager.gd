@@ -17,6 +17,7 @@ const DEV_DEFAULTS: Dictionary = {
 	"zombie_damage": -1.0,  # flat HP per zombie hit; negative = the zombie's own value
 	"locker_cost": -1.0,    # flat Gains; negative = the scene's value
 	"pr_cost": -1.0,        # flat Gains; negative = the scene's value
+    "ending_cost": -1.0,    
 	"wall_scale": 1.0,      # multiplier on wall buy + ammo prices
 	"supp_scale": 1.0,      # multiplier on supplement prices
 	"show_nav": 0.0,        # 1.0 = nav polygons + NAV label visible
