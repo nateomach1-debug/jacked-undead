@@ -31,6 +31,11 @@ const PROBES: Array = [
     ["L6", Vector3(18, 18, -18)],
     ["L7", Vector3(-18, 21, -18)],
     ["L8", Vector3(-16, 24, 16)],
+    ["F2w", Vector3(-12, 8.6, -18)],
+    ["F3s", Vector3(-18, 11.5, 12)],
+    ["F4e", Vector3(10, 14.8, 18)],
+    ["F5s", Vector3(18, 15.2, 10)],
+    ["F6w", Vector3(-12, 20.6, -18)],
 ]
 
 var _label: Label
