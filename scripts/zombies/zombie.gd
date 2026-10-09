@@ -62,6 +62,7 @@ var _has_los: bool = true
 func _ready() -> void:
     current_health = max_health
     add_to_group("zombies")
+    floor_snap_length = 0.4
     _repath_timer = randf() * repath_interval  # stagger so zombies don't all repath on the same frame
     _sep_timer = randf() * SEPARATION_INTERVAL
     _los_timer = randf() * LOS_INTERVAL
@@ -102,6 +103,8 @@ func _physics_process(delta: float) -> void:
 
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
+    else:
+        velocity.y = 0.0
 
     if _attack_timer > 0.0:
         _attack_timer -= delta
@@ -306,6 +309,21 @@ func _start_detour(direction: Vector3) -> void:
     _detour_time = DETOUR_DURATION
 
 
+## True only if something ahead would stop us AND it is not a walkable slope.
+func _blocked_by_steep(motion: Vector3) -> bool:
+    var params := PhysicsTestMotionParameters3D.new()
+    params.from = global_transform
+    params.motion = motion
+    params.max_collisions = 4
+    var result := PhysicsTestMotionResult3D.new()
+    if not PhysicsServer3D.body_test_motion(get_rid(), params, result):
+        return false
+    for i in result.get_collision_count():
+        if result.get_collision_normal(i).angle_to(Vector3.UP) > deg_to_rad(30.0):
+            return true
+    return false
+
+
 ## Same trick as the player: CharacterBody3D can't climb steps on its own, so
 ## if walking forward would hit something but stepping up clears it, nudge up.
 func _step_up_if_blocked(delta: float) -> void:
@@ -314,7 +332,7 @@ func _step_up_if_blocked(delta: float) -> void:
     var motion := Vector3(velocity.x, 0.0, velocity.z) * delta
     if motion.length() < 0.001:
         return
-    if not test_move(global_transform, motion):
+    if not _blocked_by_steep(motion):
         return
     var raised := global_transform
     raised.origin += Vector3(0.0, step_height, 0.0)
