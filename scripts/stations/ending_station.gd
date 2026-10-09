@@ -1,6 +1,7 @@
 extends Area3D
 ## Buyable ending: a gym exit door. Buying it ends the run right away as a win
 ## (the game over screen is retitled ESCAPED). A map opts in by placing one.
+## Co-op: the buyer pays, and the run ends on every phone.
 
 @export var cost: int = 50000
 @export var display_name: String = "Gym Exit"
@@ -69,12 +70,21 @@ func interact(_player: Node) -> void:
         return
     if not GameManager.try_spend_gains(_price()):
         return
-    _bought = true
+    if NetManager.is_online:
+        _remote_escape.rpc()
+    escape_now()
+
+
+## Co-op: another phone bought the ending, so the run ends here too (no charge).
+@rpc("any_peer", "call_remote", "reliable")
+func _remote_escape() -> void:
     escape_now()
 
 
 ## Ends the run as a win on this phone.
 func escape_now() -> void:
+    if _bought or GameManager.is_game_over:
+        return
     _bought = true
     GameManager.report_player_death()
     var screen: Node = get_tree().current_scene.get_node_or_null("GameOverScreen")
@@ -98,9 +108,9 @@ static func apply_title(screen: Node, fallback_parent: Node) -> void:
         title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         title.add_theme_font_size_override("font_size", 48)
         var parent: Node = fallback_parent
-        var first_label: Node = _first_vbox(screen)
-        if first_label != null:
-            parent = first_label
+        var first_vbox: Node = _first_vbox(screen)
+        if first_vbox != null:
+            parent = first_vbox
         parent.add_child(title)
         if parent is Container:
             parent.move_child(title, 0)
