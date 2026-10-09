@@ -137,6 +137,7 @@ const DEV_LINES: Array = [
 	{"key": "zombie_damage", "title": "Zombie damage", "kind": "flat", "unit": " HP/hit"},
 	{"key": "locker_cost", "title": "Loot Locker cost", "kind": "flat", "unit": " Gains"},
 	{"key": "pr_cost", "title": "PR Rack cost", "kind": "flat", "unit": " Gains"},
+    {"key": "ending_cost", "title": "Ending cost", "kind": "flat", "unit": " Gains"},
 	{"key": "wall_scale", "title": "Wall buy prices", "kind": "pct", "unit": ""},
 	{"key": "supp_scale", "title": "Supplement prices", "kind": "pct", "unit": ""},
 ]
