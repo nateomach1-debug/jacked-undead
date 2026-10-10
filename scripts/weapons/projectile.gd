@@ -103,7 +103,7 @@ func _explode(at: Vector3, direct_target) -> void:
 			marker.global_position = (victim as Node3D).global_position + Vector3(0, 1.4, 0)
 
 	# The shooter can hurt themselves if they stand too close.
-	if _self_damage_multiplier > 0.0 and is_instance_valid(_shooter) and _shooter is Node3D:
+	if _self_damage_multiplier > 0.0 and is_instance_valid(_shooter) and _shooter is Node3D and not (_shooter.has_method("is_explosion_immune") and _shooter.is_explosion_immune()):
 		var shooter_center: Vector3 = (_shooter as Node3D).global_position + Vector3(0, 1.0, 0)
 		var shooter_dist: float = shooter_center.distance_to(at)
 		if shooter_dist <= _radius and _shooter.has_method("take_damage"):
