@@ -12,6 +12,9 @@ class_name Zombie
 ## Co-op: the host runs the real zombies. Other phones get "puppet" copies
 ## (is_puppet = true) that do nothing but show where the host's zombie is.
 ## Zombies ignore players who are downed or dead.
+##
+## Look: the body is built in code (see _build_visuals). Only the base zombie
+## script builds it; subclasses such as RoidRager keep their own look for now.
 
 signal died(zombie: Zombie)
 
@@ -26,6 +29,37 @@ const SEPARATION_RADIUS: float = 1.0      # zombies closer than this push each o
 const SEPARATION_STRENGTH: float = 1.5
 const SEPARATION_INTERVAL: float = 0.12   # separation is recalculated this often (cheaper)
 const LOS_INTERVAL: float = 0.25          # how often to check for a wall between us and the target
+
+# Look settings
+const BASE_SCRIPT_END: String = "scripts/zombies/zombie.gd"
+const HIDE_OLD_MESHES: bool = true   # hides the old capsule/mesh the scene had; set false to show it again
+const MODEL_HEIGHT: float = 1.9      # the code-built body is 1.9 m tall, scaled to the capsule
+const SKIN_COLORS: Array = [
+    Color(0.45, 0.58, 0.40),
+    Color(0.62, 0.65, 0.55),
+    Color(0.50, 0.40, 0.45),
+    Color(0.55, 0.60, 0.35),
+    Color(0.40, 0.50, 0.50),
+]
+const TANK_COLORS: Array = [
+    Color(0.85, 0.15, 0.15),
+    Color(0.15, 0.30, 0.80),
+    Color(0.12, 0.12, 0.14),
+    Color(0.55, 0.55, 0.58),
+    Color(0.90, 0.50, 0.10),
+    Color(0.10, 0.55, 0.55),
+]
+const SHORTS_COLORS: Array = [
+    Color(0.08, 0.08, 0.10),
+    Color(0.10, 0.12, 0.30),
+    Color(0.30, 0.30, 0.32),
+    Color(0.35, 0.08, 0.08),
+]
+const BAND_COLORS: Array = [
+    Color(0.95, 0.95, 0.95),
+    Color(0.9, 0.2, 0.2),
+    Color(0.95, 0.8, 0.1),
+]
 
 @export var max_health: float = 100.0
 @export var move_speed: float = 3.0
@@ -58,6 +92,28 @@ var _sep_vector: Vector3 = Vector3.ZERO
 var _los_timer: float = 0.0
 var _has_los: bool = true
 
+# Look / animation state
+static var _box_cache: Dictionary = {}
+var _visual: Node3D = null
+var _visual_base_y: float = 0.0
+var _upper: Node3D = null
+var _head: Node3D = null
+var _leg_l: Node3D = null
+var _leg_r: Node3D = null
+var _arm_l: Node3D = null
+var _arm_r: Node3D = null
+var _arm_base_l: float = 1.25
+var _arm_base_r: float = 1.25
+var _flash_mats: Array[StandardMaterial3D] = []
+var _flash_tween: Tween = null
+var _anim_started: bool = false
+var _last_anim_pos: Vector3 = Vector3.ZERO
+var _anim_speed: float = 0.0
+var _anim_phase: float = 0.0
+var _anim_time: float = 0.0
+var _idle_seed: float = 0.0
+var _swipe: float = 0.0
+
 
 func _ready() -> void:
     current_health = max_health
@@ -67,6 +123,211 @@ func _ready() -> void:
     _sep_timer = randf() * SEPARATION_INTERVAL
     _los_timer = randf() * LOS_INTERVAL
     _find_target()
+    _build_visuals()
+
+
+# ---------- look (all built in code) ----------
+
+static func _box_mesh(size: Vector3) -> BoxMesh:
+    var key: String = "%.3f_%.3f_%.3f" % [size.x, size.y, size.z]
+    if _box_cache.has(key):
+        return _box_cache[key] as BoxMesh
+    var bm := BoxMesh.new()
+    bm.size = size
+    _box_cache[key] = bm
+    return bm
+
+
+func _make_mat(color: Color, rough: float = 0.85, flash: bool = true) -> StandardMaterial3D:
+    var m := StandardMaterial3D.new()
+    m.albedo_color = color
+    m.roughness = rough
+    if flash:
+        m.emission_enabled = true
+        m.emission = Color(1.0, 0.1, 0.05)
+        m.emission_energy_multiplier = 0.0
+        _flash_mats.append(m)
+    return m
+
+
+func _part(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    mi.mesh = _box_mesh(size)
+    mi.material_override = mat
+    mi.position = pos
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(mi)
+    return mi
+
+
+func _make_leg(x: float, skin: Material, shorts: Material) -> Node3D:
+    var pivot := Node3D.new()
+    pivot.position = Vector3(x, 0.9, 0.0)
+    _visual.add_child(pivot)
+    _part(pivot, Vector3(0.16, 0.9, 0.18), Vector3(0.0, -0.45, 0.0), skin)
+    _part(pivot, Vector3(0.19, 0.36, 0.21), Vector3(0.0, -0.14, 0.0), shorts)
+    return pivot
+
+
+func _make_arm(x: float, skin: Material) -> Node3D:
+    var pivot := Node3D.new()
+    pivot.position = Vector3(x, 0.55, 0.0)
+    _upper.add_child(pivot)
+    _part(pivot, Vector3(0.12, 0.62, 0.12), Vector3(0.0, -0.31, 0.0), skin)
+    return pivot
+
+
+func _build_visuals() -> void:
+    var script_res: Script = get_script() as Script
+    if script_res == null or not script_res.resource_path.ends_with(BASE_SCRIPT_END):
+        return  # a subclass (Roid Rager) keeps its own look
+    if HIDE_OLD_MESHES:
+        for n in find_children("*", "MeshInstance3D", true, false):
+            (n as MeshInstance3D).visible = false
+
+    var h: float = MODEL_HEIGHT
+    var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
+    if shape_node and shape_node.shape is CapsuleShape3D:
+        h = (shape_node.shape as CapsuleShape3D).height
+
+    var skin_col: Color = SKIN_COLORS[randi() % SKIN_COLORS.size()]
+    skin_col = skin_col.darkened(randf_range(0.0, 0.2))
+    var tank_col: Color = TANK_COLORS[randi() % TANK_COLORS.size()]
+    tank_col = tank_col.darkened(randf_range(0.1, 0.35))
+    var shorts_col: Color = SHORTS_COLORS[randi() % SHORTS_COLORS.size()]
+    var skin := _make_mat(skin_col)
+    var tank := _make_mat(tank_col)
+    var shorts := _make_mat(shorts_col)
+    var mouth := _make_mat(Color(0.08, 0.01, 0.01), 0.9, false)
+    var blood := _make_mat(Color(0.35, 0.02, 0.02), 0.4, false)
+    var eye_col: Color = Color(0.85, 1.0, 0.2) if randf() < 0.7 else Color(1.0, 0.15, 0.1)
+    var eye := StandardMaterial3D.new()
+    eye.albedo_color = eye_col.darkened(0.4)
+    eye.emission_enabled = true
+    eye.emission = eye_col
+    eye.emission_energy_multiplier = 3.0
+
+    _idle_seed = randf() * TAU
+    _visual = Node3D.new()
+    _visual.name = "ZombieVisual"
+    _visual_base_y = -h * 0.5
+    _visual.position = Vector3(0.0, _visual_base_y, 0.0)
+    _visual.scale = Vector3.ONE * ((h / MODEL_HEIGHT) * randf_range(0.93, 1.07))
+    add_child(_visual)
+
+    # Legs and hips (the front of the zombie is -Z, same as look_at).
+    _leg_l = _make_leg(-0.12, skin, shorts)
+    _leg_r = _make_leg(0.12, skin, shorts)
+    _part(_visual, Vector3(0.5, 0.16, 0.27), Vector3(0.0, 0.92, 0.0), shorts)
+
+    # Upper body leans forward: torso, tank top with blood, head, arms.
+    _upper = Node3D.new()
+    _upper.position = Vector3(0.0, 0.9, 0.0)
+    _upper.rotation.x = -0.22
+    _visual.add_child(_upper)
+    _part(_upper, Vector3(0.5, 0.62, 0.26), Vector3(0.0, 0.31, 0.0), skin)
+    _part(_upper, Vector3(0.52, 0.44, 0.285), Vector3(0.0, 0.25, 0.0), tank)
+    _part(_upper, Vector3(0.18, 0.13, 0.01), Vector3(0.09, 0.22, -0.1475), blood)
+
+    _head = Node3D.new()
+    _head.position = Vector3(0.0, 0.64, 0.0)
+    _head.rotation.x = -0.18
+    _upper.add_child(_head)
+    _part(_head, Vector3(0.26, 0.28, 0.26), Vector3(0.0, 0.15, 0.0), skin)
+    _part(_head, Vector3(0.055, 0.04, 0.02), Vector3(-0.07, 0.19, -0.135), eye)
+    _part(_head, Vector3(0.055, 0.04, 0.02), Vector3(0.07, 0.19, -0.135), eye)
+    _part(_head, Vector3(0.15, 0.06, 0.02), Vector3(0.0, 0.07, -0.135), mouth)
+    if randf() < 0.45:
+        var band_col: Color = BAND_COLORS[randi() % BAND_COLORS.size()]
+        _part(_head, Vector3(0.275, 0.05, 0.275), Vector3(0.0, 0.24, 0.0), _make_mat(band_col.darkened(0.15), 0.8, false))
+
+    _arm_l = _make_arm(-0.32, skin)
+    _arm_r = _make_arm(0.32, skin)
+    _arm_base_l = 1.25 + randf_range(-0.2, 0.2)
+    _arm_base_r = 1.25 + randf_range(-0.2, 0.2)
+    if randf() < 0.25:  # one arm hangs down instead of reaching
+        if randf() < 0.5:
+            _arm_base_l = 0.35
+        else:
+            _arm_base_r = 0.35
+
+
+func _process(delta: float) -> void:
+    if _visual == null or _is_dead:
+        return
+    if not _anim_started:
+        _anim_started = true
+        _last_anim_pos = global_position
+        return
+
+    # Walk speed is measured from how far we actually moved (works for co-op puppets too).
+    var cur: Vector3 = global_position
+    var flat: float = Vector2(cur.x - _last_anim_pos.x, cur.z - _last_anim_pos.z).length()
+    _last_anim_pos = cur
+    var spd: float = minf(flat / maxf(delta, 0.0001), 8.0)
+    _anim_speed = lerpf(_anim_speed, spd, clampf(delta * 8.0, 0.0, 1.0))
+    var amp: float = clampf(_anim_speed / 2.5, 0.0, 1.0)
+    _anim_phase += delta * (2.0 + _anim_speed * 2.2)
+    _anim_time += delta
+    var s: float = sin(_anim_phase)
+
+    # Swipe: a short arm slam right after an attack lands.
+    _swipe = 0.0
+    if not is_puppet and _attack_timer > 0.0:
+        var since: float = attack_cooldown - _attack_timer
+        if since >= 0.0 and since < 0.35:
+            _swipe = sin(clampf(since / 0.35, 0.0, 1.0) * PI)
+
+    var swing: float = 0.65 * amp
+    _leg_l.rotation.x = s * swing
+    _leg_r.rotation.x = -s * swing
+    _visual.position.y = _visual_base_y + absf(s) * 0.035 * amp
+    _upper.rotation.x = -0.22 - _swipe * 0.3
+    _upper.rotation.z = s * 0.07 * amp + sin(_anim_time * 1.1 + _idle_seed) * 0.02
+    _head.rotation.z = sin(_anim_time * 1.3 + _idle_seed) * 0.14
+    _head.rotation.x = -0.18 + sin(_anim_time * 0.9 + _idle_seed) * 0.05
+    _arm_l.rotation.x = _arm_base_l + sin(_anim_phase + 1.0) * 0.12 * amp + sin(_anim_time * 1.7 + _idle_seed) * 0.05 - _swipe * 0.9
+    _arm_r.rotation.x = _arm_base_r + sin(_anim_phase + 2.2) * 0.12 * amp + sin(_anim_time * 1.5 + _idle_seed) * 0.05 - _swipe * 0.9
+    _arm_l.rotation.z = -0.08
+    _arm_r.rotation.z = 0.08
+
+
+## Quick red flash on every shot that doesn't kill.
+func _flash_hit() -> void:
+    if _visual == null:
+        return
+    for m in _flash_mats:
+        m.emission_energy_multiplier = 2.5
+    if _flash_tween != null and _flash_tween.is_valid():
+        _flash_tween.kill()
+    _flash_tween = create_tween()
+    _flash_tween.set_parallel(true)
+    for m in _flash_mats:
+        _flash_tween.tween_property(m, "emission_energy_multiplier", 0.0, 0.18)
+
+
+## On death the body is handed to the scene: it falls backwards, lies there a
+## few seconds, sinks into the floor and is removed. The zombie itself is freed
+## right away so nothing about the round or collision changes.
+func _spawn_corpse() -> void:
+    if _visual == null or not is_instance_valid(_visual):
+        return
+    var scene: Node = get_tree().current_scene
+    if scene == null:
+        return
+    var xf: Transform3D = _visual.global_transform
+    var body: Node3D = _visual
+    _visual = null
+    remove_child(body)
+    scene.add_child(body)
+    body.global_transform = xf
+    var y0: float = body.position.y
+    var tw := body.create_tween()
+    tw.tween_property(body, "rotation:x", PI * 0.5, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+    tw.parallel().tween_property(body, "position:y", y0 + 0.1, 0.45)
+    tw.tween_interval(3.0)
+    tw.tween_property(body, "position:y", y0 - 0.8, 1.2)
+    tw.tween_callback(body.queue_free)
 
 
 ## Picks the nearest player who is still up: this phone's player plus any
@@ -364,12 +625,15 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
     if _is_dead:
         return
     if is_puppet:
+        _flash_hit()
         _forward_hit_to_host(amount, was_headshot)
         return
     _last_source = source
     current_health -= amount
     if current_health <= 0.0:
         _die(was_headshot)
+    else:
+        _flash_hit()
 
 
 ## Co-op: a puppet can't die on its own, so it tells the host it was hit.
@@ -388,6 +652,7 @@ func _die(was_headshot: bool = false) -> void:
     else:
         GameManager.add_gains(reward)
         GameManager.add_kill(was_headshot)
+    _spawn_corpse()
     died.emit(self)
     queue_free()
 
