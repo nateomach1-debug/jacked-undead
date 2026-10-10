@@ -34,6 +34,13 @@ const EXTRAS: Array = [
 const SPOT_RADIUS: float = 1.8
 const SPOT_MIN_GAP: float = 1.4
 
+# Fixed spots for Glutamine (first) and Collagen (second), per map file.
+# Positions are local to the same parent as the other stations.
+const MAP_SPOTS: Dictionary = {
+    "main.tscn": [Vector3(17, 0.9, 0), Vector3(19, 0.9, 0)],
+    "building_map.tscn": [Vector3(17, -16.3, 29.8), Vector3(38, -16.3, 29.8)],
+}
+
 # Machine look: what shape of product each supplement shows in its window.
 const PRODUCT_SHAPES: Dictionary = {
     "trt": "vial",
@@ -338,10 +345,25 @@ func _spawn_extras() -> void:
         s.is_extra = true
         if ResourceLoader.exists(extra["icon"]):
             s.icon_texture = load(extra["icon"]) as Texture2D
-        parent.add_child(s)
-        s.global_position = spot
+                parent.add_child(s)
+        var fixed: Array = _map_spots()
+        if fixed.size() >= index:
+            s.position = fixed[index - 1]
+            spot = s.global_position
+        else:
+            s.global_position = spot
         s.global_rotation = global_rotation
         taken.append(spot)
+
+
+func _map_spots() -> Array:
+    var scene: Node = get_tree().current_scene
+    if scene == null:
+        return []
+    var file: String = scene.scene_file_path.get_file()
+    if MAP_SPOTS.has(file):
+        return MAP_SPOTS[file]
+    return []
 
 
 func _find_spot(stations: Array, taken: Array) -> Vector3:
