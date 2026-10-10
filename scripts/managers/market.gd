@@ -8,7 +8,7 @@ const STARTER_ATTACHMENTS: Array = ["red_dot", "long_barrel", "ext_mag", "foregr
 
 # THE SWITCH: true = every DLC map is owned by everyone.
 # Set to false later and players must buy each DLC map with Juice.
-const DLC_FREE_FOR_ALL: bool = true
+const DLC_FREE_FOR_ALL: bool = false
 
 # DLC maps (ids match map_config.gd). desc = few words shown in the market, price = Juice.
 const DLC_MAPS: Dictionary = {
