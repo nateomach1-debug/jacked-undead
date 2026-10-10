@@ -17,6 +17,7 @@ GameManager="*res://scripts/managers/game_manager.gd"
 NetManager="*res://scripts/managers/net_manager.gd"
 GamepadManager="*res://scripts/managers/gamepad_manager.gd"
 AwayGuard="*res://scripts/managers/away_guard.gd"
+MembershipHub="*res://scripts/managers/membership_hub.gd"
 
 [display]
 
