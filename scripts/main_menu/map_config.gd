@@ -12,7 +12,7 @@ const ENABLED: Dictionary = {
     "multi_room": true,
     "gym_compound": true,
     "challenge": true,
-    "complex": true,
+    "complex": false,
     "solar_substation": true,
     "cheese_cube": true,
 }
@@ -24,7 +24,7 @@ const MAPS: Array = [
     {"id": "multi_room", "title": "MULTI-ROOM", "path": "res://scenes/main/multi_room_map.tscn", "coop": true},
     {"id": "gym_compound", "title": "GYM COMPOUND", "path": "res://scenes/main/gym_compound.tscn", "coop": true, "dlc": true},
     {"id": "challenge", "title": "CHALLENGE MAP", "path": "res://scenes/main/challenge_map.tscn", "coop": true, "dlc": true},
-    {"id": "complex", "title": "COMPLEX", "path": "res://scenes/main/complex.tscn", "coop": true},
+    {"id": "complex", "title": "COMPLEX", "path": "res://scenes/main/complex.tscn", "coop": false},
     {"id": "solar_substation", "title": "SOLAR SUBSTATION", "path": "res://scenes/main/solar_substation.tscn", "coop": true, "dlc": true},
     {"id": "cheese_cube", "title": "CHEESE CUBE", "path": "res://scenes/main/cheese_cube_map.tscn", "coop": true, "dlc": true},
 ]
