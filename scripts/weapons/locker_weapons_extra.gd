@@ -11,6 +11,9 @@ static func build_pool() -> Array:
         {"weapon": _tactical_45(), "weight": 3},
         {"weapon": _speed_revolver(), "weight": 3},
         {"weapon": _hand_cannon(), "weight": 2},
+        {"weapon": _marksman_dmr(), "weight": 2},
+        {"weapon": _heavy_burst(), "weight": 2},
+        {"weapon": _auto_shotgun(), "weight": 2},
     ]
 
 
@@ -41,3 +44,23 @@ static func _speed_revolver() -> WeaponData:
 
 static func _hand_cannon() -> WeaponData:
     return _make("Hand Cannon", 160.0, 1.3, 4, 24, 55.0, 2.6, 0.4, Vector3(0.07, 0.16, 0.4), Color(0.8, 0.8, 0.85))
+
+
+# Semi-auto, long range, precise.
+static func _marksman_dmr() -> WeaponData:
+    return _make("Marksman DMR", 55.0, 0.35, 10, 70, 110.0, 2.2, 0.3, Vector3(0.06, 0.12, 0.9), Color(0.42, 0.26, 0.13))
+
+
+# 3-round bursts of 45. fire_rate = pause between bursts.
+static func _heavy_burst() -> WeaponData:
+    var w := _make("Heavy Burst", 45.0, 0.8, 24, 120, 100.0, 2.0, 0.7, Vector3(0.07, 0.13, 0.75), Color(0.27, 0.32, 0.2))
+    w.burst_count = 3
+    w.burst_interval = 0.06
+    return w
+
+
+# Automatic close range: 7 pellets x 8 = 56 point blank.
+static func _auto_shotgun() -> WeaponData:
+    var w := _make("Auto-Shotgun", 8.0, 0.4, 8, 64, 16.0, 2.8, 5.0, Vector3(0.07, 0.12, 0.85), Color(0.1, 0.1, 0.12))
+    w.pellets = 7
+    return w
