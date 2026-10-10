@@ -8,9 +8,9 @@ extends Node
 ##   Dead: spectate above a living teammate, respawn when the next round starts.
 ##   After round BONUS_AFTER_ROUND, a revive or respawn returns 20% of the Gains
 ##   you had when you went down (a refund: it doesn't count as Gains earned).
-## SOLO (only with Glutamine, max 3 per run): you go down with your guns, Gains and
-##   supplements kept, holding the pistol. A kill revives you. If the timer runs
-##   out the run is over.
+## SOLO (only with Glutamine, max 3 per run): you go down with your guns and Gains
+##   kept, holding the pistol. A kill revives you, and ALL supplements are removed
+##   when you come back. If the timer runs out the run is over.
 ## GLUTAMINE: longer downed time, faster revive, removed once you are revived or die.
 
 const BLEED_TIME: float = 15.0
@@ -121,10 +121,14 @@ func _solo_revive() -> void:
     _player.is_downed = false
     _player.downed_bleed_left = 0.0
     _player.downed_revive_progress = 0.0
+    # Lose every supplement (Glutamine included). Done before setting health,
+    # because clearing resets max health.
+    _player.clear_supplements()
+    _player.owned_perks.clear()
+    _player.perks_changed.emit(_player.owned_perks)
     _player.current_health = _player.max_health * SOLO_REVIVE_HEALTH_FRACTION
     _player.health_changed.emit(_player.current_health, _player.max_health)
     _player.exit_solo_downed_weapon()
-    _player.remove_glutamine()
     _player.invuln_left = SOLO_REVIVE_IMMUNITY
 
 
