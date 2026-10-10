@@ -53,7 +53,7 @@ func _process(delta: float) -> void:
 
 func interact(_player_node: Node) -> void:
     if _sign != null:
-        _sign.text = "MENU COMES NEXT"
+        get_node("/root/MembershipHub").open_menu(self)
         _sign_reset = 2.0
 
 
