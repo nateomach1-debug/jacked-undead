@@ -345,7 +345,7 @@ func _spawn_extras() -> void:
         s.is_extra = true
         if ResourceLoader.exists(extra["icon"]):
             s.icon_texture = load(extra["icon"]) as Texture2D
-                parent.add_child(s)
+        parent.add_child(s)
         var fixed: Array = _map_spots()
         if fixed.size() >= index:
             s.position = fixed[index - 1]
