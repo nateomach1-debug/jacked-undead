@@ -1,9 +1,22 @@
 extends RefCounted
 ## Market rules: what's free and what's owned. Purchases are saved in profile.owned as
-## "att:<id>" (attachments), "char:<id>" (characters), later "badge:<id>".
+## "att:<id>" (attachments), "char:<id>" (characters), "badge:<id>", "ret:<id>"
+## and "map:<id>" (DLC maps).
 ## Loaded with load() + a null check.
 
 const STARTER_ATTACHMENTS: Array = ["red_dot", "long_barrel", "ext_mag", "foregrip"]
+
+# THE SWITCH: true = every DLC map is owned by everyone.
+# Set to false later and players must buy each DLC map with Juice.
+const DLC_FREE_FOR_ALL: bool = true
+
+# DLC maps (ids match map_config.gd). desc = few words shown in the market, price = Juice.
+const DLC_MAPS: Dictionary = {
+    "cheese_cube": {"desc": "Climb the stairs around a cheesy cube", "price": 800},
+    "solar_substation": {"desc": "Humming power yard under the panels", "price": 800},
+    "challenge": {"desc": "Hard mode with a buyable escape", "price": 1000},
+    "gym_compound": {"desc": "Fenced gym grounds, many rooms", "price": 600},
+}
 
 # Reticles sold for Juice (the rest are earned from achievements). Saved as "ret:<id>".
 const RETICLE_COSTS: Dictionary = {
@@ -89,3 +102,33 @@ func reticle_key(id: String) -> String:
 
 func owns_reticle(profile, id: String) -> bool:
     return profile != null and profile.has_item(reticle_key(id))
+
+
+## DLC map ids, in market order.
+func dlc_map_ids() -> Array:
+    return DLC_MAPS.keys()
+
+
+func is_dlc_map(id: String) -> bool:
+    return DLC_MAPS.has(id)
+
+
+func map_key(id: String) -> String:
+    return "map:" + id
+
+
+func map_cost(id: String) -> int:
+    return int(DLC_MAPS.get(id, {}).get("price", 0))
+
+
+func map_desc(id: String) -> String:
+    return str(DLC_MAPS.get(id, {}).get("desc", ""))
+
+
+## Normal maps are always owned. DLC maps follow the switch, then saved purchases.
+func owns_map(profile, id: String) -> bool:
+    if not DLC_MAPS.has(id):
+        return true
+    if DLC_FREE_FOR_ALL:
+        return true
+    return profile != null and profile.has_item(map_key(id))
