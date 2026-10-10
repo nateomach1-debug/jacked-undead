@@ -29,7 +29,11 @@ const SCALE_BY_KIND: Dictionary = {
 	"Rocket Launcher": 1.3,
 }
 
-static func build(kind: String) -> Node3D:
+static func _extra_script() -> Resource: return load("res://scripts/weapons/gun_models_extra.gd")
+
+static func build(kind: String) -> Node3D: return _build_base(kind) if _extra_script() == null or not _extra_script().call("handles", kind) else _extra_script().call("build_extra", kind)
+
+static func _build_base(kind: String) -> Node3D:
 	var outer := Node3D.new()
 	var root := Node3D.new()
 	root.scale = Vector3.ONE * float(SCALE_BY_KIND.get(kind, 1.5))
