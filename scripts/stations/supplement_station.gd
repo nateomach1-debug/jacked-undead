@@ -106,7 +106,7 @@ func _process(delta: float) -> void:
         var d: Vector3 = (_player as Node3D).global_position - global_position
         d.y = 0.0
         var d2: float = d.length_squared()
-        if d2 > 0.01 and d2 < 400.0:
+        if d2 > 0.01:
             var target: float = atan2(d.x, d.z)
             var cur: float = _front.global_rotation.y
             _front.global_rotation = Vector3(0.0, lerp_angle(cur, target, clampf(delta * 8.0, 0.0, 1.0)), 0.0)
