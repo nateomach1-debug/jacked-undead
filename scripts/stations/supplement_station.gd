@@ -39,6 +39,12 @@ const SPOT_MIN_GAP: float = 1.4
 const MAP_SPOTS: Dictionary = {
     "main.tscn": [Vector3(17, 0.9, 0), Vector3(19, 0.9, 0)],
     "building_map.tscn": [Vector3(17, -16.3, 29.8), Vector3(38, -16.3, 29.8)],
+    "multi_room_map.tscn": [Vector3(-9.0, 0.9, 28.6), Vector3(1.7, 0.9, -4.1)],
+    "gym_compound.tscn": [Vector3(-14.1, 0.9, 38.6), Vector3(14.1, 0.9, 38.6)],
+    "challenge_map.tscn": [Vector3(19, 0.9, 18), Vector3(19, 0.9, -17)],
+    "solar_substation.tscn": [Vector3(-28, 0.9, 15), Vector3(28, 0.9, 15)],
+    "cheese_cube_map.tscn": [Vector3(15.5, 0.9, -15.5), Vector3(-12.8, 24.9, 12.8)],
+}
 }
 
 # Machine look: what shape of product each supplement shows in its window.
