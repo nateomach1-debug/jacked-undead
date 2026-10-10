@@ -43,7 +43,7 @@ static func build_pool() -> Array:
 	pool.append({"weapon": _flamethrower(), "weight": 2})
 	pool.append({"weapon": _grenade_launcher(), "weight": 2})
 	pool.append({"weapon": _rocket_launcher(), "weight": 1})
-	return pool
+	return _with_extra(pool)
 
 
 static func _make(weapon_name: String, damage: float, fire_rate: float, mag: int, reserve: int, range_m: float, reload: float, size: Vector3, color: Color) -> WeaponData:
@@ -62,6 +62,8 @@ static func _make(weapon_name: String, damage: float, fire_rate: float, mag: int
 	w.fire_sound = load(FIRE_SOUND_PATH)
 	return w
 
+
+static func _with_extra(pool: Array) -> Array: return pool if load("res://scripts/weapons/locker_weapons_extra.gd") == null else pool + load("res://scripts/weapons/locker_weapons_extra.gd").call("build_pool")
 
 # Close-range crowd control: 8 pellets x 14 = 112 point blank.
 static func _pump_shotgun() -> WeaponData:
