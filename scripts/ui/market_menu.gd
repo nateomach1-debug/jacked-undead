@@ -1,5 +1,5 @@
 extends Control
-## Market: spend Juice on characters, attachments, badges and reticles.
+## Market: spend Juice on characters, attachments, badges, reticles and DLC maps.
 
 const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const MARKET_PATH: String = "res://scripts/managers/market.gd"
@@ -8,6 +8,7 @@ const CHAR_REGISTRY_PATH: String = "res://scripts/managers/character_registry.gd
 const BADGES_PATH: String = "res://scripts/managers/badges.gd"
 const ACH_PATH: String = "res://scripts/managers/achievements.gd"
 const RETICLES_PATH: String = "res://scripts/ui/reticles.gd"
+const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
 
 const STAT_LABELS: Dictionary = {
     "damage_mult": "damage", "range_mult": "range", "spread_mult": "spread",
@@ -29,10 +30,11 @@ var _chars = null    # character registry
 var _badges = null   # badge registry
 var _ach = null      # achievements (reticle names)
 var _ret = null      # reticle drawing script (previews)
+var _cfg = null      # map config (DLC map titles)
 var _juice_label: Label
 var _list: VBoxContainer
 # {"btn": Button, "label": Label, "card_style": StyleBoxFlat, "name": String,
-#  "kind": "att"/"char"/"badge"/"ret", "id": String, "cost": int}
+#  "kind": "att"/"char"/"badge"/"ret"/"map", "id": String, "cost": int}
 var _rows: Array = []
 
 
@@ -46,6 +48,7 @@ func _ready() -> void:
     var badge_script = load(BADGES_PATH)
     var ach_script = load(ACH_PATH)
     var ret_script = load(RETICLES_PATH)
+    var cfg_script = load(MAP_CONFIG_PATH)
     if profile_script != null:
         _profile = profile_script.new()
     if market_script != null:
@@ -60,6 +63,8 @@ func _ready() -> void:
         _ach = ach_script.new()
     if ret_script != null:
         _ret = ret_script.new()
+    if cfg_script != null:
+        _cfg = cfg_script.new()
     _build_ui()
     _show_tab("attachments")
 
@@ -101,6 +106,7 @@ func _build_ui() -> void:
     tabs.add_child(_make_tab("ATTACHMENTS", group, "attachments"))
     tabs.add_child(_make_tab("BADGES", group, "badges"))
     tabs.add_child(_make_tab("RETICLES", group, "reticles"))
+    tabs.add_child(_make_tab("MAPS", group, "maps"))
 
     var scroll := ScrollContainer.new()
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -127,7 +133,7 @@ func _make_tab(text: String, group: ButtonGroup, tab_id: String) -> Button:
     b.button_pressed = (tab_id == "attachments")
     b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     b.custom_minimum_size = Vector2(0, 56)
-    b.add_theme_font_size_override("font_size", 20)
+    b.add_theme_font_size_override("font_size", 18)
     b.pressed.connect(_show_tab.bind(tab_id))
     return b
 
@@ -156,6 +162,11 @@ func _show_tab(tab: String) -> void:
             _build_badge_rows()
     elif tab == "reticles":
         _build_reticle_rows()
+    elif tab == "maps":
+        if _cfg == null:
+            _error("MAPS FAILED TO LOAD")
+        else:
+            _build_map_rows()
     _update_buttons()
 
 
@@ -202,6 +213,13 @@ func _build_reticle_rows() -> void:
         _add_row("ret", rid, str(names.get(rid, rid)),
                 "Reticle for any optic. Pick it in the weapon gallery.",
                 int(_market.RETICLE_COSTS[id]))
+
+
+## DLC maps (only the ones turned on in map_config.gd).
+func _build_map_rows() -> void:
+    for m in _cfg.get_dlc_maps():
+        var mid: String = str(m["id"])
+        _add_row("map", mid, str(m["title"]), _market.map_desc(mid), _market.map_cost(mid))
 
 
 ## Small picture of a reticle for the Market rows (animated ones keep redrawing).
@@ -294,6 +312,8 @@ func _owned(kind: String, id: String) -> bool:
         return _market.owns_badge(_profile, id)
     if kind == "ret":
         return _market.owns_reticle(_profile, id)
+    if kind == "map":
+        return _market.owns_map(_profile, id)
     return _market.owns_attachment(_profile, id)
 
 
@@ -304,6 +324,8 @@ func _key(kind: String, id: String) -> String:
         return _market.badge_key(id)
     if kind == "ret":
         return _market.reticle_key(id)
+    if kind == "map":
+        return _market.map_key(id)
     return _market.attachment_key(id)
 
 
