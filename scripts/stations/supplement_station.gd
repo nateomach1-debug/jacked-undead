@@ -45,7 +45,6 @@ const MAP_SPOTS: Dictionary = {
     "solar_substation.tscn": [Vector3(-28, 0.9, 15), Vector3(28, 0.9, 15)],
     "cheese_cube_map.tscn": [Vector3(15.5, 0.9, -15.5), Vector3(-12.8, 24.9, 12.8)],
 }
-}
 
 # Machine look: what shape of product each supplement shows in its window.
 const PRODUCT_SHAPES: Dictionary = {
