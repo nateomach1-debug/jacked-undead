@@ -122,7 +122,7 @@ func build_for(model: Node3D, loadout: Dictionary, weapon_name: String) -> Node3
     var s: float = clampf(box.size.x, 0.2, 2.5)
     var root := Node3D.new()
     root.name = "AttachRoot"
-    var tweaks: Dictionary = OVERRIDES.get(weapon_name, {})
+    var tweaks: Dictionary = OVERRIDES.get(weapon_name, _extra_tweaks(weapon_name))
     for slot in loadout.keys():
         var node: Node3D = build(str(loadout[slot]), s)
         if node == null:
@@ -139,6 +139,8 @@ func build_for(model: Node3D, loadout: Dictionary, weapon_name: String) -> Node3
         root.add_child(node)
     return root
 
+
+func _extra_tweaks(weapon_name: String) -> Dictionary: return {} if load("res://scripts/weapons/gun_models_extra.gd") == null else load("res://scripts/weapons/gun_models_extra.gd").call("get_tweaks", weapon_name)
 
 ## One attachment's graphic. s = the gun's length, so parts scale with the gun.
 func build(id: String, s: float) -> Node3D:
