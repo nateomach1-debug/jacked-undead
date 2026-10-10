@@ -8,164 +8,186 @@ extends CanvasLayer
 
 var _headshots_label: Label = null
 var _board: GridContainer = null
+var _given: Dictionary = {}   # co-op: peer id -> Gains that player gave through the membership counter
 
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	visible = false
-	retry_button.pressed.connect(_on_retry_pressed)
-	menu_button.pressed.connect(_on_menu_pressed)
-	GameManager.player_died.connect(_on_player_died)
-	# Fresh co-op scoreboard for this run; keep the network running while paused.
-	NetManager.peer_stats.clear()
-	NetManager.process_mode = Node.PROCESS_MODE_ALWAYS
-	NetManager.stats_changed.connect(_refresh_board)
-	_build_extra_ui()
+    process_mode = Node.PROCESS_MODE_ALWAYS
+    visible = false
+    retry_button.pressed.connect(_on_retry_pressed)
+    menu_button.pressed.connect(_on_menu_pressed)
+    GameManager.player_died.connect(_on_player_died)
+    # Fresh co-op scoreboard for this run; keep the network running while paused.
+    NetManager.peer_stats.clear()
+    NetManager.process_mode = Node.PROCESS_MODE_ALWAYS
+    NetManager.stats_changed.connect(_refresh_board)
+    _build_extra_ui()
 
 
 ## Adds a Headshot Kills line (solo) and the scoreboard grid (co-op).
 func _build_extra_ui() -> void:
-	var vbox: Node = kills_label.get_parent()
+    var vbox: Node = kills_label.get_parent()
 
-	_headshots_label = kills_label.duplicate() as Label
-	vbox.add_child(_headshots_label)
-	vbox.move_child(_headshots_label, kills_label.get_index() + 1)
+    _headshots_label = kills_label.duplicate() as Label
+    vbox.add_child(_headshots_label)
+    vbox.move_child(_headshots_label, kills_label.get_index() + 1)
 
-	_board = GridContainer.new()
-	_board.columns = 6
-	_board.add_theme_constant_override("h_separation", 22)
-	_board.add_theme_constant_override("v_separation", 6)
-	_board.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_board.visible = false
-	vbox.add_child(_board)
-	vbox.move_child(_board, round_label.get_index() + 1)
+    _board = GridContainer.new()
+    _board.columns = 7
+    _board.add_theme_constant_override("h_separation", 22)
+    _board.add_theme_constant_override("v_separation", 6)
+    _board.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    _board.visible = false
+    vbox.add_child(_board)
+    vbox.move_child(_board, round_label.get_index() + 1)
 
-	# Gold block listing any developer settings that differ from the defaults.
-	_dev_label = Label.new()
-	_dev_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_dev_label.add_theme_font_size_override("font_size", 22)
-	_dev_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-	_dev_label.visible = false
-	vbox.add_child(_dev_label)
-	vbox.move_child(_dev_label, _board.get_index() + 1)
-	GameManager.player_died.connect(_refresh_dev_label)
+    # Gold block listing any developer settings that differ from the defaults.
+    _dev_label = Label.new()
+    _dev_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _dev_label.add_theme_font_size_override("font_size", 22)
+    _dev_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    _dev_label.visible = false
+    vbox.add_child(_dev_label)
+    vbox.move_child(_dev_label, _board.get_index() + 1)
+    GameManager.player_died.connect(_refresh_dev_label)
 
 
 func _on_player_died() -> void:
-	var coop: bool = NetManager.is_online
-	round_label.text = "Round Reached: %d" % GameManager.round_number
-	_credit_juice()
+    var coop: bool = NetManager.is_online
+    round_label.text = "Round Reached: %d" % GameManager.round_number
+    _credit_juice()
 
-	# Solo: personal lines. Co-op: the scoreboard shows everyone (including you).
-	kills_label.visible = not coop
-	gains_label.visible = not coop
-	_headshots_label.visible = not coop
-	_board.visible = coop
-	kills_label.text = "Zombies Killed: %d" % GameManager.kills
-	gains_label.text = "Gains Earned: %d" % GameManager.gains_earned
-	_headshots_label.text = "Headshot Kills: %d" % GameManager.headshot_kills
+    # Solo: personal lines. Co-op: the scoreboard shows everyone (including you).
+    kills_label.visible = not coop
+    gains_label.visible = not coop
+    _headshots_label.visible = not coop
+    _board.visible = coop
+    kills_label.text = "Zombies Killed: %d" % GameManager.kills
+    gains_label.text = "Gains Earned: %d" % GameManager.gains_earned
+    _headshots_label.text = "Headshot Kills: %d" % GameManager.headshot_kills
 
-	if coop:
-		NetManager.send_final_stats()
-		_refresh_board()
-		if not NetManager.is_host:
-			retry_button.text = "WAITING FOR HOST..."
-			retry_button.disabled = true
+    if coop:
+        NetManager.send_final_stats()
+        _send_given()
+        _refresh_board()
+        if not NetManager.is_host:
+            retry_button.text = "WAITING FOR HOST..."
+            retry_button.disabled = true
 
-	visible = true
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	get_tree().paused = true
+    visible = true
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+    get_tree().paused = true
+
+
+## Gains this phone gave to teammates through the membership counter.
+func _my_given() -> int:
+    var hub: Node = get_node_or_null("/root/MembershipHub")
+    if hub == null:
+        return 0
+    return int(hub.get("gains_given"))
+
+
+func _send_given() -> void:
+    _receive_given.rpc(_my_given())
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _receive_given(given: int) -> void:
+    _given[multiplayer.get_remote_sender_id()] = given
+    _refresh_board()
 
 
 ## Rebuilds the co-op scoreboard from everyone's latest numbers.
 func _refresh_board() -> void:
-	if _board == null or not _board.visible:
-		return
-	for c in _board.get_children():
-		_board.remove_child(c)
-		c.queue_free()
+    if _board == null or not _board.visible:
+        return
+    for c in _board.get_children():
+        _board.remove_child(c)
+        c.queue_free()
 
-	for h in ["PLAYER", "KILLS", "GAINS", "HEADSHOTS", "REVIVES", "DEATHS"]:
-		_add_cell(h, true)
+    for h in ["PLAYER", "KILLS", "GAINS", "HEADSHOTS", "REVIVES", "DEATHS", "GIVEN"]:
+        _add_cell(h, true)
 
-	var my_id: int = multiplayer.get_unique_id()
-	var ids: Array = NetManager.peer_stats.keys()
-	if not ids.has(my_id):
-		ids.append(my_id)
-	ids.sort()
-	for id in ids:
-		var stats: Dictionary = GameManager.get_stats() if id == my_id else NetManager.peer_stats[id]
-		var who: String = NetManager.get_player_name(id)
-		if id == my_id:
-			who += " (you)"
-		_add_cell(who, false)
-		_add_cell(str(stats["kills"]), false)
-		_add_cell(str(stats["gains_earned"]), false)
-		_add_cell(str(stats["headshots"]), false)
-		_add_cell(str(stats["revives"]), false)
-		_add_cell(str(stats["deaths"]), false)
+    var my_id: int = multiplayer.get_unique_id()
+    var ids: Array = NetManager.peer_stats.keys()
+    if not ids.has(my_id):
+        ids.append(my_id)
+    ids.sort()
+    for id in ids:
+        var stats: Dictionary = GameManager.get_stats() if id == my_id else NetManager.peer_stats[id]
+        var who: String = NetManager.get_player_name(id)
+        if id == my_id:
+            who += " (you)"
+        var given: int = _my_given() if id == my_id else int(_given.get(id, 0))
+        _add_cell(who, false)
+        _add_cell(str(stats["kills"]), false)
+        _add_cell(str(stats["gains_earned"]), false)
+        _add_cell(str(stats["headshots"]), false)
+        _add_cell(str(stats["revives"]), false)
+        _add_cell(str(stats["deaths"]), false)
+        _add_cell(str(given), false)
 
 
 func _add_cell(text: String, header: bool) -> void:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 22)
-	if header:
-		l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-	_board.add_child(l)
+    var l := Label.new()
+    l.text = text
+    l.add_theme_font_size_override("font_size", 22)
+    if header:
+        l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    _board.add_child(l)
 
 
 func _on_retry_pressed() -> void:
-	if NetManager.is_online:
-		# Co-op: the host reloads the map on every phone at once.
-		if NetManager.is_host:
-			NetManager.start_game_on(get_tree().current_scene.scene_file_path)
-		return
-	get_tree().paused = false
-	get_tree().reload_current_scene()
+    if NetManager.is_online:
+        # Co-op: the host reloads the map on every phone at once.
+        if NetManager.is_host:
+            NetManager.start_game_on(get_tree().current_scene.scene_file_path)
+        return
+    get_tree().paused = false
+    get_tree().reload_current_scene()
 
 
 func _on_menu_pressed() -> void:
-	NetManager.leave()
-	get_tree().paused = false
-	get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
+    NetManager.leave()
+    get_tree().paused = false
+    get_tree().change_scene_to_file("res://scenes/main_menu/main_menu.tscn")
 
 
 var _dev_label: Label = null
 
 const DEV_LINES: Array = [
-	{"key": "zombie_damage", "title": "Zombie damage", "kind": "flat", "unit": " HP/hit"},
-	{"key": "locker_cost", "title": "Loot Locker cost", "kind": "flat", "unit": " Gains"},
-	{"key": "pr_cost", "title": "PR Rack cost", "kind": "flat", "unit": " Gains"},
+    {"key": "zombie_damage", "title": "Zombie damage", "kind": "flat", "unit": " HP/hit"},
+    {"key": "locker_cost", "title": "Loot Locker cost", "kind": "flat", "unit": " Gains"},
+    {"key": "pr_cost", "title": "PR Rack cost", "kind": "flat", "unit": " Gains"},
     {"key": "ending_cost", "title": "Ending cost", "kind": "flat", "unit": " Gains"},
-	{"key": "wall_scale", "title": "Wall buy prices", "kind": "pct", "unit": ""},
-	{"key": "supp_scale", "title": "Supplement prices", "kind": "pct", "unit": ""},
+    {"key": "wall_scale", "title": "Wall buy prices", "kind": "pct", "unit": ""},
+    {"key": "supp_scale", "title": "Supplement prices", "kind": "pct", "unit": ""},
 ]
 
 
 ## Shows only the developer settings that differ from the defaults.
 func _refresh_dev_label() -> void:
-	if _dev_label == null:
-		return
-	var lines := PackedStringArray()
-	for row in DEV_LINES:
-		var key: String = row["key"]
-		var now: float = GameManager.dev_get(key)
-		var base: float = float(GameManager.DEV_DEFAULTS.get(key, 0.0))
-		if is_equal_approx(now, base):
-			continue
-		var shown: String
-		if row["kind"] == "pct":
-			shown = "%d%%" % int(round(now * 100.0))
-		else:
-			shown = "%d%s" % [int(now), row["unit"]]
-		lines.append("%s: %s" % [row["title"], shown])
-	_dev_label.visible = not lines.is_empty()
-	if not lines.is_empty():
-		var header: String = "CUSTOM DEV SETTINGS"
-		if NetManager.is_online:
-			header += " (host's settings)"
-		_dev_label.text = header + "\n" + "\n".join(lines)
+    if _dev_label == null:
+        return
+    var lines := PackedStringArray()
+    for row in DEV_LINES:
+        var key: String = row["key"]
+        var now: float = GameManager.dev_get(key)
+        var base: float = float(GameManager.DEV_DEFAULTS.get(key, 0.0))
+        if is_equal_approx(now, base):
+            continue
+        var shown: String
+        if row["kind"] == "pct":
+            shown = "%d%%" % int(round(now * 100.0))
+        else:
+            shown = "%d%s" % [int(now), row["unit"]]
+        lines.append("%s: %s" % [row["title"], shown])
+    _dev_label.visible = not lines.is_empty()
+    if not lines.is_empty():
+        var header: String = "CUSTOM DEV SETTINGS"
+        if NetManager.is_online:
+            header += " (host's settings)"
+        _dev_label.text = header + "\n" + "\n".join(lines)
 
 
 var _credited: bool = false
@@ -174,63 +196,63 @@ var _juice_label: Label = null
 
 ## Adds this run's Juice to the saved profile (once) and shows it under the dev settings block.
 func _credit_juice() -> void:
-	if _credited:
-		return
-	_credited = true
-	var script = load("res://scripts/managers/profile.gd")
-	if script == null:
-		return
-	var vbox: Node = kills_label.get_parent()
-	_juice_label = Label.new()
-	_juice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_juice_label.add_theme_font_size_override("font_size", 28)
-	_juice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-	vbox.add_child(_juice_label)
-	if _dev_label != null:
-		vbox.move_child(_juice_label, _dev_label.get_index() + 1)
-	var profile = script.new()
-	if _dev_settings_changed():
-		_juice_label.text = "No Juice earned (dev settings changed)"
-		return
-	var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
-	_juice_label.text = "+%d Juice earned  (total %d)" % [earned, profile.get_juice()]
-	_credit_achievements()
+    if _credited:
+        return
+    _credited = true
+    var script = load("res://scripts/managers/profile.gd")
+    if script == null:
+        return
+    var vbox: Node = kills_label.get_parent()
+    _juice_label = Label.new()
+    _juice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _juice_label.add_theme_font_size_override("font_size", 28)
+    _juice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    vbox.add_child(_juice_label)
+    if _dev_label != null:
+        vbox.move_child(_juice_label, _dev_label.get_index() + 1)
+    var profile = script.new()
+    if _dev_settings_changed():
+        _juice_label.text = "No Juice earned (dev settings changed)"
+        return
+    var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
+    _juice_label.text = "+%d Juice earned  (total %d)" % [earned, profile.get_juice()]
+    _credit_achievements()
 
 
 func _dev_settings_changed() -> bool:
-	for row in DEV_LINES:
-		var key: String = row["key"]
-		if not is_equal_approx(GameManager.dev_get(key), float(GameManager.DEV_DEFAULTS.get(key, 0.0))):
-			return true
-	return false
+    for row in DEV_LINES:
+        var key: String = row["key"]
+        if not is_equal_approx(GameManager.dev_get(key), float(GameManager.DEV_DEFAULTS.get(key, 0.0))):
+            return true
+    return false
 
 
 ## Saves this run's per-gun stats and shows any achievements it unlocked.
 func _credit_achievements() -> void:
-	var script = load("res://scripts/managers/achievements.gd")
-	if script == null:
-		return
-	var run_kills = GameManager.get("weapon_kills")
-	var run_heads = GameManager.get("weapon_headshots")
-	if run_kills == null or run_heads == null:
-		return
-	var ach = script.new()
-	var unlocked: Array = ach.record_run(run_kills, run_heads, GameManager.round_number)
-	if unlocked.is_empty():
-		return
-	var lines := PackedStringArray()
-	for id in unlocked:
-		var line: String = "ACHIEVEMENT UNLOCKED: %s" % ach.title(str(id))
-		var reward: String = ach.reward_text(str(id))
-		if reward != "":
-			line += "\n" + reward
-		lines.append(line)
-	var vbox: Node = kills_label.get_parent()
-	var banner := Label.new()
-	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	banner.add_theme_font_size_override("font_size", 22)
-	banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
-	banner.text = "\n".join(lines)
-	vbox.add_child(banner)
-	if _juice_label != null:
-		vbox.move_child(banner, _juice_label.get_index() + 1)
+    var script = load("res://scripts/managers/achievements.gd")
+    if script == null:
+        return
+    var run_kills = GameManager.get("weapon_kills")
+    var run_heads = GameManager.get("weapon_headshots")
+    if run_kills == null or run_heads == null:
+        return
+    var ach = script.new()
+    var unlocked: Array = ach.record_run(run_kills, run_heads, GameManager.round_number)
+    if unlocked.is_empty():
+        return
+    var lines := PackedStringArray()
+    for id in unlocked:
+        var line: String = "ACHIEVEMENT UNLOCKED: %s" % ach.title(str(id))
+        var reward: String = ach.reward_text(str(id))
+        if reward != "":
+            line += "\n" + reward
+        lines.append(line)
+    var vbox: Node = kills_label.get_parent()
+    var banner := Label.new()
+    banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    banner.add_theme_font_size_override("font_size", 22)
+    banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
+    banner.text = "\n".join(lines)
+    vbox.add_child(banner)
+    if _juice_label != null:
+        vbox.move_child(banner, _juice_label.get_index() + 1)
