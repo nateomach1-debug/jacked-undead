@@ -290,7 +290,7 @@ func _maps() -> Array:
         if cfg_script != null:
             _map_config = cfg_script.new()
     if _map_config != null:
-        var list: Array = _map_config.get_enabled_maps()
+        var list: Array = _map_config.get_owned_coop_maps()
         if not list.is_empty():
             return list
     return MAPS
