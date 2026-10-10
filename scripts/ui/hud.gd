@@ -15,6 +15,7 @@ extends CanvasLayer
 @onready var perk_fish_oil: TextureRect = $PerkBar/FishOil
 @onready var perk_bcaas: TextureRect = $PerkBar/BCAAs
 
+const EXTRA_PERKS_PATH: String = "res://scripts/ui/hud_extra_perks.gd"
 var _player: Node
 var _perk_icons: Dictionary = {}
 var _blood_counter = null   # blood_counter.gd instance (untyped on purpose)
@@ -42,7 +43,7 @@ func _ready() -> void:
 		"whey": perk_whey,
 		"pre_workout": perk_pre_workout,
 		"fish_oil": perk_fish_oil,
-		"bcaas": perk_bcaas,
+		"bcaas": perk_bcaas, "glutamine": load(EXTRA_PERKS_PATH).make_icon($PerkBar, perk_whey, "glutamine") if load(EXTRA_PERKS_PATH) != null else TextureRect.new(), "collagen": load(EXTRA_PERKS_PATH).make_icon($PerkBar, perk_whey, "collagen") if load(EXTRA_PERKS_PATH) != null else TextureRect.new(),
 	}
 
 
