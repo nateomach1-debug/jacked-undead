@@ -101,6 +101,12 @@ var is_dead: bool = false               # bled out: spectating until the next ro
 var downed_bleed_left: float = 0.0
 var downed_revive_progress: float = 0.0
 var _downed_state: Node = null
+var glutamine_active: bool = false
+var collagen_active: bool = false
+var solo_revives_used: int = 0
+var invuln_left: float = 0.0
+var _solo_prev_weapon_index: int = 0
+var _fall_peak_speed: float = 0.0
 
 # --- Weapon / ammo state ---
 @export var current_weapon: WeaponData  # fallback single starting gun if weapon_loadout is empty
@@ -182,6 +188,7 @@ func _physics_process(delta: float) -> void:
     _handle_movement(delta)
     _handle_shooting(delta)
     _handle_regen(delta)
+    _track_fall(delta)
     _update_interact_prompt()
 
     if stick_look_vector.length() > 0.01:
@@ -500,6 +507,7 @@ func _handle_regen(delta: float) -> void:
 
 
 func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
+    if invuln_left > 0.0: return
     if is_downed or is_dead:
         return  # a downed or bled-out player can't be hurt further
     _show_damage_indicator(amount, from_position)
@@ -507,7 +515,7 @@ func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
     health_changed.emit(current_health, max_health)
     if current_health <= 0.0:
         # Co-op: go down instead of dying. Solo (or if the script is missing): game over.
-        if NetManager.is_online and _go_down():
+        if (NetManager.is_online or _can_solo_down()) and _go_down():
             return
         GameManager.report_player_death()
 
@@ -750,6 +758,7 @@ func _update_interact_prompt() -> void:
 
 # --- Supplement (perk-a-cola) effect hooks, called by SupplementStation ---
 func apply_supplement(id: String) -> void:
+    _apply_extra_supplement(id)
     match id:
         "trt":
             damage_multiplier = 1.5
@@ -775,6 +784,7 @@ func apply_supplement(id: String) -> void:
 ## Called on death (or by a future "downed" system) to strip perks,
 ## mirroring the classic "lose your perks when you go down" rule.
 func clear_supplements() -> void:
+    _clear_extra_supplements()
     damage_multiplier = 1.0
     speed_multiplier = 1.0
     melee_multiplier = 1.0
@@ -1188,3 +1198,97 @@ func _style_crosshair() -> void:
     if _game_settings != null:
         ctrl.modulate = _game_settings.reticle_color()
     _crosshair_styled = true
+
+# ---------- Glutamine / Collagen (extra supplements) ----------
+const FALL_SAFE_SPEED: float = 9.0          # landing faster than this hurts (about a 4 m drop)
+const FALL_DAMAGE_PER_SPEED: float = 10.0   # damage per m/s above the safe speed
+const SOLO_REVIVE_LIMIT: int = 3
+
+
+func _apply_extra_supplement(id: String) -> void:
+    match id:
+        "glutamine":
+            glutamine_active = true
+        "collagen":
+            collagen_active = true
+
+
+func _clear_extra_supplements() -> void:
+    glutamine_active = false
+    collagen_active = false
+
+
+func _can_solo_down() -> bool:
+    return glutamine_active and solo_revives_used < SOLO_REVIVE_LIMIT
+
+
+## Glutamine survives the co-op strip: downed_state.gd calls this right after it.
+func restore_glutamine() -> void:
+    glutamine_active = true
+    if "glutamine" not in owned_perks:
+        owned_perks.append("glutamine")
+    perks_changed.emit(owned_perks)
+
+
+## Glutamine is used up once you are revived or die.
+func remove_glutamine() -> void:
+    glutamine_active = false
+    owned_perks.erase("glutamine")
+    perks_changed.emit(owned_perks)
+
+
+## Projectiles ask this before hurting their own shooter.
+func is_explosion_immune() -> bool:
+    return collagen_active
+
+
+func _track_fall(delta: float) -> void:
+    invuln_left = maxf(invuln_left - delta, 0.0)
+    if is_dead or is_downed:
+        _fall_peak_speed = 0.0
+        return
+    if is_on_floor():
+        if _fall_peak_speed > FALL_SAFE_SPEED and not collagen_active:
+            var dmg: float = (_fall_peak_speed - FALL_SAFE_SPEED) * FALL_DAMAGE_PER_SPEED
+            dmg = minf(dmg, current_health - 1.0)   # a fall never kills, it leaves 1 HP
+            if dmg > 0.0:
+                take_damage(dmg)
+        _fall_peak_speed = 0.0
+    else:
+        _fall_peak_speed = maxf(_fall_peak_speed, -velocity.y)
+
+
+## Solo Glutamine: hold the pistol (slot 1, full ammo) while downed. The rest of the loadout stays.
+func enter_solo_downed_weapon() -> void:
+    _cancel_actions()
+    if weapon_loadout.is_empty():
+        return
+    if current_weapon_index < _saved_mag_ammo.size():
+        _saved_mag_ammo[current_weapon_index] = current_mag_ammo
+        _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
+    _solo_prev_weapon_index = current_weapon_index
+    current_weapon_index = 0
+    current_weapon = weapon_loadout[0]
+    current_mag_ammo = current_weapon.mag_size
+    current_reserve_ammo = current_weapon.max_reserve_ammo
+    if _saved_mag_ammo.size() > 0:
+        _saved_mag_ammo[0] = current_mag_ammo
+        _saved_reserve_ammo[0] = current_reserve_ammo
+    ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+    _update_weapon_model()
+
+
+## Back to the gun you were holding before you went down.
+func exit_solo_downed_weapon() -> void:
+    _cancel_actions()
+    if weapon_loadout.is_empty():
+        return
+    if current_weapon_index < _saved_mag_ammo.size():
+        _saved_mag_ammo[current_weapon_index] = current_mag_ammo
+        _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
+    current_weapon_index = clampi(_solo_prev_weapon_index, 0, weapon_loadout.size() - 1)
+    current_weapon = weapon_loadout[current_weapon_index]
+    current_mag_ammo = _saved_mag_ammo[current_weapon_index]
+    current_reserve_ammo = _saved_reserve_ammo[current_weapon_index]
+    ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+    _update_weapon_model()
