@@ -14,12 +14,18 @@ const ORANGE: Color = Color(1.0, 0.45, 0.05)
 const GLASS: Color = Color(0.6, 0.85, 1.0)
 const WHITE: Color = Color(0.95, 0.95, 0.95)
 const IVORY: Color = Color(0.92, 0.9, 0.82)
+const WOOD: Color = Color(0.42, 0.26, 0.13)
+const WOOD_DARK: Color = Color(0.3, 0.18, 0.09)
+const OLIVE: Color = Color(0.27, 0.32, 0.2)
 
 ## Size multiplier per gun (raise a number to make that gun bigger).
 const SCALE_BY_KIND: Dictionary = {
     "Tactical .45": 2.3,
     "Speed Revolver": 2.4,
     "Hand Cannon": 1.7,
+    "Marksman DMR": 1.3,
+    "Heavy Burst": 1.4,
+    "Auto-Shotgun": 1.4,
 }
 
 ## Attachment placement per gun (same format as OVERRIDES in attachment_models.gd).
@@ -45,6 +51,24 @@ const OVERRIDES: Dictionary = {
         "magazine_tilt": -18.0,
         "grip": Vector2(0.66, 0.55),
     },
+    "Marksman DMR": {
+        "optic": Vector2(0.47, 1.0),
+        "barrel": Vector2(1.0, 0.75),
+        "magazine": Vector2(0.415, 0.15),
+        "grip": Vector2(0.60, 0.55),
+    },
+    "Heavy Burst": {
+        "optic": Vector2(0.36, 1.0),
+        "barrel": Vector2(1.0, 0.74),
+        "magazine": Vector2(0.17, 0.07),
+        "grip": Vector2(0.74, 0.58),
+    },
+    "Auto-Shotgun": {
+        "optic": Vector2(0.45, 1.0),
+        "barrel": Vector2(1.0, 0.81),
+        "magazine": Vector2(0.445, 0.06),
+        "grip": Vector2(0.73, 0.67),
+    },
 }
 
 
@@ -68,6 +92,12 @@ static func build_extra(kind: String) -> Node3D:
             _speed_revolver(root)
         "Hand Cannon":
             _hand_cannon(root)
+        "Marksman DMR":
+            _marksman_dmr(root)
+        "Heavy Burst":
+            _heavy_burst(root)
+        "Auto-Shotgun":
+            _auto_shotgun(root)
         _:
             _box(root, Vector3(0.06, 0.1, 0.5), Vector3.ZERO, GUNMETAL)
     return outer
@@ -221,3 +251,109 @@ static func _hand_cannon(p: Node3D) -> void:
     _box(p, Vector3(0.04, 0.12, 0.06), Vector3(0, -0.08, 0.105), IVORY, Vector3(-18, 0, 0))
     _box(p, Vector3(0.044, 0.01, 0.064), Vector3(0, -0.14, 0.1235), BRASS, Vector3(-18, 0, 0))
     _trigger_guard(p, Vector3(0, -0.05, 0.02), 1.3)
+
+
+## Marksman DMR: wood and steel semi-auto, long thin barrel, short box mag.
+static func _marksman_dmr(p: Node3D) -> void:
+    # steel receiver, rear block, ejection port, charging handle
+    _box(p, Vector3(0.04, 0.055, 0.26), Vector3(0, 0.03, -0.02), STEEL)
+    _box(p, Vector3(0.036, 0.05, 0.1), Vector3(0, 0.025, 0.15), STEEL)
+    _box(p, Vector3(0.042, 0.02, 0.05), Vector3(0, 0.04, -0.02), BLACK)
+    _box(p, Vector3(0.012, 0.012, 0.03), Vector3(0.026, 0.045, 0.04), GUNMETAL)
+    # flat top rail with tiny ticks (nothing rises above it)
+    _box(p, Vector3(0.02, 0.008, 0.5), Vector3(0, 0.0615, -0.1), GUNMETAL)
+    for i in range(8):
+        _box(p, Vector3(0.022, 0.0015, 0.01), Vector3(0, 0.0655, -0.32 + i * 0.05), BLACK)
+    # wood handguard, steel heat shield with vents, gas block
+    _box(p, Vector3(0.05, 0.045, 0.26), Vector3(0, 0.005, -0.3), WOOD)
+    _box(p, Vector3(0.04, 0.012, 0.26), Vector3(0, 0.033, -0.3), STEEL)
+    for i in range(5):
+        _box(p, Vector3(0.042, 0.002, 0.01), Vector3(0, 0.039, -0.4 + i * 0.045), BLACK)
+    _box(p, Vector3(0.022, 0.026, 0.04), Vector3(0, 0.03, -0.45), BLACK)
+    # long barrel, flash hider, low front sight post
+    _cyl_z(p, 0.011, 0.011, 0.22, Vector3(0, 0.02, -0.54), STEEL)
+    _cyl_z(p, 0.017, 0.017, 0.01, Vector3(0, 0.02, -0.66), STEEL)
+    _cyl_z(p, 0.016, 0.016, 0.07, Vector3(0, 0.02, -0.685), BLACK)
+    _cyl_z(p, 0.007, 0.007, 0.002, Vector3(0, 0.02, -0.7205), BLACK)
+    _box(p, Vector3(0.012, 0.014, 0.02), Vector3(0, 0.038, -0.5), BLACK)
+    _box(p, Vector3(0.006, 0.022, 0.008), Vector3(0, 0.0515, -0.5), BLACK)
+    # magwell, short straight box mag, lower receiver
+    _box(p, Vector3(0.04, 0.03, 0.07), Vector3(0, -0.012, -0.04), GUNMETAL)
+    _box(p, Vector3(0.03, 0.09, 0.045), Vector3(0, -0.0425, -0.04), BLACK)
+    _box(p, Vector3(0.032, 0.008, 0.047), Vector3(0, -0.0885, -0.04), STEEL)
+    _box(p, Vector3(0.036, 0.028, 0.12), Vector3(0, -0.011, 0.09), GUNMETAL)
+    # wood pistol grip, trigger guard
+    _box(p, Vector3(0.034, 0.1, 0.05), Vector3(0, -0.07, 0.075), WOOD, Vector3(-20, 0, 0))
+    _trigger_guard(p, Vector3(0, -0.02, 0.025))
+    # wood stock with cheek riser and butt pad
+    _box(p, Vector3(0.04, 0.075, 0.26), Vector3(0, 0.005, 0.3), WOOD, Vector3(6, 0, 0))
+    _box(p, Vector3(0.036, 0.02, 0.12), Vector3(0, 0.047, 0.28), WOOD_DARK)
+    _box(p, Vector3(0.044, 0.1, 0.014), Vector3(0, -0.005, 0.435), BLACK, Vector3(6, 0, 0))
+
+
+## Heavy Burst: olive and tan bullpup, mag behind the grip, big muzzle brake.
+static func _heavy_burst(p: Node3D) -> void:
+    # main body, tan side panels, flat top rail
+    _box(p, Vector3(0.055, 0.08, 0.55), Vector3(0, 0.02, 0.05), OLIVE)
+    _box(p, Vector3(0.058, 0.04, 0.25), Vector3(0, 0.0, 0.1), TAN)
+    _box(p, Vector3(0.022, 0.008, 0.4), Vector3(0, 0.064, 0.02), GUNMETAL)
+    # ejection port, charging handle
+    _box(p, Vector3(0.058, 0.02, 0.05), Vector3(0, 0.03, 0.18), BLACK)
+    _box(p, Vector3(0.012, 0.012, 0.04), Vector3(0.035, 0.05, 0.02), STEEL)
+    # ribbed handguard
+    _box(p, Vector3(0.05, 0.06, 0.2), Vector3(0, 0.012, -0.325), BLACK)
+    for i in range(4):
+        _box(p, Vector3(0.054, 0.05, 0.008), Vector3(0, 0.012, -0.4 + i * 0.045), GUNMETAL)
+    # short thick barrel and big slotted muzzle brake
+    _cyl_z(p, 0.02, 0.02, 0.08, Vector3(0, 0.015, -0.465), STEEL)
+    _cyl_z(p, 0.03, 0.03, 0.07, Vector3(0, 0.015, -0.54), BLACK)
+    for z in [-0.53, -0.55]:
+        _box(p, Vector3(0.064, 0.008, 0.006), Vector3(0, 0.015, z), GUNMETAL)
+    _cyl_z(p, 0.012, 0.012, 0.002, Vector3(0, 0.015, -0.576), BLACK)
+    # low sights (below the rail top)
+    _box(p, Vector3(0.006, 0.02, 0.008), Vector3(0, 0.052, -0.4), BLACK)
+    _box(p, Vector3(0.02, 0.008, 0.01), Vector3(0, 0.066, 0.2), BLACK)
+    # chunky vertical foregrip
+    _box(p, Vector3(0.036, 0.03, 0.07), Vector3(0, -0.035, -0.33), BLACK)
+    _box(p, Vector3(0.036, 0.09, 0.045), Vector3(0, -0.085, -0.33), BLACK)
+    # pistol grip, trigger guard
+    _box(p, Vector3(0.034, 0.1, 0.05), Vector3(0, -0.08, 0.08), BLACK, Vector3(-15, 0, 0))
+    _trigger_guard(p, Vector3(0, -0.035, 0.03))
+    # magazine behind the grip (bullpup), well block, tan base plate
+    _box(p, Vector3(0.04, 0.03, 0.07), Vector3(0, -0.03, 0.2), BLACK)
+    _box(p, Vector3(0.034, 0.12, 0.05), Vector3(0, -0.075, 0.2), OLIVE)
+    _box(p, Vector3(0.036, 0.008, 0.052), Vector3(0, -0.139, 0.2), TAN)
+    # butt pad
+    _box(p, Vector3(0.05, 0.09, 0.03), Vector3(0, 0.01, 0.34), BLACK)
+
+
+## Auto-Shotgun: boxy black combat shotgun, vented shroud, orange ring, curved mag.
+static func _auto_shotgun(p: Node3D) -> void:
+    # receiver, ejection port, flat top rail
+    _box(p, Vector3(0.06, 0.09, 0.32), Vector3(0, 0.025, -0.02), BLACK)
+    _box(p, Vector3(0.062, 0.03, 0.07), Vector3(0, 0.04, 0.02), GUNMETAL)
+    _box(p, Vector3(0.022, 0.008, 0.38), Vector3(0, 0.074, -0.03), GUNMETAL)
+    _box(p, Vector3(0.024, 0.012, 0.02), Vector3(0.042, 0.045, 0.05), STEEL)
+    # vented barrel shroud (dark slots), barrel, orange muzzle ring
+    _cyl_z(p, 0.034, 0.034, 0.3, Vector3(0, 0.03, -0.33), GUNMETAL)
+    for i in range(5):
+        _box(p, Vector3(0.074, 0.01, 0.014), Vector3(0, 0.03, -0.22 - i * 0.05), BLACK)
+    _cyl_z(p, 0.02, 0.02, 0.08, Vector3(0, 0.03, -0.52), STEEL)
+    _cyl_z(p, 0.026, 0.026, 0.012, Vector3(0, 0.03, -0.55), ORANGE)
+    _cyl_z(p, 0.015, 0.015, 0.002, Vector3(0, 0.03, -0.561), BLACK)
+    # low front post (below the rail top)
+    _box(p, Vector3(0.008, 0.014, 0.01), Vector3(0, 0.071, -0.46), BLACK)
+    # magwell and curved 8-round box mag with orange base plate
+    _box(p, Vector3(0.044, 0.03, 0.09), Vector3(0, -0.035, 0.0), GUNMETAL)
+    _box(p, Vector3(0.036, 0.07, 0.085), Vector3(0, -0.07, 0.0), BLACK, Vector3(8, 0, 0))
+    _box(p, Vector3(0.036, 0.06, 0.085), Vector3(0, -0.133, -0.015), BLACK, Vector3(20, 0, 0))
+    _box(p, Vector3(0.038, 0.008, 0.088), Vector3(0, -0.163, -0.026), ORANGE, Vector3(20, 0, 0))
+    # pistol grip, trigger guard
+    _box(p, Vector3(0.034, 0.1, 0.05), Vector3(0, -0.07, 0.115), BLACK, Vector3(-15, 0, 0))
+    _trigger_guard(p, Vector3(0, -0.035, 0.07))
+    # folding stock: hinge, four rods, butt plate
+    _box(p, Vector3(0.05, 0.08, 0.03), Vector3(0, 0.025, 0.155), GUNMETAL)
+    for x in [-0.02, 0.02]:
+        _box(p, Vector3(0.008, 0.008, 0.22), Vector3(x, 0.045, 0.28), STEEL)
+        _box(p, Vector3(0.008, 0.008, 0.22), Vector3(x, -0.005, 0.28), STEEL)
+    _box(p, Vector3(0.046, 0.1, 0.016), Vector3(0, 0.025, 0.4), BLACK)
