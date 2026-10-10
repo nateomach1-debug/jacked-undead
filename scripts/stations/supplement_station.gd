@@ -38,8 +38,6 @@ const SPOT_MIN_GAP: float = 1.4
 @onready var sign_sprite: Sprite3D = $SignSprite3D
 @onready var name_label: Label3D = $Label3D
 
-var _purchased_by: Array = []
-
 
 func _ready() -> void:
     if COLOR_OVERRIDES.has(supplement_id):
@@ -61,12 +59,22 @@ func _ready() -> void:
         _spawn_extras.call_deferred()
 
 
+# True if this player currently owns this supplement (cleared on strip / revive).
+func _player_owns(p: Node) -> bool:
+    if p == null:
+        return false
+    var perks = p.get("owned_perks")
+    if perks is Array:
+        return supplement_id in perks
+    return false
+
+
 func interact(player: Node) -> void:
-    if supplement_id in player.owned_perks::
+    if _player_owns(player):
         return
     if GameManager.try_spend_gains(GameManager.supplement_cost(cost)):
         player.apply_supplement(supplement_id)
-        pass
+
 
 func get_prompt_color() -> Color:
     return body_color.lightened(0.25)
@@ -79,7 +87,8 @@ func _get_description() -> String:
 
 
 func get_prompt_text() -> String:
-    if get_tree().get_first_node_in_group("player") != null and supplement_id in get_tree().get_first_node_in_group("player").owned_perks:
+    var me: Node = get_tree().get_first_node_in_group("player")
+    if _player_owns(me):
         return "%s (already stacked)" % display_name
     var buy_line: String = "Tap USE to buy %s - %d Gains" % [display_name, GameManager.supplement_cost(cost)]
     var desc: String = _get_description()
