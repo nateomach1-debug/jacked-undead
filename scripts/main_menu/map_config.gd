@@ -3,6 +3,9 @@ extends RefCounted
 ## (Start menu and Co-op host screen) until it's fixed.
 ## "dlc": true = buyable map (shown in the DLC tab; rules live in market.gd).
 
+const MARKET_PATH: String = "res://scripts/managers/market.gd"
+const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
+
 const ENABLED: Dictionary = {
     "arena": true,
     "building": true,
@@ -31,12 +34,30 @@ func is_enabled(id: String) -> bool:
     return bool(ENABLED.get(id, true))
 
 
-## Maps for the Co-op host screen (includes DLC maps; the screen checks ownership).
+## Maps for the Co-op host screen (includes DLC maps, owned or not).
 func get_enabled_maps() -> Array:
     var out: Array = []
     for m in MAPS:
         if is_enabled(str(m["id"])) and bool(m["coop"]):
             out.append(m)
+    return out
+
+
+## Co-op host list: enabled co-op maps, minus DLC maps the host doesn't own.
+func get_owned_coop_maps() -> Array:
+    var market = null
+    var profile = null
+    var market_script = load(MARKET_PATH)
+    if market_script != null:
+        market = market_script.new()
+    var profile_script = load(PROFILE_PATH)
+    if profile_script != null:
+        profile = profile_script.new()
+    var out: Array = []
+    for m in get_enabled_maps():
+        if market != null and not market.owns_map(profile, str(m["id"])):
+            continue
+        out.append(m)
     return out
 
 
