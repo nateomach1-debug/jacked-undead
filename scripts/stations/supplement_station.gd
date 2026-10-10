@@ -34,29 +34,226 @@ const EXTRAS: Array = [
 const SPOT_RADIUS: float = 1.8
 const SPOT_MIN_GAP: float = 1.4
 
+# Machine look: what shape of product each supplement shows in its window.
+const PRODUCT_SHAPES: Dictionary = {
+    "trt": "vial",
+    "creatine": "tub",
+    "whey": "tub",
+    "glutamine": "tub",
+    "pre_workout": "can",
+    "fish_oil": "bottle",
+    "bcaas": "bottle",
+    "collagen": "bottle",
+}
+const PRODUCT_SCALE: Dictionary = {"vial": 1.5}
+const FRONT_Z: float = 0.5     # how far the front panel face sits from the center
+const WIN_X: float = -0.08     # window / slot / tray are centered here (coin slot is on the right)
+
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var sign_sprite: Sprite3D = $SignSprite3D
 @onready var name_label: Label3D = $Label3D
+
+var _front: Node3D = null
+var _mini: Node3D = null
+var _mini_rest_y: float = 0.0
+var _lamp_mat: StandardMaterial3D = null
+var _lamp_on: bool = true
+var _flash: float = 0.0
+var _t: float = 0.0
+var _player: Node = null
 
 
 func _ready() -> void:
     if COLOR_OVERRIDES.has(supplement_id):
         body_color = COLOR_OVERRIDES[supplement_id]
     var mat := StandardMaterial3D.new()
-    mat.albedo_color = body_color
+    mat.albedo_color = body_color.darkened(0.5)
     mat.emission_enabled = true
     mat.emission = body_color
-    mat.emission_energy_multiplier = 0.4
+    mat.emission_energy_multiplier = 0.15
     mesh_instance.set_surface_override_material(0, mat)
     if icon_texture:
         sign_sprite.texture = icon_texture
     name_label.text = display_name
     name_label.modulate = body_color.lightened(0.25)
+    _build_machine()
 
     var others: Array = get_tree().get_nodes_in_group("supplement_station")
     add_to_group("supplement_station")
     if not is_extra and others.is_empty():
         _spawn_extras.call_deferred()
+
+
+func _process(delta: float) -> void:
+    if _front == null:
+        return
+    # Turn the front panel toward the local player (yaw only).
+    if _player == null or not is_instance_valid(_player):
+        _player = get_tree().get_first_node_in_group("player")
+    if _player != null and _player is Node3D:
+        var d: Vector3 = (_player as Node3D).global_position - global_position
+        d.y = 0.0
+        var d2: float = d.length_squared()
+        if d2 > 0.01 and d2 < 400.0:
+            var target: float = atan2(d.x, d.z)
+            var cur: float = _front.global_rotation.y
+            _front.global_rotation = Vector3(0.0, lerp_angle(cur, target, clampf(delta * 8.0, 0.0, 1.0)), 0.0)
+    # Blinking coin lamp (steady for a moment after a purchase).
+    _t += delta
+    _flash = maxf(_flash - delta, 0.0)
+    var on: bool = _flash > 0.0 or fmod(_t, 1.2) < 0.6
+    if on != _lamp_on and _lamp_mat != null:
+        _lamp_on = on
+        _lamp_mat.emission_energy_multiplier = 2.5 if on else 0.15
+
+
+# ---------- machine look (all built in code) ----------
+
+func _mat(color: Color, glow: float = 0.0, metal: float = 0.0, rough: float = 0.6) -> StandardMaterial3D:
+    var m := StandardMaterial3D.new()
+    m.albedo_color = color
+    m.metallic = metal
+    m.roughness = rough
+    if glow > 0.0:
+        m.emission_enabled = true
+        m.emission = color
+        m.emission_energy_multiplier = glow
+    return m
+
+
+func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    var bm := BoxMesh.new()
+    bm.size = size
+    mi.mesh = bm
+    mi.material_override = mat
+    mi.position = pos
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(mi)
+    return mi
+
+
+func _cyl(parent: Node3D, radius: float, height: float, pos: Vector3, mat: Material, along_z: bool = false) -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    var cm := CylinderMesh.new()
+    cm.top_radius = radius
+    cm.bottom_radius = radius
+    cm.height = height
+    cm.radial_segments = 16
+    cm.rings = 1
+    mi.mesh = cm
+    mi.material_override = mat
+    mi.position = pos
+    if along_z:
+        mi.rotation.x = PI / 2.0
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(mi)
+    return mi
+
+
+func _build_product(root: Node3D, shape: String, prod: Material, white: Material, dark: Material) -> void:
+    match shape:
+        "tub":
+            _cyl(root, 0.095, 0.2, Vector3(0.0, 0.1, 0.0), prod)
+            _cyl(root, 0.098, 0.07, Vector3(0.0, 0.1, 0.0), white)
+            _cyl(root, 0.1, 0.05, Vector3(0.0, 0.225, 0.0), dark)
+        "can":
+            _cyl(root, 0.075, 0.3, Vector3(0.0, 0.15, 0.0), prod)
+            _cyl(root, 0.077, 0.12, Vector3(0.0, 0.17, 0.0), white)
+            _cyl(root, 0.06, 0.02, Vector3(0.0, 0.31, 0.0), dark)
+        "vial":
+            _cyl(root, 0.045, 0.18, Vector3(0.0, 0.09, 0.0), prod)
+            _cyl(root, 0.047, 0.08, Vector3(0.0, 0.09, 0.0), white)
+            _cyl(root, 0.05, 0.04, Vector3(0.0, 0.2, 0.0), dark)
+            _cyl(root, 0.052, 0.02, Vector3(0.0, 0.23, 0.0), white)
+        _:
+            _cyl(root, 0.07, 0.24, Vector3(0.0, 0.12, 0.0), prod)
+            _cyl(root, 0.072, 0.1, Vector3(0.0, 0.12, 0.0), white)
+            _cyl(root, 0.035, 0.05, Vector3(0.0, 0.265, 0.0), prod)
+            _cyl(root, 0.04, 0.04, Vector3(0.0, 0.31, 0.0), white)
+
+
+func _build_machine() -> void:
+    var f: float = FRONT_Z
+    var dark := _mat(body_color.darkened(0.8), 0.0, 0.4, 0.45)
+    var black := _mat(Color(0.02, 0.02, 0.03), 0.0, 0.0, 0.8)
+    var trim := _mat(body_color, 1.0)
+    var pane := _mat(body_color.darkened(0.45), 1.2)
+    var white := _mat(Color(0.95, 0.95, 0.95), 0.25)
+    var prod := _mat(body_color.lightened(0.15), 0.9)
+    _lamp_mat = _mat(body_color.lightened(0.3), 2.5)
+
+    # Glowing top rim and a dark base ring, all the way round.
+    _cyl(self, 0.45, 0.03, Vector3(0.0, 0.9, 0.0), trim)
+    _cyl(self, 0.53, 0.08, Vector3(0.0, -0.86, 0.0), dark)
+
+    # Everything below turns to face the player.
+    _front = Node3D.new()
+    _front.name = "Machine"
+    add_child(_front)
+
+    # Front panel and glowing header sign with a dumbbell.
+    _box(_front, Vector3(0.72, 1.26, 0.26), Vector3(0.0, 0.01, f - 0.13), dark)
+    _box(_front, Vector3(0.74, 0.15, 0.26), Vector3(0.0, 0.72, f - 0.12), trim)
+    var dz: float = f + 0.015
+    _box(_front, Vector3(0.24, 0.02, 0.01), Vector3(0.0, 0.72, dz), black)
+    for sx: float in [-1.0, 1.0]:
+        _box(_front, Vector3(0.025, 0.1, 0.01), Vector3(0.085 * sx, 0.72, dz), black)
+        _box(_front, Vector3(0.025, 0.07, 0.01), Vector3(0.12 * sx, 0.72, dz), black)
+
+    # Lit window: glowing pane, raised frame, shelf.
+    var wy: float = 0.34
+    _box(_front, Vector3(0.46, 0.5, 0.01), Vector3(WIN_X, wy, f + 0.002), pane)
+    _box(_front, Vector3(0.52, 0.03, 0.04), Vector3(WIN_X, wy + 0.265, f + 0.02), trim)
+    _box(_front, Vector3(0.52, 0.03, 0.04), Vector3(WIN_X, wy - 0.265, f + 0.02), trim)
+    _box(_front, Vector3(0.03, 0.5, 0.04), Vector3(WIN_X - 0.245, wy, f + 0.02), trim)
+    _box(_front, Vector3(0.03, 0.5, 0.04), Vector3(WIN_X + 0.245, wy, f + 0.02), trim)
+    _box(_front, Vector3(0.46, 0.03, 0.09), Vector3(WIN_X, 0.105, f + 0.045), dark)
+
+    # The supplement on display in the window.
+    var shape: String = str(PRODUCT_SHAPES.get(supplement_id, "bottle"))
+    var shape_scale: float = float(PRODUCT_SCALE.get(shape, 1.0))
+    var big := Node3D.new()
+    big.position = Vector3(WIN_X, 0.12, f + 0.035)
+    big.scale = Vector3.ONE * shape_scale
+    _front.add_child(big)
+    _build_product(big, shape, prod, white, dark)
+
+    # Dispensing slot, flap and accent bar.
+    _box(_front, Vector3(0.34, 0.07, 0.03), Vector3(WIN_X, -0.12, f + 0.012), black)
+    _box(_front, Vector3(0.36, 0.015, 0.05), Vector3(WIN_X, -0.075, f + 0.03), dark)
+    _box(_front, Vector3(0.34, 0.012, 0.02), Vector3(WIN_X, -0.175, f + 0.01), trim)
+
+    # Tray with a small bottle resting in it.
+    _box(_front, Vector3(0.4, 0.035, 0.14), Vector3(WIN_X, -0.31, f + 0.07), dark)
+    _box(_front, Vector3(0.4, 0.05, 0.02), Vector3(WIN_X, -0.285, f + 0.135), trim)
+    _mini_rest_y = -0.2925
+    _mini = Node3D.new()
+    _mini.position = Vector3(WIN_X, _mini_rest_y, f + 0.07)
+    _mini.scale = Vector3.ONE * shape_scale * 0.4
+    _front.add_child(_mini)
+    _build_product(_mini, shape, prod, white, dark)
+
+    # Coin slot strip on the right: plate, slot, round button, blinking lamp.
+    var cx: float = 0.275
+    _box(_front, Vector3(0.14, 0.34, 0.03), Vector3(cx, 0.36, f + 0.015), dark)
+    _box(_front, Vector3(0.016, 0.1, 0.01), Vector3(cx, 0.44, f + 0.032), black)
+    _cyl(_front, 0.03, 0.02, Vector3(cx, 0.34, f + 0.035), trim, true)
+    _box(_front, Vector3(0.07, 0.025, 0.01), Vector3(cx, 0.26, f + 0.032), _lamp_mat)
+
+    # Vents at the bottom of the panel.
+    for vy: float in [-0.5, -0.55, -0.6]:
+        _box(_front, Vector3(0.44, 0.02, 0.015), Vector3(0.0, vy, f + 0.007), black)
+
+
+# Little dispense animation on a purchase: bottle drops from the slot into the tray.
+func _play_dispense() -> void:
+    _flash = 1.5
+    if _mini == null:
+        return
+    _mini.position.y = -0.12
+    var tw := create_tween()
+    tw.tween_property(_mini, "position:y", _mini_rest_y, 0.45).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
 
 # True if this player currently owns this supplement (cleared on strip / revive).
@@ -74,6 +271,7 @@ func interact(player: Node) -> void:
         return
     if GameManager.try_spend_gains(GameManager.supplement_cost(cost)):
         player.apply_supplement(supplement_id)
+        _play_dispense()
 
 
 func get_prompt_color() -> Color:
