@@ -62,12 +62,11 @@ func _ready() -> void:
 
 
 func interact(player: Node) -> void:
-    if player in _purchased_by:
+    if supplement_id in player.owned_perks::
         return
     if GameManager.try_spend_gains(GameManager.supplement_cost(cost)):
         player.apply_supplement(supplement_id)
-        _purchased_by.append(player)
-
+        pass
 
 func get_prompt_color() -> Color:
     return body_color.lightened(0.25)
@@ -80,7 +79,7 @@ func _get_description() -> String:
 
 
 func get_prompt_text() -> String:
-    if _purchased_by.size() > 0:
+    if get_tree().get_first_node_in_group("player") != null and supplement_id in get_tree().get_first_node_in_group("player").owned_perks:
         return "%s (already stacked)" % display_name
     var buy_line: String = "Tap USE to buy %s - %d Gains" % [display_name, GameManager.supplement_cost(cost)]
     var desc: String = _get_description()
