@@ -91,10 +91,10 @@ const OVERRIDES: Dictionary = {
     # Repeater: the built-in mag sits on top at the rear, so the rail top is
     # below the model's top (optic y 0.79 instead of 1.0).
     "Repeater Crossbow": {
-        "optic": Vector2(0.54, 0.79),
-        "barrel": Vector2(1.0, 0.70),
-        "magazine": Vector2(0.61, 0.19),
-        "grip": Vector2(0.75, 0.56),
+        "optic": Vector2(0.54, 0.91),
+        "barrel": Vector2(1.0, 0.82),
+        "magazine": Vector2(0.61, 0.22),
+        "grip": Vector2(0.75, 0.65),
     },
     "Semi-Auto Sniper": {
         "optic": Vector2(0.38, 1.0),
@@ -548,11 +548,11 @@ static func _repeater_crossbow(p: Node3D) -> void:
     _box(p, Vector3(0.004, 0.0015, 0.006), Vector3(-0.0085, 0.0278, 0.12), WHITE)
     _box(p, Vector3(0.004, 0.0015, 0.006), Vector3(0.0085, 0.0278, 0.12), WHITE)
     # short box magazine on top at the rear: window with orange bolt tips, black cap
-    _box(p, Vector3(0.034, 0.04, 0.07), Vector3(0, 0.0485, 0.07), OLIVE)
-    _box(p, Vector3(0.036, 0.016, 0.034), Vector3(0, 0.048, 0.07), GUNMETAL)
-    for z in [0.058, 0.07, 0.082]:
-        _box(p, Vector3(0.037, 0.004, 0.004), Vector3(0, 0.048, z), ORANGE)
-    _box(p, Vector3(0.036, 0.005, 0.072), Vector3(0, 0.071, 0.07), BLACK)
+    _box(p, Vector3(0.034, 0.012, 0.09), Vector3(0, 0.034, 0.075), OLIVE)
+    _box(p, Vector3(0.036, 0.006, 0.05), Vector3(0, 0.034, 0.075), GUNMETAL)
+    for z in [0.063, 0.075, 0.087]:
+        _box(p, Vector3(0.037, 0.003, 0.004), Vector3(0, 0.034, z), ORANGE)
+    _box(p, Vector3(0.036, 0.004, 0.092), Vector3(0, 0.042, 0.075), BLACK)
     # limb mount block (below the rail top) and foot stirrup
     _box(p, Vector3(0.06, 0.04, 0.05), Vector3(0, 0.0, -0.29), GUNMETAL)
     _torus(p, 0.005, 0.013, Vector3(0, -0.032, -0.3), STEEL)
