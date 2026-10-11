@@ -16,6 +16,8 @@ static func build_pool() -> Array:
         {"weapon": _auto_shotgun(), "weight": 2},
         {"weapon": _micro_smg(), "weight": 3},
         {"weapon": _chaingun(), "weight": 1},
+        {"weapon": _repeater_crossbow(), "weight": 2},
+        {"weapon": _semi_auto_sniper(), "weight": 2},
     ]
 
 
@@ -76,3 +78,13 @@ static func _micro_smg() -> WeaponData:
 # Biggest mag, longest reload, rare.
 static func _chaingun() -> WeaponData:
     return _make("Chaingun", 16.0, 0.09, 150, 450, 55.0, 5.0, 2.5, Vector3(0.1, 0.16, 0.75), Color(0.27, 0.32, 0.2))
+
+
+# Fast-handling crossbow with an 8-bolt mag. Hitscan like the normal crossbow.
+static func _repeater_crossbow() -> WeaponData:
+    return _make("Repeater Crossbow", 45.0, 0.55, 8, 48, 50.0, 2.6, 0.5, Vector3(0.1, 0.15, 0.55), Color(0.12, 0.14, 0.1))
+
+
+# Semi-auto sniper: weaker than the bolt sniper per shot, much faster follow-up.
+static func _semi_auto_sniper() -> WeaponData:
+    return _make("Semi-Auto Sniper", 80.0, 0.8, 8, 48, 120.0, 3.0, 1.2, Vector3(0.06, 0.14, 1.1), Color(0.36, 0.37, 0.39))
