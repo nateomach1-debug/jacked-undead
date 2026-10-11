@@ -137,7 +137,7 @@ func _add_juice_label() -> void:
 	var label := Label.new()
 	label.text = "JUICE: %d" % profile.get_juice()
 	label.add_theme_font_size_override("font_size", 32)
-	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	label.theme_type_variation = &"TagLabel"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
 	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 24)
