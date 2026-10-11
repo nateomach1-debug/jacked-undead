@@ -17,6 +17,9 @@ const IVORY: Color = Color(0.92, 0.9, 0.82)
 const WOOD: Color = Color(0.42, 0.26, 0.13)
 const WOOD_DARK: Color = Color(0.3, 0.18, 0.09)
 const OLIVE: Color = Color(0.27, 0.32, 0.2)
+const MATTE: Color = Color(0.36, 0.37, 0.39)
+const MATTE_DARK: Color = Color(0.24, 0.25, 0.27)
+const STOCK_GRAY: Color = Color(0.15, 0.16, 0.18)
 
 ## Size multiplier per gun (raise a number to make that gun bigger).
 const SCALE_BY_KIND: Dictionary = {
@@ -28,6 +31,8 @@ const SCALE_BY_KIND: Dictionary = {
     "Auto-Shotgun": 1.4,
     "Micro SMG": 1.9,
     "Chaingun": 1.2,
+    "Repeater Crossbow": 1.5,
+    "Semi-Auto Sniper": 1.2,
 }
 
 ## Attachment placement per gun (same format as OVERRIDES in attachment_models.gd).
@@ -83,6 +88,20 @@ const OVERRIDES: Dictionary = {
         "magazine": Vector2(0.34, 0.04),
         "grip": Vector2(0.60, 0.45),
     },
+    # Repeater: the built-in mag sits on top at the rear, so the rail top is
+    # below the model's top (optic y 0.79 instead of 1.0).
+    "Repeater Crossbow": {
+        "optic": Vector2(0.54, 0.79),
+        "barrel": Vector2(1.0, 0.70),
+        "magazine": Vector2(0.61, 0.19),
+        "grip": Vector2(0.75, 0.56),
+    },
+    "Semi-Auto Sniper": {
+        "optic": Vector2(0.38, 1.0),
+        "barrel": Vector2(1.0, 0.80),
+        "magazine": Vector2(0.39, 0.13),
+        "grip": Vector2(0.68, 0.59),
+    },
 }
 
 
@@ -116,6 +135,10 @@ static func build_extra(kind: String) -> Node3D:
             _micro_smg(root)
         "Chaingun":
             _chaingun(root)
+        "Repeater Crossbow":
+            _repeater_crossbow(root)
+        "Semi-Auto Sniper":
+            _semi_auto_sniper(root)
         _:
             _box(root, Vector3(0.06, 0.1, 0.5), Vector3.ZERO, GUNMETAL)
     return outer
@@ -171,6 +194,34 @@ static func _cyl_x(parent: Node3D, radius: float, width: float, pos: Vector3, co
     mi.material_override = _mat(color)
     mi.position = pos
     mi.rotation_degrees = Vector3(0, 0, 90)
+    parent.add_child(mi)
+    return mi
+
+
+## Upright cylinder (a flat disc seen from above, e.g. a pulley wheel).
+static func _cyl_y(parent: Node3D, radius: float, height: float, pos: Vector3, color: Color) -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = height
+    mesh.radial_segments = 20
+    mi.mesh = mesh
+    mi.material_override = _mat(color)
+    mi.position = pos
+    parent.add_child(mi)
+    return mi
+
+
+## Thin line (bowstring) from point a to point b.
+static func _string(parent: Node3D, a: Vector3, b: Vector3) -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    var mesh := BoxMesh.new()
+    mesh.size = Vector3(0.003, 0.003, a.distance_to(b))
+    mi.mesh = mesh
+    mi.material_override = _mat(IVORY)
+    mi.position = (a + b) * 0.5
+    mi.basis = Basis.looking_at((b - a).normalized(), Vector3.UP)
     parent.add_child(mi)
     return mi
 
@@ -473,3 +524,103 @@ static func _chaingun(p: Node3D) -> void:
     # front side handle (left): arm and vertical grip
     _box(p, Vector3(0.04, 0.02, 0.03), Vector3(-0.065, 0.03, -0.2), STEEL)
     _box(p, Vector3(0.025, 0.08, 0.025), Vector3(-0.085, -0.01, -0.2), BLACK)
+
+
+## Repeater Crossbow: compact black and olive crossbow. Flat top rail with a bolt
+## channel down the middle, short box mag on top at the rear (behind the optic spot),
+## steel limbs with a pulley wheel on each tip, thin string, dark stock + pistol grip.
+static func _repeater_crossbow(p: Node3D) -> void:
+    # main body with olive side panels (top of body y 0.02)
+    _box(p, Vector3(0.034, 0.04, 0.46), Vector3(0, 0.0, -0.095), BLACK)
+    _box(p, Vector3(0.038, 0.022, 0.2), Vector3(0, -0.002, -0.03), OLIVE)
+    # flat top rail: two strips with the bolt channel between them (top y 0.028)
+    for x in [-0.0085, 0.0085]:
+        _box(p, Vector3(0.007, 0.008, 0.46), Vector3(x, 0.024, -0.095), GUNMETAL)
+        for i in range(6):
+            _box(p, Vector3(0.007, 0.0015, 0.006), Vector3(x, 0.0278, -0.3 + i * 0.04), BLACK)
+    _box(p, Vector3(0.01, 0.004, 0.46), Vector3(0, 0.0205, -0.095), BLACK)
+    # loaded bolt lying in the channel (steel shaft, orange fletching, pointed tip)
+    _cyl_z(p, 0.002, 0.002, 0.14, Vector3(0, 0.0245, -0.2), STEEL)
+    _cyl_z(p, 0.0005, 0.002, 0.014, Vector3(0, 0.0245, -0.277), STEEL)
+    _box(p, Vector3(0.008, 0.0015, 0.016), Vector3(0, 0.0245, -0.125), ORANGE)
+    # tiny sight dots, flush with the rail (orange front, white rear)
+    _box(p, Vector3(0.004, 0.0015, 0.006), Vector3(0.0085, 0.0278, -0.31), ORANGE)
+    _box(p, Vector3(0.004, 0.0015, 0.006), Vector3(-0.0085, 0.0278, 0.12), WHITE)
+    _box(p, Vector3(0.004, 0.0015, 0.006), Vector3(0.0085, 0.0278, 0.12), WHITE)
+    # short box magazine on top at the rear: window with orange bolt tips, black cap
+    _box(p, Vector3(0.034, 0.04, 0.07), Vector3(0, 0.0485, 0.07), OLIVE)
+    _box(p, Vector3(0.036, 0.016, 0.034), Vector3(0, 0.048, 0.07), GUNMETAL)
+    for z in [0.058, 0.07, 0.082]:
+        _box(p, Vector3(0.037, 0.004, 0.004), Vector3(0, 0.048, z), ORANGE)
+    _box(p, Vector3(0.036, 0.005, 0.072), Vector3(0, 0.071, 0.07), BLACK)
+    # limb mount block (below the rail top) and foot stirrup
+    _box(p, Vector3(0.06, 0.04, 0.05), Vector3(0, 0.0, -0.29), GUNMETAL)
+    _torus(p, 0.005, 0.013, Vector3(0, -0.032, -0.3), STEEL)
+    # slim steel limbs swept forward, olive sleeves, pulley wheel and string per side
+    for s in [-1.0, 1.0]:
+        _box(p, Vector3(0.2, 0.01, 0.02), Vector3(s * 0.13, 0.005, -0.28), STEEL, Vector3(0, s * 12.0, 0))
+        _box(p, Vector3(0.07, 0.016, 0.026), Vector3(s * 0.07, 0.005, -0.267), OLIVE, Vector3(0, s * 12.0, 0))
+        var tip := Vector3(s * 0.228, 0.005, -0.301)
+        _cyl_y(p, 0.024, 0.012, tip, GUNMETAL)
+        _cyl_y(p, 0.016, 0.0125, tip, BLACK)
+        _cyl_y(p, 0.006, 0.02, tip, STEEL)
+        _string(p, Vector3(s * 0.211, 0.006, -0.284), Vector3(0, 0.0215, -0.13))
+    _box(p, Vector3(0.012, 0.008, 0.014), Vector3(0, 0.0215, -0.125), STEEL)
+    # dark stock, olive cheek panels, butt pad
+    _box(p, Vector3(0.034, 0.06, 0.15), Vector3(0, -0.01, 0.175), BLACK)
+    _box(p, Vector3(0.038, 0.034, 0.1), Vector3(0, -0.012, 0.17), OLIVE)
+    _box(p, Vector3(0.04, 0.08, 0.012), Vector3(0, -0.01, 0.25), GUNMETAL)
+    # trigger housing, pistol grip with olive panel, trigger guard
+    _box(p, Vector3(0.034, 0.03, 0.1), Vector3(0, -0.035, 0.06), BLACK)
+    _box(p, Vector3(0.034, 0.1, 0.05), Vector3(0, -0.085, 0.075), BLACK, Vector3(-15, 0, 0))
+    _box(p, Vector3(0.036, 0.06, 0.03), Vector3(0, -0.085, 0.08), OLIVE, Vector3(-15, 0, 0))
+    _trigger_guard(p, Vector3(0, -0.04, 0.0))
+
+
+## Semi-Auto Sniper: long matte-gray rifle, flat low rail, fluted heavy barrel,
+## side-ported brake, short box mag, thumbhole stock with a cheek riser, folded bipod.
+static func _semi_auto_sniper(p: Node3D) -> void:
+    # receiver, ejection port, charging handle
+    _box(p, Vector3(0.045, 0.06, 0.3), Vector3(0, 0.02, -0.02), MATTE)
+    _box(p, Vector3(0.047, 0.022, 0.07), Vector3(0, 0.03, 0.0), BLACK)
+    _box(p, Vector3(0.012, 0.012, 0.03), Vector3(0.03, 0.036, 0.05), STEEL)
+    # flat top rail with tiny ticks (nothing rises above it, top y 0.0583)
+    _box(p, Vector3(0.024, 0.008, 0.62), Vector3(0, 0.0535, -0.12), MATTE_DARK)
+    for i in range(10):
+        _box(p, Vector3(0.026, 0.0015, 0.01), Vector3(0, 0.0575, -0.4 + i * 0.05), BLACK)
+    # free-float handguard with vent slots
+    _box(p, Vector3(0.05, 0.07, 0.32), Vector3(0, 0.0145, -0.32), MATTE_DARK)
+    for i in range(5):
+        _box(p, Vector3(0.052, 0.012, 0.012), Vector3(0, 0.02, -0.44 + i * 0.06), BLACK)
+    # heavy barrel with six flutes, low front sight post
+    _cyl_z(p, 0.0145, 0.0145, 0.3, Vector3(0, 0.02, -0.63), STEEL)
+    for i in range(6):
+        var a: float = TAU * i / 6.0
+        _box(p, Vector3(0.004, 0.004, 0.22), Vector3(cos(a) * 0.0143, 0.02 + sin(a) * 0.0143, -0.63), GUNMETAL)
+    _box(p, Vector3(0.006, 0.008, 0.01), Vector3(0, 0.0385, -0.75), BLACK)
+    # muzzle brake with side ports
+    _cyl_z(p, 0.02, 0.02, 0.07, Vector3(0, 0.02, -0.815), STEEL)
+    for z in [-0.795, -0.815, -0.835]:
+        _box(p, Vector3(0.046, 0.007, 0.007), Vector3(0, 0.02, z), BLACK)
+    _cyl_z(p, 0.008, 0.008, 0.002, Vector3(0, 0.02, -0.8505), BLACK)
+    # magwell and short straight box mag
+    _box(p, Vector3(0.042, 0.03, 0.07), Vector3(0, -0.02, -0.06), GUNMETAL)
+    _box(p, Vector3(0.03, 0.07, 0.045), Vector3(0, -0.065, -0.06), BLACK)
+    _box(p, Vector3(0.032, 0.008, 0.047), Vector3(0, -0.104, -0.06), STEEL)
+    # folded steel bipod under the handguard: mount, two legs, rubber feet
+    _box(p, Vector3(0.036, 0.016, 0.03), Vector3(0, -0.028, -0.25), STEEL)
+    for x in [-0.016, 0.016]:
+        _box(p, Vector3(0.008, 0.012, 0.18), Vector3(x, -0.042, -0.29), STEEL)
+        _box(p, Vector3(0.01, 0.014, 0.016), Vector3(x, -0.042, -0.378), BLACK)
+    # thumbhole stock: top beam, cheek riser on rods, butt block, bottom bar, grip pillar
+    _box(p, Vector3(0.04, 0.045, 0.3), Vector3(0, 0.0, 0.28), STOCK_GRAY)
+    _box(p, Vector3(0.034, 0.022, 0.1), Vector3(0, 0.034, 0.28), MATTE_DARK)
+    for z in [0.25, 0.31]:
+        for x in [-0.012, 0.012]:
+            _box(p, Vector3(0.005, 0.01, 0.005), Vector3(x, 0.0275, z), STEEL)
+    _box(p, Vector3(0.012, 0.012, 0.012), Vector3(0.0225, 0.034, 0.28), STEEL)
+    _box(p, Vector3(0.04, 0.1225, 0.17), Vector3(0, -0.0388, 0.345), STOCK_GRAY)
+    _box(p, Vector3(0.044, 0.1275, 0.014), Vector3(0, -0.04, 0.437), BLACK)
+    _box(p, Vector3(0.038, 0.03, 0.25), Vector3(0, -0.115, 0.225), STOCK_GRAY)
+    _box(p, Vector3(0.036, 0.12, 0.05), Vector3(0, -0.07, 0.115), BLACK, Vector3(-12, 0, 0))
+    _trigger_guard(p, Vector3(0, -0.03, 0.04))
