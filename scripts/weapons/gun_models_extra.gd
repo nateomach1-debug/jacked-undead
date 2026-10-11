@@ -26,6 +26,8 @@ const SCALE_BY_KIND: Dictionary = {
     "Marksman DMR": 1.3,
     "Heavy Burst": 1.4,
     "Auto-Shotgun": 1.4,
+    "Micro SMG": 1.9,
+    "Chaingun": 1.2,
 }
 
 ## Attachment placement per gun (same format as OVERRIDES in attachment_models.gd).
@@ -69,6 +71,18 @@ const OVERRIDES: Dictionary = {
         "magazine": Vector2(0.445, 0.06),
         "grip": Vector2(0.73, 0.67),
     },
+    "Micro SMG": {
+        "optic": Vector2(0.55, 1.0),
+        "barrel": Vector2(1.0, 0.90),
+        "magazine": Vector2(0.49, 0.02),
+        "grip": Vector2(0.80, 0.68),
+    },
+    "Chaingun": {
+        "optic": Vector2(0.35, 1.0),
+        "barrel": Vector2(1.0, 0.79),
+        "magazine": Vector2(0.34, 0.04),
+        "grip": Vector2(0.60, 0.45),
+    },
 }
 
 
@@ -98,6 +112,10 @@ static func build_extra(kind: String) -> Node3D:
             _heavy_burst(root)
         "Auto-Shotgun":
             _auto_shotgun(root)
+        "Micro SMG":
+            _micro_smg(root)
+        "Chaingun":
+            _chaingun(root)
         _:
             _box(root, Vector3(0.06, 0.1, 0.5), Vector3.ZERO, GUNMETAL)
     return outer
@@ -137,6 +155,22 @@ static func _cyl_z(parent: Node3D, r_front: float, r_back: float, length: float,
     mi.material_override = _mat(color)
     mi.position = pos
     mi.rotation_degrees = Vector3(90, 0, 0)
+    parent.add_child(mi)
+    return mi
+
+
+## Cylinder lying along X (a drum seen from the side).
+static func _cyl_x(parent: Node3D, radius: float, width: float, pos: Vector3, color: Color) -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = width
+    mesh.radial_segments = 20
+    mi.mesh = mesh
+    mi.material_override = _mat(color)
+    mi.position = pos
+    mi.rotation_degrees = Vector3(0, 0, 90)
     parent.add_child(mi)
     return mi
 
@@ -357,3 +391,85 @@ static func _auto_shotgun(p: Node3D) -> void:
         _box(p, Vector3(0.008, 0.008, 0.22), Vector3(x, 0.045, 0.28), STEEL)
         _box(p, Vector3(0.008, 0.008, 0.22), Vector3(x, -0.005, 0.28), STEEL)
     _box(p, Vector3(0.046, 0.1, 0.016), Vector3(0, 0.025, 0.4), BLACK)
+
+
+## Micro SMG: tiny Mac-style machine pistol. Boxy black receiver, flat top cover,
+## threaded muzzle cap, tan grip, long stick mag with orange base plate, wire stock.
+static func _micro_smg(p: Node3D) -> void:
+    # boxy receiver, front plate, ejection port, flat top cover (top line y 0.0535)
+    _box(p, Vector3(0.042, 0.055, 0.17), Vector3(0, 0.02, -0.02), BLACK)
+    _box(p, Vector3(0.044, 0.05, 0.016), Vector3(0, 0.022, -0.105), GUNMETAL)
+    _box(p, Vector3(0.044, 0.018, 0.04), Vector3(0, 0.032, -0.01), GUNMETAL)
+    _box(p, Vector3(0.036, 0.006, 0.15), Vector3(0, 0.0505, -0.02), GUNMETAL)
+    for i in range(4):
+        _box(p, Vector3(0.038, 0.002, 0.008), Vector3(0, 0.0535, -0.07 + i * 0.03), BLACK)
+    # side cocking knob
+    _box(p, Vector3(0.01, 0.01, 0.022), Vector3(-0.026, 0.035, 0.035), STEEL)
+    # short barrel and threaded muzzle cap (three thread rings)
+    _cyl_z(p, 0.009, 0.009, 0.06, Vector3(0, 0.03, -0.135), STEEL)
+    _cyl_z(p, 0.013, 0.013, 0.032, Vector3(0, 0.03, -0.18), GUNMETAL)
+    for z in [-0.17, -0.18, -0.19]:
+        _cyl_z(p, 0.0145, 0.0145, 0.004, Vector3(0, 0.03, z), BLACK)
+    _cyl_z(p, 0.007, 0.007, 0.002, Vector3(0, 0.03, -0.1965), BLACK)
+    # tiny iron sights, below the top cover
+    _box(p, Vector3(0.004, 0.004, 0.006), Vector3(0, 0.0505, -0.09), BLACK)
+    _box(p, Vector3(0.007, 0.004, 0.008), Vector3(-0.007, 0.0505, 0.05), BLACK)
+    _box(p, Vector3(0.007, 0.004, 0.008), Vector3(0.007, 0.0505, 0.05), BLACK)
+    # tan grip housing, long straight stick mag, orange base plate
+    _box(p, Vector3(0.034, 0.07, 0.046), Vector3(0, -0.05, 0.02), TAN)
+    _box(p, Vector3(0.026, 0.17, 0.036), Vector3(0, -0.1, 0.02), BLACK)
+    for i in range(4):
+        _box(p, Vector3(0.028, 0.004, 0.038), Vector3(0, -0.09 - i * 0.025, 0.02), GUNMETAL)
+    _box(p, Vector3(0.03, 0.008, 0.04), Vector3(0, -0.189, 0.02), ORANGE)
+    _trigger_guard(p, Vector3(0, -0.012, -0.04), 0.8)
+    # thin wire stock: hinge, two rods, end plate
+    _box(p, Vector3(0.03, 0.03, 0.012), Vector3(0, 0.02, 0.071), STEEL)
+    for x in [-0.016, 0.016]:
+        _box(p, Vector3(0.005, 0.005, 0.15), Vector3(x, 0.02, 0.15), STEEL)
+        _box(p, Vector3(0.005, 0.04, 0.005), Vector3(x, 0.0, 0.225), STEEL)
+    _box(p, Vector3(0.038, 0.008, 0.012), Vector3(0, -0.02, 0.228), BLACK)
+
+
+## Chaingun: six barrels in a ring held by two clamps, squared housing with a flat
+## top rail, big olive ammo drum with brass belt, pistol grip, front side handle.
+static func _chaingun(p: Node3D) -> void:
+    # rear housing, motor block, rear cap (top of housing y 0.075)
+    _box(p, Vector3(0.09, 0.09, 0.2), Vector3(0, 0.03, 0.06), GUNMETAL)
+    _box(p, Vector3(0.082, 0.08, 0.1), Vector3(0, 0.03, -0.09), BLACK)
+    _box(p, Vector3(0.07, 0.07, 0.02), Vector3(0, 0.03, 0.17), BLACK)
+    _box(p, Vector3(0.094, 0.03, 0.06), Vector3(0, 0.0, 0.07), BLACK)
+    # flat top rail (nothing rises above it)
+    _box(p, Vector3(0.03, 0.008, 0.5), Vector3(0, 0.079, -0.1), GUNMETAL)
+    for i in range(10):
+        _box(p, Vector3(0.032, 0.0015, 0.01), Vector3(0, 0.0835, -0.3 + i * 0.045), BLACK)
+    # six barrels in a ring around a center hub
+    _cyl_z(p, 0.018, 0.018, 0.52, Vector3(0, 0.03, -0.35), GUNMETAL)
+    for i in range(6):
+        var a: float = TAU * i / 6.0
+        var bx: float = cos(a) * 0.028
+        var by: float = 0.03 + sin(a) * 0.028
+        _cyl_z(p, 0.011, 0.011, 0.5, Vector3(bx, by, -0.35), STEEL)
+        _cyl_z(p, 0.008, 0.008, 0.002, Vector3(bx, by, -0.601), BLACK)
+    # two steel clamps holding the ring, tiny front post on the front clamp
+    _cyl_z(p, 0.044, 0.044, 0.03, Vector3(0, 0.03, -0.25), STEEL)
+    _cyl_z(p, 0.044, 0.044, 0.03, Vector3(0, 0.03, -0.5), STEEL)
+    _cyl_z(p, 0.046, 0.046, 0.006, Vector3(0, 0.03, -0.265), GUNMETAL)
+    _cyl_z(p, 0.046, 0.046, 0.006, Vector3(0, 0.03, -0.515), GUNMETAL)
+    _box(p, Vector3(0.006, 0.008, 0.01), Vector3(0, 0.078, -0.5), BLACK)
+    # big olive ammo drum under the body, end rings, brass feed neck
+    _cyl_x(p, 0.07, 0.09, Vector3(0, -0.095, -0.09), OLIVE)
+    _cyl_x(p, 0.073, 0.008, Vector3(0.049, -0.095, -0.09), GUNMETAL)
+    _cyl_x(p, 0.073, 0.008, Vector3(-0.049, -0.095, -0.09), GUNMETAL)
+    _cyl_x(p, 0.02, 0.1, Vector3(0, -0.095, -0.09), STEEL)
+    _box(p, Vector3(0.05, 0.04, 0.07), Vector3(0, -0.03, -0.09), BLACK)
+    # brass belt: rounds climbing the side to the feed port, plus a hanging loop
+    for i in range(6):
+        _box(p, Vector3(0.012, 0.014, 0.022), Vector3(0.05, -0.06 + i * 0.012, -0.09 + i * 0.01), BRASS, Vector3(-25, 0, 0))
+    for i in range(5):
+        _box(p, Vector3(0.012, 0.016, 0.022), Vector3(0.0, -0.162 + i * 0.002, -0.14 + i * 0.024), BRASS)
+    # pistol grip, trigger guard
+    _box(p, Vector3(0.036, 0.1, 0.05), Vector3(0, -0.06, 0.045), BLACK, Vector3(-12, 0, 0))
+    _trigger_guard(p, Vector3(0, -0.01, -0.0), 1.1)
+    # front side handle (left): arm and vertical grip
+    _box(p, Vector3(0.04, 0.02, 0.03), Vector3(-0.065, 0.03, -0.2), STEEL)
+    _box(p, Vector3(0.025, 0.08, 0.025), Vector3(-0.085, -0.01, -0.2), BLACK)
