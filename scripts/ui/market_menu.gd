@@ -9,19 +9,14 @@ const BADGES_PATH: String = "res://scripts/managers/badges.gd"
 const ACH_PATH: String = "res://scripts/managers/achievements.gd"
 const RETICLES_PATH: String = "res://scripts/ui/reticles.gd"
 const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
+const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
+const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 
 const STAT_LABELS: Dictionary = {
     "damage_mult": "damage", "range_mult": "range", "spread_mult": "spread",
     "fire_rate_mult": "fire rate", "mag_mult": "magazine", "reserve_mult": "reserve ammo",
     "reload_speed_mult": "reload speed", "ads_zoom_mult": "ADS zoom",
 }
-
-const COL_GOLD: Color = Color(1.0, 0.85, 0.3)
-const COL_GREEN: Color = Color(0.3, 0.75, 0.4)
-const COL_BLUE: Color = Color(0.35, 0.7, 1.0)
-const COL_RED: Color = Color(0.75, 0.3, 0.3)
-const COL_CARD: Color = Color(0.11, 0.11, 0.15)
-const COL_CARD_BORDER: Color = Color(0.28, 0.28, 0.36)
 
 var _profile = null
 var _market = null
@@ -33,7 +28,7 @@ var _ret = null      # reticle drawing script (previews)
 var _cfg = null      # map config (DLC map titles)
 var _juice_label: Label
 var _list: VBoxContainer
-# {"btn": Button, "label": Label, "card_style": StyleBoxFlat, "name": String,
+# {"btn": Button, "label": Label, "card": PanelContainer, "chip": Label, "name": String,
 #  "kind": "att"/"char"/"badge"/"ret"/"map", "id": String, "cost": int}
 var _rows: Array = []
 
@@ -69,17 +64,38 @@ func _ready() -> void:
     _show_tab("attachments")
 
 
+## Charcoal background with a vignette (plain dark fill if the script is missing).
+func _add_backdrop() -> void:
+    var script = load(BACKDROP_PATH)
+    if script == null:
+        var bg := ColorRect.new()
+        bg.color = Color(0.055, 0.055, 0.067, 1.0)
+        add_child(bg)
+        bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        return
+    var backdrop := Control.new()
+    backdrop.set_script(script)
+    add_child(backdrop)
+
+
+func _add_divider(parent: Control) -> void:
+    var script = load(DIVIDER_PATH)
+    if script == null:
+        return
+    var divider := Control.new()
+    divider.set_script(script)
+    divider.custom_minimum_size = Vector2(0, 24)
+    parent.add_child(divider)
+
+
 func _build_ui() -> void:
-    var bg := ColorRect.new()
-    bg.color = Color(0.05, 0.05, 0.07, 1.0)
-    add_child(bg)
-    bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _add_backdrop()
 
     var margin := MarginContainer.new()
     add_child(margin)
     margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     for side in ["left", "right", "top", "bottom"]:
-        margin.add_theme_constant_override("margin_" + side, 16)
+        margin.add_theme_constant_override("margin_" + side, 20)
 
     var outer := VBoxContainer.new()
     outer.add_theme_constant_override("separation", 8)
@@ -89,14 +105,17 @@ func _build_ui() -> void:
     outer.add_child(top)
     var title := Label.new()
     title.text = "MARKET"
+    title.theme_type_variation = &"TitleLabel"
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    title.add_theme_font_size_override("font_size", 32)
-    title.add_theme_color_override("font_color", COL_GOLD)
+    title.add_theme_font_size_override("font_size", 40)
     top.add_child(title)
     _juice_label = Label.new()
-    _juice_label.add_theme_font_size_override("font_size", 28)
-    _juice_label.add_theme_color_override("font_color", COL_GOLD)
+    _juice_label.theme_type_variation = &"TagLabel"
+    _juice_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _juice_label.add_theme_font_size_override("font_size", 26)
     top.add_child(_juice_label)
+
+    _add_divider(outer)
 
     var tabs := HBoxContainer.new()
     tabs.add_theme_constant_override("separation", 8)
@@ -173,7 +192,7 @@ func _show_tab(tab: String) -> void:
 func _error(text: String) -> void:
     var err := Label.new()
     err.text = text
-    err.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+    err.theme_type_variation = &"DangerLabel"
     _list.add_child(err)
 
 
@@ -181,8 +200,8 @@ func _build_attachment_rows() -> void:
     for slot in _reg.SLOTS:
         var header := Label.new()
         header.text = str(slot).to_upper()
-        header.add_theme_font_size_override("font_size", 24)
-        header.add_theme_color_override("font_color", COL_GOLD)
+        header.theme_type_variation = &"GoldLabel"
+        header.add_theme_font_size_override("font_size", 22)
         _list.add_child(header)
         for id in _reg.ATTACHMENTS.keys():
             var entry: Dictionary = _reg.ATTACHMENTS[id]
@@ -228,16 +247,11 @@ func _draw_preview(ctrl: Control, id: String) -> void:
         _ret.draw_reticle(ctrl, ctrl.size * 0.5, id, 22.0, Color(1, 1, 1))
 
 
+## One card: name + description on the left, price chip and action button on the right.
 func _add_row(kind: String, id: String, item_name: String, desc: String, cost: int,
         tint: Color = Color(1, 1, 1)) -> void:
     var card := PanelContainer.new()
-    var card_style := StyleBoxFlat.new()
-    card_style.bg_color = COL_CARD
-    card_style.border_color = COL_CARD_BORDER
-    card_style.set_border_width_all(3)
-    card_style.set_corner_radius_all(10)
-    card_style.set_content_margin_all(12)
-    card.add_theme_stylebox_override("panel", card_style)
+    card.theme_type_variation = &"CardPanel"
     _list.add_child(card)
 
     var row := HBoxContainer.new()
@@ -256,44 +270,39 @@ func _add_row(kind: String, id: String, item_name: String, desc: String, cost: i
     info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     row.add_child(info)
+    var shown_name: String = item_name.to_upper()
     var name_l := Label.new()
-    name_l.text = item_name
+    name_l.text = shown_name
     name_l.add_theme_font_size_override("font_size", 26)
-    name_l.add_theme_color_override("font_color", tint)
+    if tint != Color(1, 1, 1):
+        name_l.add_theme_color_override("font_color", tint)
     info.add_child(name_l)
     if desc != "":
         var d := Label.new()
-        d.text = desc
-        d.add_theme_font_size_override("font_size", 17)
-        d.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+        d.text = desc.to_upper()
+        d.theme_type_variation = &"SmallLabel"
+        d.add_theme_font_size_override("font_size", 16)
         d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         info.add_child(d)
 
+    var side := VBoxContainer.new()
+    side.add_theme_constant_override("separation", 8)
+    side.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    row.add_child(side)
+
+    var chip := Label.new()
+    chip.theme_type_variation = &"TagLabel"
+    chip.add_theme_font_size_override("font_size", 18)
+    chip.size_flags_horizontal = Control.SIZE_SHRINK_END
+    side.add_child(chip)
+
     var b := Button.new()
-    b.custom_minimum_size = Vector2(250, 76)
-    b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    b.custom_minimum_size = Vector2(200, 64)
     b.add_theme_font_size_override("font_size", 22)
     b.pressed.connect(_buy.bind(kind, id, cost))
-    row.add_child(b)
-    _rows.append({"btn": b, "label": name_l, "card_style": card_style, "name": item_name,
+    side.add_child(b)
+    _rows.append({"btn": b, "label": name_l, "card": card, "chip": chip, "name": shown_name,
             "kind": kind, "id": id, "cost": cost})
-
-
-## Gives a button a solid colored look (all states).
-func _style_button(b: Button, bg: Color, border: Color, text_col: Color) -> void:
-    var states: Dictionary = {
-        "normal": bg, "hover": bg.lightened(0.15), "pressed": bg.lightened(0.25), "disabled": bg,
-    }
-    for state in states.keys():
-        var sb := StyleBoxFlat.new()
-        sb.bg_color = states[state]
-        sb.border_color = border
-        sb.set_border_width_all(3)
-        sb.set_corner_radius_all(8)
-        sb.set_content_margin_all(8)
-        b.add_theme_stylebox_override(state, sb)
-    for cname in ["font_color", "font_hover_color", "font_pressed_color", "font_disabled_color", "font_focus_color"]:
-        b.add_theme_color_override(cname, text_col)
 
 
 ## "+20% range, +10% damage, -10% fire rate"
@@ -343,6 +352,8 @@ func _buy(kind: String, id: String, cost: int) -> void:
     _update_buttons()
 
 
+## Restyles every card: yellow strip + BUY when affordable, red strip + LOCKED when not,
+## green strip + OWNED chip once bought (badges keep an EQUIP / UNEQUIP button).
 func _update_buttons() -> void:
     if _profile == null:
         _juice_label.text = ""
@@ -356,34 +367,39 @@ func _update_buttons() -> void:
         var kind: String = str(r["kind"])
         var id: String = str(r["id"])
         var label: Label = r["label"]
-        var card_style: StyleBoxFlat = r["card_style"]
+        var card: PanelContainer = r["card"]
+        var chip: Label = r["chip"]
         label.text = str(r["name"])
         if _owned(kind, id):
+            card.theme_type_variation = &"CardPanelOwned"
+            chip.text = "OWNED"
+            chip.theme_type_variation = &"OwnedTag"
             if kind == "badge":
                 var equipped: bool = NetManager.badge_id == id
-                b.text = "UNEQUIP" if equipped else "EQUIP"
+                b.visible = true
                 b.disabled = false
-                _style_button(b, Color(0.08, 0.16, 0.26), COL_BLUE, Color(0.65, 0.85, 1.0))
-                card_style.border_color = COL_BLUE
+                b.text = "UNEQUIP" if equipped else "EQUIP"
+                b.theme_type_variation = &"" if equipped else &"MainButton"
                 if equipped:
                     label.text = str(r["name"]) + "  (EQUIPPED)"
             else:
-                b.text = "OWNED"
-                b.disabled = true
-                _style_button(b, Color(0.07, 0.16, 0.09), COL_GREEN, Color(0.5, 0.9, 0.55))
-                card_style.border_color = COL_GREEN
+                b.visible = false
         else:
             var cost: int = int(r["cost"])
+            chip.text = "%d JUICE" % cost
+            b.visible = true
             if juice >= cost:
-                b.text = "BUY  %d JUICE" % cost
+                card.theme_type_variation = &"CardPanel"
+                chip.theme_type_variation = &"TagLabel"
+                b.text = "BUY"
                 b.disabled = false
-                _style_button(b, Color(0.25, 0.2, 0.04), COL_GOLD, COL_GOLD)
-                card_style.border_color = Color(0.6, 0.5, 0.15)
+                b.theme_type_variation = &"MainButton"
             else:
-                b.text = "%d JUICE" % cost
+                card.theme_type_variation = &"CardPanelLocked"
+                chip.theme_type_variation = &"LockedTag"
+                b.text = "LOCKED"
                 b.disabled = true
-                _style_button(b, Color(0.16, 0.08, 0.08), COL_RED, Color(0.85, 0.45, 0.45))
-                card_style.border_color = COL_CARD_BORDER
+                b.theme_type_variation = &"DangerButton"
 
 
 ## Refreshes the main menu's Juice label, then closes.
