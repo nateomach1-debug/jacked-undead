@@ -14,6 +14,8 @@ static func build_pool() -> Array:
         {"weapon": _marksman_dmr(), "weight": 2},
         {"weapon": _heavy_burst(), "weight": 2},
         {"weapon": _auto_shotgun(), "weight": 2},
+        {"weapon": _micro_smg(), "weight": 3},
+        {"weapon": _chaingun(), "weight": 1},
     ]
 
 
@@ -64,3 +66,13 @@ static func _auto_shotgun() -> WeaponData:
     var w := _make("Auto-Shotgun", 8.0, 0.4, 8, 64, 16.0, 2.8, 5.0, Vector3(0.07, 0.12, 0.85), Color(0.1, 0.1, 0.12))
     w.pellets = 7
     return w
+
+
+# Fastest fire, wild spread, short range.
+static func _micro_smg() -> WeaponData:
+    return _make("Micro SMG", 9.0, 0.05, 35, 210, 28.0, 1.5, 3.0, Vector3(0.05, 0.14, 0.4), Color(0.1, 0.1, 0.12))
+
+
+# Biggest mag, longest reload, rare.
+static func _chaingun() -> WeaponData:
+    return _make("Chaingun", 16.0, 0.09, 150, 450, 55.0, 5.0, 2.5, Vector3(0.1, 0.16, 0.75), Color(0.27, 0.32, 0.2))
