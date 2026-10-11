@@ -8,6 +8,7 @@ extends CanvasLayer
 
 var _headshots_label: Label = null
 var _board: GridContainer = null
+var _board_card: PanelContainer = null
 var _given: Dictionary = {}   # co-op: peer id -> Gains that player gave through the membership counter
 
 
@@ -24,7 +25,7 @@ func _ready() -> void:
     _build_extra_ui()
 
 
-## Adds a Headshot Kills line (solo) and the scoreboard grid (co-op).
+## Adds a Headshot Kills line (solo) and the scoreboard card (co-op).
 func _build_extra_ui() -> void:
     var vbox: Node = kills_label.get_parent()
 
@@ -34,37 +35,41 @@ func _build_extra_ui() -> void:
 
     _board = GridContainer.new()
     _board.columns = 7
-    _board.add_theme_constant_override("h_separation", 22)
+    _board.add_theme_constant_override("h_separation", 18)
     _board.add_theme_constant_override("v_separation", 6)
-    _board.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-    _board.visible = false
-    vbox.add_child(_board)
-    vbox.move_child(_board, round_label.get_index() + 1)
 
-    # Gold block listing any developer settings that differ from the defaults.
+    _board_card = PanelContainer.new()
+    _board_card.theme_type_variation = &"CardPanel"
+    _board_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    _board_card.visible = false
+    _board_card.add_child(_board)
+    vbox.add_child(_board_card)
+    vbox.move_child(_board_card, round_label.get_index() + 1)
+
+    # Yellow block listing any developer settings that differ from the defaults.
     _dev_label = Label.new()
     _dev_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _dev_label.add_theme_font_size_override("font_size", 22)
-    _dev_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    _dev_label.theme_type_variation = &"GoldLabel"
+    _dev_label.add_theme_font_size_override("font_size", 20)
     _dev_label.visible = false
     vbox.add_child(_dev_label)
-    vbox.move_child(_dev_label, _board.get_index() + 1)
+    vbox.move_child(_dev_label, _board_card.get_index() + 1)
     GameManager.player_died.connect(_refresh_dev_label)
 
 
 func _on_player_died() -> void:
     var coop: bool = NetManager.is_online
-    round_label.text = "Round Reached: %d" % GameManager.round_number
+    round_label.text = "ROUND REACHED: %d" % GameManager.round_number
     _credit_juice()
 
     # Solo: personal lines. Co-op: the scoreboard shows everyone (including you).
     kills_label.visible = not coop
     gains_label.visible = not coop
     _headshots_label.visible = not coop
-    _board.visible = coop
-    kills_label.text = "Zombies Killed: %d" % GameManager.kills
-    gains_label.text = "Gains Earned: %d" % GameManager.gains_earned
-    _headshots_label.text = "Headshot Kills: %d" % GameManager.headshot_kills
+    _board_card.visible = coop
+    kills_label.text = "ZOMBIES KILLED: %d" % GameManager.kills
+    gains_label.text = "GAINS EARNED: %d" % GameManager.gains_earned
+    _headshots_label.text = "HEADSHOT KILLS: %d" % GameManager.headshot_kills
 
     if coop:
         NetManager.send_final_stats()
@@ -99,7 +104,7 @@ func _receive_given(given: int) -> void:
 
 ## Rebuilds the co-op scoreboard from everyone's latest numbers.
 func _refresh_board() -> void:
-    if _board == null or not _board.visible:
+    if _board == null or _board_card == null or not _board_card.visible:
         return
     for c in _board.get_children():
         _board.remove_child(c)
@@ -130,10 +135,10 @@ func _refresh_board() -> void:
 
 func _add_cell(text: String, header: bool) -> void:
     var l := Label.new()
-    l.text = text
-    l.add_theme_font_size_override("font_size", 22)
+    l.text = text.to_upper()
+    l.add_theme_font_size_override("font_size", 20)
     if header:
-        l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+        l.theme_type_variation = &"GoldLabel"
     _board.add_child(l)
 
 
@@ -187,7 +192,7 @@ func _refresh_dev_label() -> void:
         var header: String = "CUSTOM DEV SETTINGS"
         if NetManager.is_online:
             header += " (host's settings)"
-        _dev_label.text = header + "\n" + "\n".join(lines)
+        _dev_label.text = (header + "\n" + "\n".join(lines)).to_upper()
 
 
 var _credited: bool = false
@@ -205,17 +210,17 @@ func _credit_juice() -> void:
     var vbox: Node = kills_label.get_parent()
     _juice_label = Label.new()
     _juice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _juice_label.add_theme_font_size_override("font_size", 28)
-    _juice_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    _juice_label.theme_type_variation = &"GoldLabel"
+    _juice_label.add_theme_font_size_override("font_size", 26)
     vbox.add_child(_juice_label)
     if _dev_label != null:
         vbox.move_child(_juice_label, _dev_label.get_index() + 1)
     var profile = script.new()
     if _dev_settings_changed():
-        _juice_label.text = "No Juice earned (dev settings changed)"
+        _juice_label.text = "NO JUICE EARNED (DEV SETTINGS CHANGED)"
         return
     var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
-    _juice_label.text = "+%d Juice earned  (total %d)" % [earned, profile.get_juice()]
+    _juice_label.text = "+%d JUICE EARNED  (TOTAL %d)" % [earned, profile.get_juice()]
     _credit_achievements()
 
 
@@ -250,9 +255,9 @@ func _credit_achievements() -> void:
     var vbox: Node = kills_label.get_parent()
     var banner := Label.new()
     banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    banner.add_theme_font_size_override("font_size", 22)
-    banner.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5))
-    banner.text = "\n".join(lines)
+    banner.theme_type_variation = &"GoodLabel"
+    banner.add_theme_font_size_override("font_size", 20)
+    banner.text = "\n".join(lines).to_upper()
     vbox.add_child(banner)
     if _juice_label != null:
         vbox.move_child(banner, _juice_label.get_index() + 1)
