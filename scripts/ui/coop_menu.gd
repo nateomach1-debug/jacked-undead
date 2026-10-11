@@ -20,6 +20,9 @@ const NAME_KEYS: Array = [
     "4", "5", "6", "7", "8", "9", "SPACE", "DEL", "OK", "CANCEL",
 ]
 
+const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
+const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
+
 var _status: Label
 var _ip_label: Label
 var _map_button: Button
@@ -34,16 +37,32 @@ var _map_index: int = 0
 
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    set_anchors_preset(Control.PRESET_FULL_RECT)
+    mouse_filter = Control.MOUSE_FILTER_STOP
 
-    var bg := ColorRect.new()
-    bg.color = Color(0.05, 0.05, 0.07, 0.97)
-    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(bg)
+    _add_backdrop(self)
+
+    var margin := MarginContainer.new()
+    add_child(margin)
+    margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    for side in ["left", "right", "top", "bottom"]:
+        margin.add_theme_constant_override("margin_" + side, 20)
+
+    var outer := VBoxContainer.new()
+    outer.add_theme_constant_override("separation", 6)
+    margin.add_child(outer)
+
+    var title := Label.new()
+    title.text = "CO-OP"
+    title.theme_type_variation = &"TitleLabel"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_font_size_override("font_size", 40)
+    outer.add_child(title)
+
+    _add_divider(outer)
 
     var center := CenterContainer.new()
-    center.set_anchors_preset(Control.PRESET_FULL_RECT)
-    add_child(center)
+    center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    outer.add_child(center)
 
     var row := HBoxContainer.new()
     row.add_theme_constant_override("separation", 40)
@@ -54,10 +73,14 @@ func _ready() -> void:
     left.add_theme_constant_override("separation", 10)
     row.add_child(left)
 
+    var ip_card := PanelContainer.new()
+    ip_card.theme_type_variation = &"CardPanel"
+    left.add_child(ip_card)
     _ip_label = Label.new()
+    _ip_label.theme_type_variation = &"GoldLabel"
     _ip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _ip_label.add_theme_font_size_override("font_size", 32)
-    left.add_child(_ip_label)
+    _ip_label.add_theme_font_size_override("font_size", 30)
+    ip_card.add_child(_ip_label)
 
     var grid := GridContainer.new()
     grid.columns = 3
@@ -67,45 +90,52 @@ func _ready() -> void:
     for key in ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "DEL"]:
         var b := Button.new()
         b.text = key
-        b.custom_minimum_size = Vector2(130, 76)
+        b.custom_minimum_size = Vector2(130, 72)
         b.add_theme_font_size_override("font_size", 30)
         b.pressed.connect(_on_key.bind(key))
         grid.add_child(b)
 
     _add_quick_ip_buttons(left)
+
     # Right side: status + name / host / join / map / start / back
     var right := VBoxContainer.new()
-    right.add_theme_constant_override("separation", 12)
+    right.add_theme_constant_override("separation", 10)
     row.add_child(right)
 
+    var status_card := PanelContainer.new()
+    right.add_child(status_card)
     _status = Label.new()
-    _status.text = "Co-op (same Wi-Fi)"
-    _status.custom_minimum_size = Vector2(460, 100)
+    _status.text = "CO-OP (SAME WI-FI)"
+    _status.custom_minimum_size = Vector2(440, 70)
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _status.add_theme_font_size_override("font_size", 26)
-    right.add_child(_status)
+    _status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    _status.add_theme_font_size_override("font_size", 22)
+    status_card.add_child(_status)
 
-    _name_button = _make_button("", _on_name)
-    _name_button.custom_minimum_size = Vector2(460, 64)
+    _name_button = _make_button("", _on_name, 64)
     right.add_child(_name_button)
 
-    right.add_child(_make_button("HOST GAME", _on_host))
-    right.add_child(_make_button("JOIN GAME", _on_join))
+    var host_row := HBoxContainer.new()
+    host_row.add_theme_constant_override("separation", 10)
+    right.add_child(host_row)
+    var host_b := _make_button("HOST GAME", _on_host, 72, &"MainButton")
+    host_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    host_row.add_child(host_b)
+    var join_b := _make_button("JOIN GAME", _on_join, 72)
+    join_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    host_row.add_child(join_b)
 
-    _map_button = _make_button("", _on_map)
+    _map_button = _make_button("", _on_map, 72)
     _map_button.visible = false
     right.add_child(_map_button)
 
-    _start_button = _make_button("START GAME", _on_start)
+    _start_button = _make_button("START GAME", _on_start, 80, &"MainButton")
     _start_button.visible = false
     right.add_child(_start_button)
 
-    var guide_button := _make_button("TAILSCALE GUIDE", _on_guide)
-    guide_button.custom_minimum_size = Vector2(460, 64)
-    right.add_child(guide_button)
-
-    right.add_child(_make_button("BACK", _on_back))
+    right.add_child(_make_button("TAILSCALE GUIDE", _on_guide, 60))
+    right.add_child(_make_button("BACK", _on_back, 64))
 
     # Pre-fill the first three numbers from this phone's own Wi-Fi address.
     var mine: String = NetManager.get_local_ip()
@@ -120,11 +150,37 @@ func _ready() -> void:
     NetManager.status_changed.connect(_on_status)
 
 
-func _make_button(label: String, callback: Callable) -> Button:
+## Charcoal background with a vignette (plain dark fill if the script is missing).
+func _add_backdrop(parent: Control) -> void:
+    var script = load(BACKDROP_PATH)
+    if script == null:
+        var bg := ColorRect.new()
+        bg.color = Color(0.055, 0.055, 0.067, 1.0)
+        parent.add_child(bg)
+        bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        return
+    var backdrop := Control.new()
+    backdrop.set_script(script)
+    parent.add_child(backdrop)
+
+
+func _add_divider(parent: Control) -> void:
+    var script = load(DIVIDER_PATH)
+    if script == null:
+        return
+    var divider := Control.new()
+    divider.set_script(script)
+    divider.custom_minimum_size = Vector2(0, 24)
+    parent.add_child(divider)
+
+
+func _make_button(label: String, callback: Callable, height: int = 72, kind: StringName = &"") -> Button:
     var b := Button.new()
     b.text = label
-    b.custom_minimum_size = Vector2(460, 80)
-    b.add_theme_font_size_override("font_size", 28)
+    b.custom_minimum_size = Vector2(440, height)
+    b.add_theme_font_size_override("font_size", 26)
+    if kind != &"":
+        b.theme_type_variation = kind
     b.pressed.connect(callback)
     return b
 
@@ -139,7 +195,7 @@ func _on_key(key: String) -> void:
 
 
 func _refresh_ip() -> void:
-    _ip_label.text = "Host IP: " + (_ip if _ip != "" else "_")
+    _ip_label.text = "HOST IP: " + (_ip if _ip != "" else "_")
 
 
 func _refresh_map() -> void:
@@ -148,31 +204,37 @@ func _refresh_map() -> void:
 
 func _refresh_name_button() -> void:
     var n: String = NetManager.player_name
-    _name_button.text = "NAME: " + (n if n != "" else "(auto)")
+    _name_button.text = "NAME: " + (n.to_upper() if n != "" else "(AUTO)")
 
 
 # ---------- name pad ----------
 
 func _build_name_pad() -> void:
     _name_pad = Control.new()
-    _name_pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+    _name_pad.mouse_filter = Control.MOUSE_FILTER_STOP
     _name_pad.visible = false
     add_child(_name_pad)
+    _name_pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-    var dim := ColorRect.new()
-    dim.color = Color(0.03, 0.03, 0.05, 1.0)
-    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-    _name_pad.add_child(dim)
+    _add_backdrop(_name_pad)
 
     var center := CenterContainer.new()
-    center.set_anchors_preset(Control.PRESET_FULL_RECT)
     _name_pad.add_child(center)
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     var box := VBoxContainer.new()
     box.add_theme_constant_override("separation", 12)
     center.add_child(box)
 
+    var hint := Label.new()
+    hint.text = "ENTER YOUR NAME"
+    hint.theme_type_variation = &"SmallLabel"
+    hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    hint.add_theme_font_size_override("font_size", 20)
+    box.add_child(hint)
+
     _name_display = Label.new()
+    _name_display.theme_type_variation = &"TitleLabel"
     _name_display.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _name_display.add_theme_font_size_override("font_size", 40)
     box.add_child(_name_display)
@@ -187,6 +249,10 @@ func _build_name_pad() -> void:
         b.text = str(key)
         b.custom_minimum_size = Vector2(96, 70)
         b.add_theme_font_size_override("font_size", 24 if str(key).length() > 2 else 30)
+        if key == "OK":
+            b.theme_type_variation = &"MainButton"
+        elif key == "CANCEL":
+            b.theme_type_variation = &"DangerButton"
         b.pressed.connect(_on_name_key.bind(str(key)))
         keys.add_child(b)
 
@@ -218,7 +284,7 @@ func _on_name_key(key: String) -> void:
 
 
 func _refresh_name_display() -> void:
-    _name_display.text = "Name: " + (_name_buffer if _name_buffer != "" else "_")
+    _name_display.text = (_name_buffer if _name_buffer != "" else "_")
 
 
 # ---------- host / join ----------
@@ -256,18 +322,20 @@ func _on_back() -> void:
 
 
 func _on_status(text: String) -> void:
-    _status.text = text
+    _status.text = text.to_upper()
 
 
 ## CLEAR empties the IP; 100. starts a Tailscale address.
 func _add_quick_ip_buttons(parent: Control) -> void:
     var row := HBoxContainer.new()
     row.add_theme_constant_override("separation", 8)
-    for item in [["CLEAR", ""], ["100.  ONLINE", "100."]]:
+    for item in [["CLEAR", "", &"DangerButton"], ["100.  ONLINE", "100.", &""]]:
         var b := Button.new()
         b.text = str(item[0])
         b.custom_minimum_size = Vector2(199, 64)
         b.add_theme_font_size_override("font_size", 24)
+        if item[2] != &"":
+            b.theme_type_variation = item[2]
         b.pressed.connect(_on_quick_ip.bind(str(item[1])))
         row.add_child(b)
     parent.add_child(row)
