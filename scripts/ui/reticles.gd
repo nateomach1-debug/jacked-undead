@@ -28,6 +28,49 @@ func default_for(optic_id: String) -> String:
 
 ## `s` is the reticle's size in pixels (about its half-width).
 func draw_reticle(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
+    var o: Dictionary = _outline_settings()
+    if bool(o["on"]):
+        var off: float = clampf(s * 0.07, 1.5, 3.0)
+        var oc: Color = o["color"]
+        _outline_pass = true
+        for i in range(8):
+            var ang: float = float(i) * TAU / 8.0
+            _draw_kind(ctrl, center + Vector2(cos(ang), sin(ang)) * off, kind, s, oc)
+        _outline_pass = false
+        if bool(o["rainbow"]) and ctrl.is_inside_tree():
+            if not ctrl.get_tree().process_frame.is_connected(ctrl.queue_redraw):
+                ctrl.get_tree().process_frame.connect(ctrl.queue_redraw, CONNECT_ONE_SHOT)
+    _draw_kind(ctrl, center, kind, s, color)
+
+
+const OUTLINE_SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
+var _outline_pass: bool = false
+var _outline_cache: Dictionary = {}
+var _outline_next: int = 0
+
+
+## Outline on/off + color from Settings (re-read twice a second, not every frame).
+func _outline_settings() -> Dictionary:
+    var now: int = Time.get_ticks_msec()
+    if _outline_cache.is_empty() or now >= _outline_next:
+        _outline_next = now + 500
+        var on: bool = false
+        var col: Color = Color(0.0, 0.0, 0.0, 0.95)
+        var rainbow: bool = false
+        var script = load(OUTLINE_SETTINGS_PATH)
+        if script != null:
+            var st = script.new()
+            on = st.get_value("outline") > 0.5
+            col = st.outline_color()
+            rainbow = st.outline_is_rainbow()
+        _outline_cache = {"on": on, "color": col, "rainbow": rainbow}
+    if bool(_outline_cache["rainbow"]):
+        var c: Color = Color.from_hsv(fposmod(float(now) / 1000.0 * 0.3, 1.0), 0.9, 1.0, 0.95)
+        return {"on": _outline_cache["on"], "color": c, "rainbow": true}
+    return _outline_cache
+
+
+func _draw_kind(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
     var gun_script = load("res://scripts/ui/gun_reticles.gd")
     if gun_script != null and gun_script.new().SHAPES.has(kind):
         _draw_custom(ctrl, center, gun_script.new().SHAPES[kind], s, color)
@@ -507,11 +550,11 @@ func _draw_custom(ctrl: CanvasItem, center: Vector2, shapes: Array, s: float, co
             var frac: float = fposmod(t * float(dr[1]) + float(dr[2]), 1.0)
             off = Vector2(0.0, float(dr[0]) * frac)
             a *= 1.0 - frac
-        if sh.has("hue"):
+        if sh.has("hue") and not _outline_pass:
             animated = true
             var hu: Array = sh["hue"]
             col = Color.from_hsv(fposmod(t * float(hu[0]) + float(hu[1]), 1.0), 0.85, 1.0, col.a)
-        if sh.has("fade"):
+        if sh.has("fade") and not _outline_pass:
             animated = true
             var fd: Array = sh["fade"]
             var mix: float = 0.5 + 0.5 * sin(t * TAU * float(fd[2]))
