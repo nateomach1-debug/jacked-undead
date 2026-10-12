@@ -11,6 +11,11 @@ const KINDS: Array = [
     "kettlebell", "brain", "tombstone", "bones", "radar", "lock_on",
     "lightning", "flame",
     "gun_pistol", "gun_rifle", "gun_smg", "gun_crossbow", "gun_sniper", "gun_shotgun",
+    "gun_revolver", "gun_magnum", "gun_double_barrel", "gun_lmg", "gun_burst_rifle",
+    "gun_flamethrower", "gun_grenade_launcher", "gun_rocket_launcher",
+    "gun_tactical_45", "gun_speed_revolver", "gun_hand_cannon", "gun_marksman_dmr",
+    "gun_heavy_burst", "gun_auto_shotgun", "gun_micro_smg", "gun_chaingun",
+    "gun_repeater_crossbow", "gun_semi_sniper",
     "prism_ring", "neon_diamond", "toxic_zombie", "hazard_brackets", "ice_fire",
 ]
 const OPTIC_DEFAULTS: Dictionary = {
