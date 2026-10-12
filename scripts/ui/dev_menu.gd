@@ -5,6 +5,8 @@ extends Control
 
 const CODE: String = "11051993"
 const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
+const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
+const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 
 # Each row steps through these values with the - / + buttons.
 # "flat": a negative value means "use the game's own value".
@@ -29,10 +31,19 @@ var _juice_label: Label
 
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    var dim := ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.92)
-    add_child(dim)
-    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    mouse_filter = Control.MOUSE_FILTER_STOP
+    var bd_script = load(BACKDROP_PATH)
+    var bd = null
+    if bd_script != null:
+        bd = bd_script.new()
+    if bd is Control:
+        add_child(bd)
+        (bd as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    else:
+        var dim := ColorRect.new()
+        dim.color = Color(0.055, 0.055, 0.067, 1.0)
+        add_child(dim)
+        dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     var center := CenterContainer.new()
     add_child(center)
     center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -44,14 +55,24 @@ func _ready() -> void:
     _update_code_label()
 
 
+func _add_divider(parent: Control) -> void:
+    var dv_script = load(DIVIDER_PATH)
+    if dv_script == null:
+        return
+    var dv = dv_script.new()
+    if dv is Control:
+        parent.add_child(dv)
+
+
 # ---------- lock screen ----------
 
 func _build_lock_screen() -> Control:
     var box := VBoxContainer.new()
     box.add_theme_constant_override("separation", 12)
-    box.add_child(_make_label("DEVELOPER MENU - LOCKED", 32, HORIZONTAL_ALIGNMENT_CENTER))
+    box.add_child(_make_label("DEVELOPER MENU - LOCKED", "TitleLabel", HORIZONTAL_ALIGNMENT_CENTER))
+    _add_divider(box)
 
-    _code_label = _make_label("", 40, HORIZONTAL_ALIGNMENT_CENTER)
+    _code_label = _make_label("", "GoldLabel", HORIZONTAL_ALIGNMENT_CENTER, 40)
     _code_label.custom_minimum_size = Vector2(0, 56)
     box.add_child(_code_label)
 
@@ -60,7 +81,8 @@ func _build_lock_screen() -> Control:
     grid.add_theme_constant_override("h_separation", 10)
     grid.add_theme_constant_override("v_separation", 10)
     for key in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "<"]:
-        grid.add_child(_make_button(key, Vector2(110, 76), _on_key.bind(key)))
+        var variation: String = "DangerButton" if key == "C" else ""
+        grid.add_child(_make_button(key, Vector2(110, 76), _on_key.bind(key), variation))
     var grid_center := CenterContainer.new()
     grid_center.add_child(grid)
     box.add_child(grid_center)
@@ -105,39 +127,55 @@ func _unlock() -> void:
 func _build_settings_screen() -> Control:
     var box := VBoxContainer.new()
     box.add_theme_constant_override("separation", 12)
-    box.add_child(_make_label("DEVELOPER MENU", 36, HORIZONTAL_ALIGNMENT_CENTER))
+    box.add_child(_make_label("DEVELOPER MENU", "TitleLabel", HORIZONTAL_ALIGNMENT_CENTER))
+    _add_divider(box)
 
     var scroll := ScrollContainer.new()
     scroll.custom_minimum_size = Vector2(920, 420)
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     box.add_child(scroll)
     var rows := VBoxContainer.new()
-    rows.add_theme_constant_override("separation", 10)
+    rows.add_theme_constant_override("separation", 8)
     rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll.add_child(rows)
 
     for row in ROWS:
-        rows.add_child(_build_stepper_row(row))
-    rows.add_child(_build_nav_row())
-    rows.add_child(_build_juice_row())
+        rows.add_child(_card(_build_stepper_row(row)))
+    rows.add_child(_card(_build_nav_row()))
+    rows.add_child(_card(_build_juice_row()))
 
     var bottom := HBoxContainer.new()
     bottom.add_theme_constant_override("separation", 16)
     bottom.alignment = BoxContainer.ALIGNMENT_CENTER
-    bottom.add_child(_make_button("RESET DEFAULTS", Vector2(300, 70), _on_reset_pressed))
-    bottom.add_child(_make_button("LOCK & CLOSE", Vector2(300, 70), _close))
+    bottom.add_child(_make_button("RESET DEFAULTS", Vector2(300, 70), _on_reset_pressed, "DangerButton"))
+    bottom.add_child(_make_button("LOCK & CLOSE", Vector2(300, 70), _close, "MainButton"))
     box.add_child(bottom)
     return box
+
+
+## Wraps a row in a dark card panel.
+func _card(content: Control) -> PanelContainer:
+    var panel := PanelContainer.new()
+    panel.theme_type_variation = "CardPanel"
+    panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    var m := MarginContainer.new()
+    for side in ["left", "right", "top", "bottom"]:
+        m.add_theme_constant_override("margin_" + side, 10)
+    panel.add_child(m)
+    m.add_child(content)
+    return panel
 
 
 func _build_stepper_row(row: Dictionary) -> Control:
     var key: String = row["key"]
     var h := HBoxContainer.new()
     h.add_theme_constant_override("separation", 10)
-    var title := _make_label(row["title"], 26, HORIZONTAL_ALIGNMENT_LEFT)
+    var title := _make_label(row["title"], "", HORIZONTAL_ALIGNMENT_LEFT, 24)
     title.custom_minimum_size = Vector2(430, 0)
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     h.add_child(title)
     h.add_child(_make_button("-", Vector2(80, 64), _step.bind(key, -1)))
-    var value_label := _make_label("", 26, HORIZONTAL_ALIGNMENT_CENTER)
+    var value_label := _make_label("", "GoldLabel", HORIZONTAL_ALIGNMENT_CENTER, 26)
     value_label.custom_minimum_size = Vector2(200, 0)
     h.add_child(value_label)
     _value_labels[key] = value_label
@@ -148,8 +186,9 @@ func _build_stepper_row(row: Dictionary) -> Control:
 func _build_nav_row() -> Control:
     var h := HBoxContainer.new()
     h.add_theme_constant_override("separation", 10)
-    var title := _make_label("Nav data (polygons, zombies)", 26, HORIZONTAL_ALIGNMENT_LEFT)
+    var title := _make_label("Nav data (polygons, zombies)", "", HORIZONTAL_ALIGNMENT_LEFT, 24)
     title.custom_minimum_size = Vector2(430, 0)
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     h.add_child(title)
     _nav_button = _make_button("OFF", Vector2(370, 64), _on_nav_pressed)
     h.add_child(_nav_button)
@@ -159,12 +198,14 @@ func _build_nav_row() -> Control:
 func _build_juice_row() -> Control:
     var v := VBoxContainer.new()
     v.add_theme_constant_override("separation", 6)
-    _juice_label = _make_label("", 26, HORIZONTAL_ALIGNMENT_LEFT)
+    _juice_label = _make_label("", "GoldLabel", HORIZONTAL_ALIGNMENT_LEFT, 24)
     v.add_child(_juice_label)
     var h := HBoxContainer.new()
     h.add_theme_constant_override("separation", 10)
     for amount in [100, 1000, 10000]:
-        h.add_child(_make_button("+%d JUICE" % amount, Vector2(280, 64), _on_add_juice.bind(amount)))
+        var b := _make_button("+%d JUICE" % amount, Vector2(0, 64), _on_add_juice.bind(amount))
+        b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        h.add_child(b)
     v.add_child(h)
     return v
 
@@ -221,7 +262,7 @@ func _refresh() -> void:
         var key: String = row["key"]
         var label: Label = _value_labels[key]
         label.text = _format(row["kind"], GameManager.dev_get(key))
-    _nav_button.text = "ON" if GameManager.dev_show_nav() else "OFF"
+    _nav_button.text = "NAV DATA: ON" if GameManager.dev_show_nav() else "NAV DATA: OFF"
     _juice_label.text = "Juice balance: %d" % _current_juice()
 
 
@@ -257,18 +298,23 @@ func _close() -> void:
 
 # ---------- small helpers ----------
 
-func _make_button(text: String, min_size: Vector2, callback: Callable) -> Button:
+func _make_button(text: String, min_size: Vector2, callback: Callable, variation: String = "") -> Button:
     var b := Button.new()
     b.text = text
     b.custom_minimum_size = min_size
     b.add_theme_font_size_override("font_size", 26)
+    if variation != "":
+        b.theme_type_variation = variation
     b.pressed.connect(callback)
     return b
 
 
-func _make_label(text: String, font_size: int, align: HorizontalAlignment) -> Label:
+func _make_label(text: String, variation: String, align: HorizontalAlignment, font_size: int = 0) -> Label:
     var l := Label.new()
     l.text = text
     l.horizontal_alignment = align
-    l.add_theme_font_size_override("font_size", font_size)
+    if variation != "":
+        l.theme_type_variation = variation
+    if font_size > 0:
+        l.add_theme_font_size_override("font_size", font_size)
     return l
