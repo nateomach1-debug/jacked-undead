@@ -2,13 +2,14 @@ extends CanvasLayer
 ## Membership transfer menu (built in code). Opened by the membership counter
 ## through MembershipHub.open_menu().
 
-const TRIM: Color = Color(0.95, 0.75, 0.1, 1)
+const TRIM: Color = Color(1.0, 0.769, 0.0, 1)
 const RED: Color = Color(1.0, 0.45, 0.35, 1)
 const GREY: Color = Color(0.75, 0.75, 0.75, 1)
 const MIN_AMOUNT: int = 100
 const MAX_AMOUNT: int = 1000000
 const STEP: int = 250
 const CHIPS: Array = [100, 500, 1000, 5000]
+const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 
 var _hub: Node = null
 var _selected: int = 0
@@ -71,11 +72,12 @@ func _hide_touch_ui() -> void:
 
 # ---------- building the screen ----------
 
-func _new_label(text: String, size: int, color: Color) -> Label:
+func _new_label(text: String, size: int, variation: String) -> Label:
     var l := Label.new()
     l.text = text
+    if variation != "":
+        l.theme_type_variation = variation
     l.add_theme_font_size_override("font_size", size)
-    l.add_theme_color_override("font_color", color)
     l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     return l
 
@@ -89,24 +91,11 @@ func _new_button(text: String, size: int, min_h: float) -> Button:
     return b
 
 
-func _paint(b: Button, bg: Color, fg: Color) -> void:
-    for state in ["normal", "hover", "pressed", "focus"]:
-        var sb := StyleBoxFlat.new()
-        sb.bg_color = bg.darkened(0.25) if state == "pressed" else bg
-        sb.set_corner_radius_all(10)
-        if state == "focus":
-            sb.set_border_width_all(4)
-            sb.border_color = Color(1, 1, 1, 1)
-        b.add_theme_stylebox_override(state, sb)
-    for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-        b.add_theme_color_override(c, fg)
-
-
 func _build_ui() -> void:
     var vs: Vector2 = get_viewport().get_visible_rect().size
 
     var dim := ColorRect.new()
-    dim.color = Color(0, 0, 0, 0.6)
+    dim.color = Color(0.02, 0.02, 0.03, 0.78)
     dim.mouse_filter = Control.MOUSE_FILTER_STOP
     add_child(dim)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -121,23 +110,29 @@ func _build_ui() -> void:
     margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
     var panel := PanelContainer.new()
-    var sb := StyleBoxFlat.new()
-    sb.bg_color = Color(0.07, 0.07, 0.09, 0.97)
-    sb.border_color = TRIM
-    sb.set_border_width_all(4)
-    sb.set_corner_radius_all(14)
-    sb.set_content_margin_all(18)
-    panel.add_theme_stylebox_override("panel", sb)
+    panel.theme_type_variation = "CardPanel"
     margin.add_child(panel)
+
+    var pad := MarginContainer.new()
+    for side in ["left", "right", "top", "bottom"]:
+        pad.add_theme_constant_override("margin_" + side, 18)
+    panel.add_child(pad)
 
     var root := VBoxContainer.new()
     root.add_theme_constant_override("separation", 12)
-    panel.add_child(root)
+    pad.add_child(root)
 
-    var title: Label = _new_label("MEMBERSHIP COUNTER", 44, TRIM)
+    var title: Label = _new_label("MEMBERSHIP COUNTER", 44, "TitleLabel")
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     root.add_child(title)
-    _gains_label = _new_label("", 34, Color(1, 1, 1, 1))
+
+    var dv_script = load(DIVIDER_PATH)
+    if dv_script != null:
+        var dv = dv_script.new()
+        if dv is Control:
+            root.add_child(dv)
+
+    _gains_label = _new_label("", 34, "GoldLabel")
     _gains_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     root.add_child(_gains_label)
 
@@ -151,7 +146,7 @@ func _build_ui() -> void:
     left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     left.add_theme_constant_override("separation", 8)
     body.add_child(left)
-    left.add_child(_new_label("Who gets the membership?", 32, TRIM))
+    left.add_child(_new_label("WHO GETS THE MEMBERSHIP?", 28, "GoldLabel"))
     var scroll := ScrollContainer.new()
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -160,7 +155,7 @@ func _build_ui() -> void:
     _list_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _list_box.add_theme_constant_override("separation", 8)
     scroll.add_child(_list_box)
-    _empty = _new_label("No teammates connected", 30, GREY)
+    _empty = _new_label("No teammates connected", 30, "SmallLabel")
     _list_box.add_child(_empty)
 
     # Right: amount and buttons.
@@ -168,7 +163,7 @@ func _build_ui() -> void:
     right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     right.add_theme_constant_override("separation", 10)
     body.add_child(right)
-    _amount_label = _new_label("", 40, Color(1, 1, 1, 1))
+    _amount_label = _new_label("", 40, "")
     right.add_child(_amount_label)
 
     var chips := HBoxContainer.new()
@@ -192,12 +187,13 @@ func _build_ui() -> void:
     all_btn.pressed.connect(_set_all)
     adjust.add_child(all_btn)
 
-    _status = _new_label("", 30, GREY)
+    _status = _new_label("", 30, "")
+    _status.add_theme_color_override("font_color", GREY)
     _status.size_flags_vertical = Control.SIZE_EXPAND_FILL
     right.add_child(_status)
 
     var buy: Button = _new_button("BUY MEMBERSHIP", 40, 110.0)
-    _paint(buy, TRIM, Color(0.05, 0.05, 0.05, 1))
+    buy.theme_type_variation = "MainButton"
     buy.pressed.connect(_on_buy)
     right.add_child(buy)
     var close: Button = _new_button("CLOSE", 36, 90.0)
@@ -235,7 +231,7 @@ func _refresh() -> void:
             if _selected == id:
                 _selected = 0
     _empty.visible = targets.is_empty()
-    _gains_label.text = "Your Gains: %d" % GameManager.gains
+    _gains_label.text = "YOUR GAINS: %d" % GameManager.gains
     var over: bool = _amount > GameManager.gains
     _amount_label.text = "Amount: %d" % _amount
     _amount_label.add_theme_color_override("font_color", RED if over else Color(1, 1, 1, 1))
