@@ -9,7 +9,7 @@ const KINDS: Array = [
     "zombie",
     "dumbbell", "skull", "plate", "bicep", "biohazard", "bite", "blood_drip",
     "kettlebell", "brain", "tombstone", "bones", "radar", "lock_on",
-    "    "lightning", "flame",
+    "lightning", "flame",
     "gun_pistol", "gun_rifle", "gun_smg", "gun_crossbow", "gun_sniper", "gun_shotgun",
     "prism_ring", "neon_diamond", "toxic_zombie", "hazard_brackets", "ice_fire",
 ]
@@ -409,7 +409,7 @@ func _draw_custom(ctrl: CanvasItem, center: Vector2, shapes: Array, s: float, co
             var frac: float = fposmod(t * float(dr[1]) + float(dr[2]), 1.0)
             off = Vector2(0.0, float(dr[0]) * frac)
             a *= 1.0 - frac
-                if sh.has("hue"):
+        if sh.has("hue"):
             animated = true
             var hu: Array = sh["hue"]
             col = Color.from_hsv(fposmod(t * float(hu[0]) + float(hu[1]), 1.0), 0.85, 1.0, col.a)
