@@ -28,7 +28,10 @@ func default_for(optic_id: String) -> String:
 
 ## `s` is the reticle's size in pixels (about its half-width).
 func draw_reticle(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
-    if CUSTOM.has(kind):
+        var gun_script = load("res://scripts/ui/gun_reticles.gd")
+    if gun_script != null and gun_script.new().SHAPES.has(kind):
+        _draw_custom(ctrl, center, gun_script.new().SHAPES[kind], s, color)
+    elif CUSTOM.has(kind):
         _draw_custom(ctrl, center, CUSTOM[kind], s, color)
     else:
         _draw_builtin(ctrl, center, kind, s, color)
