@@ -3,7 +3,17 @@ extends RefCounted
 ## barrel tip = aim point (screen center). Same shape format as CUSTOM in reticles.gd,
 ## which draws these. Loaded with load() + a null check.
 
-const SHAPES: Dictionary = {
+var SHAPES: Dictionary = {}
+
+
+func _init() -> void:
+    SHAPES = BASE_SHAPES.duplicate()
+    var extra = load("res://scripts/ui/gun_reticles_extra.gd")
+    if extra != null:
+        SHAPES.merge(extra.shapes())
+
+
+const BASE_SHAPES: Dictionary = {
     "gun_pistol": [
         {"t": "poly", "p": [[-0.788, 0.114], [-0.581, 0.16], [0.067, -0.062], [-0.126, -0.095]]},
         {"t": "poly", "p": [[-0.574, 0.372], [0.066, 0.119], [0.067, -0.062], [-0.581, 0.16]]},
