@@ -220,7 +220,7 @@ func reward_text(id: String) -> String:
 
 ## Reticle ids available: earned from achievements plus bought in the Market.
 
-const TEST_UNLOCK_ALL: bool = false
+const TEST_UNLOCK_ALL: bool = true
 
 
 func unlocked_reticles() -> Array: return RETICLES.keys() if TEST_UNLOCK_ALL else _earned_reticles()
