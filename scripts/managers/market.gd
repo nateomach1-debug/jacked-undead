@@ -38,6 +38,11 @@ const RETICLE_COSTS: Dictionary = {
     "brain": 550,
     "radar": 600,
     "lock_on": 600,
+    "hazard_brackets": 600,
+    "neon_diamond": 650,
+    "prism_ring": 700,
+    "ice_fire": 700,
+    "toxic_zombie": 800,
 }
 
 const CHARACTER_REGISTRY: String = "res://scripts/managers/character_registry.gd"
