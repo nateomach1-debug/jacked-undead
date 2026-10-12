@@ -37,6 +37,18 @@ const ACHIEVEMENTS: Array = [
         "kind": "round", "gun": "", "target": 30, "reticle": "mil_dot"},
     {"id": "centurion", "title": "Centurion", "desc": "Get 1000 zombie kills",
         "kind": "kills", "gun": "", "target": 1000, "reticle": "zombie"},
+    {"id": "gunslinger", "title": "Gunslinger", "desc": "Get 750 kills with the Pistol",
+        "kind": "kills", "gun": "Pistol", "target": 750, "reticle": "gun_pistol"},
+    {"id": "battle_ready", "title": "Battle Ready", "desc": "Get 800 kills with the Rifle",
+        "kind": "kills", "gun": "Rifle", "target": 800, "reticle": "gun_rifle"},
+    {"id": "bullet_hose", "title": "Bullet Hose", "desc": "Get 1500 kills with the SMG",
+        "kind": "kills", "gun": "SMG", "target": 1500, "reticle": "gun_smg"},
+    {"id": "quiver_full", "title": "Quiver Full", "desc": "Get 500 kills with the Crossbow",
+        "kind": "kills", "gun": "Crossbow", "target": 500, "reticle": "gun_crossbow"},
+    {"id": "long_shot", "title": "Long Shot", "desc": "Get 400 kills with the Sniper",
+        "kind": "kills", "gun": "Sniper", "target": 400, "reticle": "gun_sniper"},
+    {"id": "boomstick", "title": "Boomstick", "desc": "Get 400 kills with the Pump Shotgun",
+        "kind": "kills", "gun": "Pump Shotgun", "target": 400, "reticle": "gun_shotgun"},
 ]
 
 const RETICLES: Dictionary = {
@@ -72,6 +84,17 @@ const RETICLES: Dictionary = {
     "lock_on": "Lock-On",
     "lightning": "Lightning",
     "flame": "Flame",
+    "gun_pistol": "Pistol Sights",
+    "gun_rifle": "Rifle Sights",
+    "gun_smg": "SMG Sights",
+    "gun_crossbow": "Crossbow Sights",
+    "gun_sniper": "Sniper Sights",
+    "gun_shotgun": "Shotgun Sights",
+    "prism_ring": "Prism Ring",
+    "neon_diamond": "Neon Diamond",
+    "toxic_zombie": "Toxic Zombie",
+    "hazard_brackets": "Hazard Brackets",
+    "ice_fire": "Ice & Fire",
 }
 
 var weapon_kills: Dictionary = {}
