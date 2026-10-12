@@ -2,7 +2,7 @@ extends Control
 ## Map selection, reached from the main menu's Start button.
 ## MAPS tab: Arena, Building and the other normal maps (from map_config.gd).
 ## DLC tab: the buyable maps; locked ones point to the Market.
-## Every map is a card in a 2-column grid.
+## Cards resize to fit however many maps the current tab shows.
 
 const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
 const MARKET_PATH: String = "res://scripts/managers/market.gd"
@@ -10,6 +10,11 @@ const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 const MAIN_MENU_PATH: String = "res://scenes/main_menu/main_menu.tscn"
+
+const GRID_GAP: int = 14
+const MIN_CARD_H: float = 150.0
+const MAX_CARD_H: float = 320.0
+const BASE_CARD_H: float = 210.0   # card height at which text is its normal size
 
 const BASE_MAPS: Array = [
     {"id": "arena", "title": "GYM ARENA", "path": "res://scenes/main/main.tscn"},
@@ -19,12 +24,14 @@ const BASE_MAPS: Array = [
 var _config = null
 var _market = null
 var _profile = null
+var _scroll: ScrollContainer
 var _grid: GridContainer
 var _message: Label
 var _maps_tab: Button
 var _dlc_tab: Button
 var _normal_cards: Array = []
 var _dlc_cards: Array = []
+var _dlc_mode: bool = false
 
 
 func _ready() -> void:
@@ -122,17 +129,18 @@ func _build_ui() -> void:
     tabs.add_child(_dlc_tab)
     outer.add_child(tabs)
 
-    var scroll := ScrollContainer.new()
-    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-    outer.add_child(scroll)
+    _scroll = ScrollContainer.new()
+    _scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    _scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    _scroll.resized.connect(_layout_cards)
+    outer.add_child(_scroll)
 
     _grid = GridContainer.new()
     _grid.columns = 2
     _grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _grid.add_theme_constant_override("h_separation", 14)
-    _grid.add_theme_constant_override("v_separation", 14)
-    scroll.add_child(_grid)
+    _grid.add_theme_constant_override("h_separation", GRID_GAP)
+    _grid.add_theme_constant_override("v_separation", GRID_GAP)
+    _scroll.add_child(_grid)
 
     _message = Label.new()
     _message.theme_type_variation = &"DangerLabel"
@@ -162,6 +170,7 @@ func _make_tab(label: String, dlc: bool) -> Button:
 
 
 func _show_tab(dlc: bool) -> void:
+    _dlc_mode = dlc
     for c in _normal_cards:
         c.visible = not dlc
     for c in _dlc_cards:
@@ -169,11 +178,55 @@ func _show_tab(dlc: bool) -> void:
     _message.visible = false
     _maps_tab.button_pressed = not dlc
     _dlc_tab.button_pressed = dlc
+    _layout_cards()
+
+
+## Picks columns and card height from how many maps the current tab shows, so
+## few maps get big cards and many maps get small ones (scrolls if still too many).
+func _layout_cards() -> void:
+    if _scroll == null or _grid == null:
+        return
+    var cards: Array = _dlc_cards if _dlc_mode else _normal_cards
+    var n: int = cards.size()
+    if n == 0:
+        return
+    var cols: int = 1
+    if n >= 5:
+        cols = 3
+    elif n >= 2:
+        cols = 2
+    _grid.columns = cols
+    var rows: int = ceili(float(n) / float(cols))
+    var avail: float = _scroll.size.y
+    if avail <= 0.0:
+        return
+    var h: float = (avail - float(GRID_GAP * (rows - 1))) / float(rows)
+    h = clampf(h, MIN_CARD_H, MAX_CARD_H)
+    var s: float = clampf(h / BASE_CARD_H, 0.75, 1.5)
+    for c in cards:
+        _apply_card_size(c, h, s)
+
+
+func _apply_card_size(card: Control, h: float, s: float) -> void:
+    card.custom_minimum_size = Vector2(0, h)
+    var name_l = card.get_meta("name_label", null)
+    if name_l != null:
+        (name_l as Label).add_theme_font_size_override("font_size", int(round(26.0 * s)))
+    var chip = card.get_meta("chip_label", null)
+    if chip != null:
+        (chip as Label).add_theme_font_size_override("font_size", int(round(18.0 * s)))
+    var desc = card.get_meta("desc_label", null)
+    if desc != null:
+        (desc as Label).add_theme_font_size_override("font_size", int(round(16.0 * s)))
+    var btn = card.get_meta("button", null)
+    if btn != null:
+        (btn as Button).custom_minimum_size = Vector2(0, round(64.0 * s))
+        (btn as Button).add_theme_font_size_override("font_size", int(round(24.0 * s)))
 
 
 # ---------- cards ----------
 
-## One map card: name (+ optional chip) on top, optional description, action button below.
+## One map card: name (+ optional chip) on top, optional description, action button at the bottom.
 func _add_card(title: String, desc: String, strip: StringName, chip_text: String,
         chip_kind: StringName, button_text: String, button_kind: StringName,
         callback: Callable) -> PanelContainer:
@@ -196,6 +249,7 @@ func _add_card(title: String, desc: String, strip: StringName, chip_text: String
     name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     name_l.add_theme_font_size_override("font_size", 26)
     top.add_child(name_l)
+    card.set_meta("name_label", name_l)
 
     if chip_text != "":
         var chip := Label.new()
@@ -204,6 +258,7 @@ func _add_card(title: String, desc: String, strip: StringName, chip_text: String
         chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
         chip.add_theme_font_size_override("font_size", 18)
         top.add_child(chip)
+        card.set_meta("chip_label", chip)
 
     if desc != "":
         var d := Label.new()
@@ -212,6 +267,12 @@ func _add_card(title: String, desc: String, strip: StringName, chip_text: String
         d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         d.add_theme_font_size_override("font_size", 16)
         box.add_child(d)
+        card.set_meta("desc_label", d)
+
+    # Spacer pushes the button to the bottom of the card.
+    var spacer := Control.new()
+    spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    box.add_child(spacer)
 
     var b := Button.new()
     b.text = button_text
@@ -220,6 +281,7 @@ func _add_card(title: String, desc: String, strip: StringName, chip_text: String
     b.add_theme_font_size_override("font_size", 24)
     b.pressed.connect(callback)
     box.add_child(b)
+    card.set_meta("button", b)
     return card
 
 
