@@ -12,124 +12,131 @@ var _model: Node3D = null
 
 
 func _ready() -> void:
-	alignment = BoxContainer.ALIGNMENT_CENTER
-	add_theme_constant_override("separation", 6)
-	var script = load(REGISTRY_PATH)
-	if script == null:
-		add_child(_error_label("CHARACTER LIST FAILED TO LOAD"))
-		return
-	_reg = script.new()
-	_index = _owned_or_first(_reg.index_of(NetManager.character_id))
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	add_child(row)
-	row.add_child(_make_arrow("<", -1))
-	_title = Label.new()
-	_title.custom_minimum_size = Vector2(220, 0)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_title.add_theme_font_size_override("font_size", 26)
-	row.add_child(_title)
-	row.add_child(_make_arrow(">", 1))
+    alignment = BoxContainer.ALIGNMENT_CENTER
+    add_theme_constant_override("separation", 6)
+    var script = load(REGISTRY_PATH)
+    if script == null:
+        add_child(_error_label("CHARACTER LIST FAILED TO LOAD"))
+        return
+    _reg = script.new()
+    _index = _owned_or_first(_reg.index_of(NetManager.character_id))
+    var row := HBoxContainer.new()
+    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    add_child(row)
+    row.add_child(_make_arrow("<", -1))
+    _title = Label.new()
+    _title.theme_type_variation = "GoldLabel"
+    _title.custom_minimum_size = Vector2(220, 0)
+    _title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    row.add_child(_title)
+    row.add_child(_make_arrow(">", 1))
 
-	var holder := CenterContainer.new()
-	add_child(holder)
-	var container := SubViewportContainer.new()
-	container.custom_minimum_size = PREVIEW_SIZE
-	container.stretch = true
-	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(container)
+    var holder := CenterContainer.new()
+    add_child(holder)
+    var card := PanelContainer.new()
+    card.theme_type_variation = "CardPanel"
+    holder.add_child(card)
+    var pad := MarginContainer.new()
+    for side in ["left", "right", "top", "bottom"]:
+        pad.add_theme_constant_override("margin_" + side, 6)
+    card.add_child(pad)
+    var container := SubViewportContainer.new()
+    container.custom_minimum_size = PREVIEW_SIZE
+    container.stretch = true
+    container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    pad.add_child(container)
 
-	var vp := SubViewport.new()
-	vp.own_world_3d = true
-	vp.transparent_bg = true
-	container.add_child(vp)
+    var vp := SubViewport.new()
+    vp.own_world_3d = true
+    vp.transparent_bg = true
+    container.add_child(vp)
 
-	var cam := Camera3D.new()
-	cam.position = Vector3(0.0, 0.95, 3.4)
-	cam.fov = 38.0
-	var env := Environment.new()
-	env.background_mode = Environment.BG_CLEAR_COLOR
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.85, 0.85, 0.9)
-	env.ambient_light_energy = 0.7
-	cam.environment = env
-	vp.add_child(cam)
+    var cam := Camera3D.new()
+    cam.position = Vector3(0.0, 0.95, 3.4)
+    cam.fov = 38.0
+    var env := Environment.new()
+    env.background_mode = Environment.BG_CLEAR_COLOR
+    env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+    env.ambient_light_color = Color(0.85, 0.85, 0.9)
+    env.ambient_light_energy = 0.7
+    cam.environment = env
+    vp.add_child(cam)
 
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-35.0, -30.0, 0.0)
-	light.light_energy = 1.3
-	vp.add_child(light)
+    var light := DirectionalLight3D.new()
+    light.rotation_degrees = Vector3(-35.0, -30.0, 0.0)
+    light.light_energy = 1.3
+    vp.add_child(light)
 
-	_stage = Node3D.new()
-	vp.add_child(_stage)
+    _stage = Node3D.new()
+    vp.add_child(_stage)
 
-	_refresh()
+    _refresh()
 
 
 func _make_arrow(label: String, dir: int) -> Button:
-	var b := Button.new()
-	b.text = label
-	b.custom_minimum_size = Vector2(70, 60)
-	b.add_theme_font_size_override("font_size", 30)
-	b.pressed.connect(_step.bind(dir))
-	return b
+    var b := Button.new()
+    b.text = label
+    b.custom_minimum_size = Vector2(70, 60)
+    b.add_theme_font_size_override("font_size", 30)
+    b.pressed.connect(_step.bind(dir))
+    return b
 
 
 func _step(dir: int) -> void:
-	if _reg == null:
-		return
-	_index = _next_owned(_index, dir)
-	NetManager.set_character(_reg.id_at(_index))
-	_refresh()
+    if _reg == null:
+        return
+    _index = _next_owned(_index, dir)
+    NetManager.set_character(_reg.id_at(_index))
+    _refresh()
 
 
 func _refresh() -> void:
-	_title.text = _reg.title_at(_index)
-	if _model != null:
-		_stage.remove_child(_model)
-		_model.queue_free()
-		_model = null
-	_model = _reg.build_fitted(_reg.id_at(_index), 1.8)
-	if _model != null:
-		_stage.add_child(_model)
-	_stage.rotation.y = PI  # start facing the camera
+    _title.text = str(_reg.title_at(_index)).to_upper()
+    if _model != null:
+        _stage.remove_child(_model)
+        _model.queue_free()
+        _model = null
+    _model = _reg.build_fitted(_reg.id_at(_index), 1.8)
+    if _model != null:
+        _stage.add_child(_model)
+    _stage.rotation.y = PI  # start facing the camera
 
 
 func _process(delta: float) -> void:
-	if _stage != null and is_visible_in_tree():
-		_stage.rotation.y += delta * 0.9
+    if _stage != null and is_visible_in_tree():
+        _stage.rotation.y += delta * 0.9
 
 
 func _error_label(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
-	return l
+    var l := Label.new()
+    l.text = text
+    l.theme_type_variation = "DangerLabel"
+    return l
 
 
 ## True if character i is the free one or has been bought in the Market.
 func _owns(i: int) -> bool:
-	var market_script = load("res://scripts/managers/market.gd")
-	var profile_script = load("res://scripts/managers/profile.gd")
-	if market_script == null or profile_script == null:
-		return true
-	return market_script.new().owns_character(profile_script.new(), _reg.id_at(i))
+    var market_script = load("res://scripts/managers/market.gd")
+    var profile_script = load("res://scripts/managers/profile.gd")
+    if market_script == null or profile_script == null:
+        return true
+    return market_script.new().owns_character(profile_script.new(), _reg.id_at(i))
 
 
 ## The next owned character in the given direction (stays put if there is none).
 func _next_owned(from: int, dir: int) -> int:
-	var i: int = from
-	for _n in range(_reg.count()):
-		i = posmod(i + dir, _reg.count())
-		if _owns(i):
-			return i
-	return from
+    var i: int = from
+    for _n in range(_reg.count()):
+        i = posmod(i + dir, _reg.count())
+        if _owns(i):
+            return i
+    return from
 
 
 ## If the saved character is locked, switch to the free first one.
 func _owned_or_first(i: int) -> int:
-	if _owns(i):
-		return i
-	NetManager.set_character(_reg.id_at(0))
-	return 0
+    if _owns(i):
+        return i
+    NetManager.set_character(_reg.id_at(0))
+    return 0
