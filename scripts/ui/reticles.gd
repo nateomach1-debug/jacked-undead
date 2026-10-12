@@ -73,7 +73,7 @@ func _outline_settings() -> Dictionary:
 func _draw_kind(ctrl: CanvasItem, center: Vector2, kind: String, s: float, color: Color) -> void:
     var gun_script = load("res://scripts/ui/gun_reticles.gd")
     if gun_script != null and gun_script.new().SHAPES.has(kind):
-        _draw_custom(ctrl, center, gun_script.new().SHAPES[kind], s, color)
+        _draw_custom(ctrl, center, gun_script.new().SHAPES[kind], s * 2.0, color)
     elif CUSTOM.has(kind):
         _draw_custom(ctrl, center, CUSTOM[kind], s, color)
     else:
