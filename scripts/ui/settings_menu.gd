@@ -28,6 +28,8 @@ var _sliders: Dictionary = {}
 var _sprint_button: Button
 var _color_button: Button
 var _hit_button: Button
+var _outline_button: Button
+var _outline_color_button: Button
 var _replay_button: Button
 
 
@@ -100,6 +102,10 @@ func _ready() -> void:
         vbox.add_child(_color_button)
         _hit_button = _make_button("", _on_hit_markers)
         vbox.add_child(_hit_button)
+        _outline_button = _make_button("", _on_outline)
+        vbox.add_child(_outline_button)
+        _outline_color_button = _make_button("", _on_outline_color)
+        vbox.add_child(_outline_color_button)
         _sprint_button = _make_button("", _on_sprint_mode)
         vbox.add_child(_sprint_button)
         _refresh_buttons()
@@ -252,6 +258,19 @@ func _on_reticle_color() -> void:
     _refresh_buttons()
 
 
+func _on_outline() -> void:
+    var on: bool = _settings.get_value("outline") > 0.5
+    _settings.set_value("outline", 0.0 if on else 1.0)
+    _refresh_buttons()
+
+
+func _on_outline_color() -> void:
+    var count: int = _settings.OUTLINE_COLORS.size()
+    var idx: int = (int(_settings.get_value("outline_color")) + 1) % count
+    _settings.set_value("outline_color", float(idx))
+    _refresh_buttons()
+
+
 func _on_hit_markers() -> void:
     var on: bool = _settings.get_value("hit_markers") > 0.5
     _settings.set_value("hit_markers", 0.0 if on else 1.0)
@@ -273,6 +292,13 @@ func _refresh_buttons() -> void:
     _color_button.add_theme_color_override("font_hover_color", entry["color"])
     _color_button.add_theme_color_override("font_pressed_color", entry["color"])
     _hit_button.text = "HIT MARKERS: " + ("ON" if _settings.get_value("hit_markers") > 0.5 else "OFF")
+    _outline_button.text = "RETICLE OUTLINE: " + ("ON" if _settings.get_value("outline") > 0.5 else "OFF")
+    var oidx: int = clampi(int(_settings.get_value("outline_color")), 0, _settings.OUTLINE_COLORS.size() - 1)
+    var oentry: Dictionary = _settings.OUTLINE_COLORS[oidx]
+    _outline_color_button.text = "OUTLINE COLOR: " + str(oentry["name"])
+    var ocol: Color = oentry.get("label", oentry["color"])
+    for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+    _outline_color_button.add_theme_color_override(c, ocol)
     _sprint_button.text = "SPRINT: " + ("HOLD" if _settings.get_value("sprint_hold") > 0.5 else "TOGGLE")
 
 
