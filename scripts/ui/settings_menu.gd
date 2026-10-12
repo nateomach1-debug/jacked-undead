@@ -298,7 +298,7 @@ func _refresh_buttons() -> void:
     _outline_color_button.text = "OUTLINE COLOR: " + str(oentry["name"])
     var ocol: Color = oentry.get("label", oentry["color"])
     for c in ["font_color", "font_hover_color", "font_pressed_color"]:
-    _outline_color_button.add_theme_color_override(c, ocol)
+        _outline_color_button.add_theme_color_override(c, ocol)
     _sprint_button.text = "SPRINT: " + ("HOLD" if _settings.get_value("sprint_hold") > 0.5 else "TOGGLE")
 
 
