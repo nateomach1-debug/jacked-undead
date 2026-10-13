@@ -31,18 +31,6 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 [ext_resource type="Script" path="res://scripts/managers/gym_arena_dresser.gd" id="30"]
 
-[ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://scenes/zombies/zombie.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/zombies/roid_rager.tscn" id="5"]
-[ext_resource type="PackedScene" path="res://scenes/stations/supplement_station.tscn" id="6"]
-[ext_resource type="PackedScene" path="res://scenes/stations/pr_rack.tscn" id="7"]
-[ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="8"]
-[ext_resource type="PackedScene" path="res://scenes/main/hud.tscn" id="9"]
-[ext_resource type="Resource" path="res://resources/weapons/pistol.tres" id="10"]
-[ext_resource type="PackedScene" path="res://scenes/main/touch_controls.tscn" id="11"]
-
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(40, 1, 40)
 
