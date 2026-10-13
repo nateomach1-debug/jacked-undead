@@ -483,4 +483,7 @@ func _build_blood() -> void:
     for i in 26:
         var w := rng.randi_range(0, 3)
         var u := rng.randf_range(-18.0, 18.0)
-        var y0 := rng.randf_r
+        var y0 := rng.randf_range(2.5, 6.5)
+        var drip := rng.randf_range(0.5, 2.0)
+        _wall_rect(k1, w, u - 0.05, u + 0.05, y0 - drip, y0, 0.07)
+        _wall_rect(k1, w, u - 0.18, u + 0.18, y0 - 0.15, y0 + 0.15, 0.068)
