@@ -29,6 +29,7 @@
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Crossbow_1.gltf" id="27"]
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
+[ext_resource type="Script" path="res://scripts/managers/gym_arena_dresser.gd" id="30"]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -265,3 +266,6 @@ ammo_cost = 450
 [node name="LootLocker" parent="Stations" instance=ExtResource("29")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -19.4)
 cost = 950
+
+[node name="GymArenaDresser" type="Node3D" parent="."]
+script = ExtResource("30")
