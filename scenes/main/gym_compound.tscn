@@ -31,6 +31,7 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 [ext_resource type="PackedScene" path="res://scenes/stations/buy_door.tscn" id="30"]
 [ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="31"]
+[ext_resource type="Script" path="res://scripts/managers/gym_compound_dresser.gd" id="32"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor_main"]
 size = Vector3(80, 1, 80)
@@ -571,6 +572,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35, 0, -10)
 [node name="LootLocker" parent="Stations" instance=ExtResource("29")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -10)
 
+[node name="GymCompoundDresser" type="Node3D" parent="."]
+script = ExtResource("32")
+
 [node name="NavBaker" type="NavigationRegion3D" parent="."]
-script = ExtResource("31")
-source_path = NodePath("..")
