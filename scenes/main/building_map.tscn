@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -22,6 +22,8 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/pr_rack.tscn" id="31"]
 [ext_resource type="PackedScene" path="res://scenes/stations/water_station.tscn" id="32"]
 [ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="33"]
+[ext_resource type="PackedScene" path="res://scenes/stations/buy_door.tscn" id="34"]
+[ext_resource type="Script" path="res://scripts/managers/building_dresser.gd" id="35"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -97,17 +99,41 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, -16.4, 12)
 [node name="SpawnPoint4" type="Marker3D" parent="SpawnPoints" groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, -16.4, 25)
 
+[node name="BuyableDoors" type="Node3D" parent="."]
+
+[node name="DoorMainRoom" parent="BuyableDoors" instance=ExtResource("34")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17.4, -17.2, 30.7)
+size = Vector3(7.5, 3.2, 0.4)
+cost = 1250
+display_name = "Main Room Wall"
+
+[node name="DoorStaircase" parent="BuyableDoors" instance=ExtResource("34")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.7, -17.2, 38.75)
+size = Vector3(0.4, 3.2, 3.2)
+cost = 1500
+display_name = "Staircase Wall"
+
+[node name="DoorPRRack" parent="BuyableDoors" instance=ExtResource("34")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.5, -14, 40.7)
+size = Vector3(6.7, 3.4, 0.4)
+cost = 2500
+display_name = "PR Rack Door"
+
 [node name="Stations" type="Node3D" parent="."]
 
 [node name="LootLocker" parent="Stations" instance=ExtResource("29")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 43.6, -17.2, 19.3)
 cost = 950
 
+[node name="LootLocker2" parent="Stations" instance=ExtResource("29")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -21, -14, 42.6)
+cost = 950
+
 [node name="PRRack" parent="Stations" instance=ExtResource("31")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -21, -17.2, 8)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 40.3, -14, 6.6)
 
 [node name="TRTStation" parent="Stations" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, -16.3, 29.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.6, -16.3, 50.5)
 supplement_id = "trt"
 display_name = "TRT"
 cost = 1500
@@ -123,7 +149,7 @@ body_color = Color(0.867, 0.4196, 0.1255, 1)
 icon_texture = ExtResource("16")
 
 [node name="WheyStation" parent="Stations" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29, -16.3, 29.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.4, -13.1, 31.6)
 supplement_id = "whey"
 display_name = "Whey Protein"
 cost = 2500
@@ -131,7 +157,7 @@ body_color = Color(0.4196, 0.2745, 0.7569, 1)
 icon_texture = ExtResource("17")
 
 [node name="PreWorkoutStation" parent="Stations" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, -16.3, 29.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.2, -13.1, 50.7)
 supplement_id = "pre_workout"
 display_name = "Pre-Workout"
 cost = 2000
@@ -139,7 +165,7 @@ body_color = Color(0.8392, 0.6196, 0.1804, 1)
 icon_texture = ExtResource("18")
 
 [node name="FishOilStation" parent="Stations" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, -16.3, 29.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.2, -16.3, 47, 
 supplement_id = "fish_oil"
 display_name = "Fish Oil"
 cost = 3000
@@ -154,5 +180,9 @@ cost = 1500
 body_color = Color(0.2196, 0.6314, 0.4118, 1)
 icon_texture = ExtResource("20")
 
+[node name="BuildingDresser" type="Node3D" parent="."]
+script = ExtResource("35")
+
 [node name="NavBaker" type="NavigationRegion3D" parent="."]
 script = ExtResource("33")
+source_path = NodePath("..")
