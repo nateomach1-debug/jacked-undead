@@ -1,8 +1,7 @@
 extends NavigationRegion3D
-## Builds the zombie navigation mesh at runtime from the building model,
+## Builds the zombie navigation mesh at runtime from the map model,
 ## since there's no editor to bake it in. Add this as a node to a map.
-## A label at the top of the screen shows whether it worked, plus how many
-## path points the nearest zombie currently has (0 = it's walking blind).
+## The NAV label only shows when the dev menu's "Nav data" toggle is on.
 
 @export var source_path: NodePath = NodePath("../BuildingModel")
 @export var show_debug_label: bool = true
@@ -13,31 +12,6 @@ extends NavigationRegion3D
 @export var agent_max_climb: float = 0.5   # tallest stair step the path may cross
 @export var agent_max_slope: float = 60.0
 @export var rebake_on_barrier: bool = true  # off for maps that join areas with NavigationLink3D instead
-
-# Temporary Cheese Cube probes: label + a point on that flight/landing surface.
-const PROBES: Array = [
-    ["F0", Vector3(2, 1.5, 18)],
-    ["F1", Vector3(18, 4.5, 0)],
-    ["F2", Vector3(0, 7.5, -18)],
-    ["F3", Vector3(-18, 10.5, 0)],
-    ["F4", Vector3(-2, 13.5, 18)],
-    ["F5", Vector3(18, 16.5, -2)],
-    ["F6", Vector3(0, 19.5, -18)],
-    ["F7", Vector3(-18, 22.5, -2)],
-    ["L1", Vector3(18, 3, 18)],
-    ["L2", Vector3(18, 6, -18)],
-    ["L3", Vector3(-18, 9, -18)],
-    ["L4", Vector3(-18, 12, 18)],
-    ["L5", Vector3(16, 15, 16)],
-    ["L6", Vector3(18, 18, -18)],
-    ["L7", Vector3(-18, 21, -18)],
-    ["L8", Vector3(-16, 24, 16)],
-    ["F2w", Vector3(-12, 8.6, -18)],
-    ["F3s", Vector3(-18, 11.5, 12)],
-    ["F4e", Vector3(10, 14.8, 18)],
-    ["F5s", Vector3(18, 15.2, 10)],
-    ["F6w", Vector3(-12, 20.6, -18)],
-]
 
 var _label: Label
 var _base_text: String = "NAV: baking..."
@@ -52,7 +26,7 @@ func _ready() -> void:
     nav.agent_height = agent_height
     nav.agent_max_climb = agent_max_climb
     nav.agent_max_slope = agent_max_slope
-    # Build from the meshes of the group below (the building model).
+    # Build from the meshes of the group below (the map model).
     nav.set("geometry_parsed_geometry_type", 0)
     nav.set("geometry_source_geometry_mode", 1)
     nav.set("geometry_source_group_name", &"navmesh_source")
@@ -98,7 +72,7 @@ func _on_bake_finished() -> void:
 
 
 func _process(delta: float) -> void:
-    if _label == null:
+    if _label == null or not _label.visible:
         return
     _debug_timer -= delta
     if _debug_timer > 0.0:
@@ -139,12 +113,7 @@ func _process(delta: float) -> void:
         line2 = "nearest zombie %.0fm away at (%.0f, %.0f, %.0f), path points: %d" % [best, nearest.global_position.x, nearest.global_position.y, nearest.global_position.z, pts]
         line3 = "you off nav: %.1fm | zombie off nav: %.1fm | path end to you: %.1fm | zombie speed: %.1f" % [you_gap, z_gap, end_gap, speed]
 
-    var probe_text: String = "off nav:"
-    for pr in PROBES:
-        var pv: Vector3 = pr[1]
-        var g: float = NavigationServer3D.map_get_closest_point(nav_map, pv).distance_to(pv)
-        probe_text += " %s %.1f" % [pr[0], g]
-    _label.text = _base_text + "\n" + line2 + "\n" + line3 + "\n" + probe_text
+    _label.text = _base_text + "\n" + line2 + "\n" + line3
 
 
 func _make_debug_label() -> void:
@@ -158,3 +127,5 @@ func _make_debug_label() -> void:
     _label.add_theme_font_size_override("font_size", 20)
     _label.visible = GameManager.dev_show_nav()
     layer.add_child(_label)
+
+# END OF FILE
