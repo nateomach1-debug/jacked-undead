@@ -165,7 +165,7 @@ body_color = Color(0.8392, 0.6196, 0.1804, 1)
 icon_texture = ExtResource("18")
 
 [node name="FishOilStation" parent="Stations" instance=ExtResource("30")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.2, -16.3, 47, 
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.2, -16.3, 47)
 supplement_id = "fish_oil"
 display_name = "Fish Oil"
 cost = 3000
