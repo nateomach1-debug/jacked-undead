@@ -118,7 +118,7 @@ func _door_tape(door: Node3D, c: Vector3, nrm: Vector3, w: float, text: String) 
     var longest: int = 0.5
     for ln in text.split("\n"):
         longest = maxi(longest, ln.length())
-    var th: float = minf(0.42, (w * 0.8) / (float(longest) * 0.85))
+    var th: float = minf(0.42, (w * 0.8) / (float(longest) * 0.85)) * 0.8
     _label(text, base + Vector3(0.0, 3.4, 0.0) + nrm * 0.05, nrm, th, YELLOW, 8, holder)
 
 
