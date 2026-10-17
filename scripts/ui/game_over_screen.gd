@@ -59,8 +59,9 @@ func _build_extra_ui() -> void:
 
 func _on_player_died() -> void:
     var coop: bool = NetManager.is_online
-    round_label.text = "ROUND REACHED: %d" % GameManager.round_number
+        round_label.text = "ROUND REACHED: %d" % GameManager.round_number
     _credit_juice()
+    _submit_leaderboard()
 
     # Solo: personal lines. Co-op: the scoreboard shows everyone (including you).
     kills_label.visible = not coop
@@ -222,6 +223,21 @@ func _credit_juice() -> void:
     var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
     _juice_label.text = "+%d JUICE EARNED  (TOTAL %d)" % [earned, profile.get_juice()]
     _credit_achievements()
+
+
+## Sends this run to the online leaderboard (only with default dev settings).
+func _submit_leaderboard() -> void:
+    if _dev_settings_changed():
+        return
+    if GameManager.kills <= 0:
+        return
+    var script = load("res://scripts/managers/leaderboard.gd")
+    if script == null:
+        return
+    var lb: Node = script.instance(get_tree())
+    if lb == null:
+        return
+    lb.submit_run(script.current_board(get_tree()), GameManager.round_number, GameManager.kills, GameManager.headshot_kills)
 
 
 func _dev_settings_changed() -> bool:
