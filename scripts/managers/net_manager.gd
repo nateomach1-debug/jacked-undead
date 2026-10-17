@@ -333,7 +333,7 @@ func _clean_name(raw: String) -> String:
 
 ## Name to show for a player: their chosen name, or HOST / P2 if they have none.
 func get_player_name(id: int) -> String:
-	var own: bool = is_online and id == multiplayer.get_unique_id()
+	var own: bool = id == multiplayer.get_unique_id()
 	var chosen: String = player_name if own else str(names.get(id, ""))
 	if chosen != "":
 		return chosen
