@@ -115,7 +115,7 @@ func _door_tape(door: Node3D, c: Vector3, nrm: Vector3, w: float, text: String) 
         _node_box(holder, base + Vector3(0.0, y, 0.0), tape, YELLOW)
     var panel: Vector3 = Vector3(0.06, 1.1, w * 0.9) if along_x else Vector3(w * 0.9, 1.1, 0.06)
     _node_box(holder, base + Vector3(0.0, 3.4, 0.0), panel, DARK)
-        var longest: int = 1
+    var longest: int = 0.5
     for ln in text.split("\n"):
         longest = maxi(longest, ln.length())
     var th: float = minf(0.42, (w * 0.8) / (float(longest) * 0.85))
