@@ -170,7 +170,7 @@ func _refresh() -> void:
     _clear_grid()
     _status.text = "LOADING..."
     _req_id += 1
-    _lb.fetch(_board_id(), _stat, _on_rows.bind(_req_id))
+    _status.text = "TEST: NETWORK OFF"
 
 
 func _on_rows(ok: bool, rows: Array, id: int) -> void:
