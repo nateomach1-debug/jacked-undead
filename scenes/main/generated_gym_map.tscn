@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="21"]
 [ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="31"]
 [ext_resource type="Script" path="res://scripts/mapgen/gym_floor_gen.gd" id="40"]
-[ext_resource type="Script" path="res://scripts/mapgen/map_gen_report.gd" id="41"]
+[ext_resource type="Script" path="res://scripts/mapgen/gym_floor_dresser.gd" id="42"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -37,6 +37,9 @@ transform = Transform3D(0.8, -0.4, 0.45, 0, 0.75, 0.66, -0.6, -0.53, 0.6, 0, 15,
 [node name="MapGen" type="Node3D" parent="."]
 script = ExtResource("40")
 
+[node name="MapGenDresser" type="Node3D" parent="."]
+script = ExtResource("42")
+
 [node name="Player" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 current_weapon = ExtResource("10")
@@ -56,6 +59,3 @@ roid_rager_scene = ExtResource("5")
 [node name="NavBaker" type="NavigationRegion3D" parent="."]
 script = ExtResource("31")
 source_path = NodePath("..")
-
-[node name="MapGenReport" type="Node" parent="."]
-script = ExtResource("41")
