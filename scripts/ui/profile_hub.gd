@@ -6,6 +6,7 @@ const SCREENS: Array = [
     {"text": "WEAPONS", "path": "res://scripts/ui/weapon_gallery.gd"},
     {"text": "MARKET", "path": "res://scripts/ui/market_menu.gd"},
     {"text": "ACHIEVEMENTS", "path": "res://scripts/ui/achievements_menu.gd"},
+    {"text": "LEADERBOARDS", "path": "res://scripts/ui/leaderboard_menu.gd"},
 ]
 
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
