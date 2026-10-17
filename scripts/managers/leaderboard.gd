@@ -141,6 +141,7 @@ func _headers(post: bool) -> PackedStringArray:
 
 func _player_name() -> String:
     var nm: String = ""
+    if "player_name" in NetManager:
         nm = str(NetManager.player_name)
     nm = nm.strip_edges().to_upper()
     if nm == "":
