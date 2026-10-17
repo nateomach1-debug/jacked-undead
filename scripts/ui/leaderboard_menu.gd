@@ -31,7 +31,13 @@ func _ready() -> void:
 
     var script = load(LB_PATH)
     if script != null:
-        _lb = script.instance(get_tree())
+        _lb = get_tree().root.get_node_or_null("LeaderboardNet")
+        if _lb == null:
+            _lb = Node.new()
+            _lb.set_script(script)
+            _lb.name = "LeaderboardNet"
+            _lb.process_mode = Node.PROCESS_MODE_ALWAYS
+            get_tree().root.add_child(_lb)
         _maps = script.MAPS
 
     _add_backdrop()
