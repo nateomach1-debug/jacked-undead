@@ -1,9 +1,21 @@
 extends Control
-## Leaderboards screen: pick a map (arrows) and SOLO / CO-OP, then sort by
-## ROUND, KILLS or HEADSHOTS. Shows the top 10 players (best per player).
+## Leaderboards screen (self-contained): pick a map (arrows) and SOLO / CO-OP,
+## then sort by ROUND, KILLS or HEADSHOTS. Shows the top 10 players.
 
-const LB_PATH: String = "res://scripts/managers/leaderboard.gd"
+const URL: String = "https://qnomdtgtfdocdpoaqyxa.supabase.co/rest/v1/"
+const KEY: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFub21kdGd0ZmRvY2Rwb2FxeXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDAxNTIsImV4cCI6MjEwMjIxNjE1Mn0.A8Duae95xq3eAlHBTJokspTMC-pn_1A2Z2wQhP2PSXI"
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
+
+const MAPS: Array = [
+    {"id": "main", "title": "TRAINING GYM"},
+    {"id": "multi_room_map", "title": "MULTI-ROOM"},
+    {"id": "building_map", "title": "BUILDING"},
+    {"id": "cheese_cube_map", "title": "CHEESE CUBE"},
+    {"id": "solar_substation", "title": "SOLAR SUBSTATION"},
+    {"id": "challenge_map", "title": "CHALLENGE MAP"},
+    {"id": "gym_compound", "title": "GYM COMPOUND"},
+    {"id": "generated_gym_map", "title": "RANDOM GYM"},
+]
 
 const TABS: Array = [
     {"stat": "best_round", "text": "ROUND"},
@@ -11,8 +23,6 @@ const TABS: Array = [
     {"stat": "headshots", "text": "HEADSHOTS"},
 ]
 
-var _lb: Node = null
-var _maps: Array = []
 var _map_idx: int = 0
 var _coop: bool = false
 var _stat: String = "best_round"
@@ -28,17 +38,6 @@ var _status: Label = null
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_STOP
-
-    var script = load(LB_PATH)
-    if script != null:
-        _lb = get_tree().root.get_node_or_null("LeaderboardNet")
-        if _lb == null:
-            _lb = Node.new()
-            _lb.set_script(script)
-            _lb.name = "LeaderboardNet"
-            _lb.process_mode = Node.PROCESS_MODE_ALWAYS
-            get_tree().root.add_child(_lb)
-        _maps = script.MAPS
 
     _add_backdrop()
 
@@ -57,7 +56,6 @@ func _ready() -> void:
     title.add_theme_font_size_override("font_size", 40)
     vbox.add_child(title)
 
-    # Map row: < MAP NAME >   SOLO/CO-OP
     var map_row := HBoxContainer.new()
     map_row.alignment = BoxContainer.ALIGNMENT_CENTER
     map_row.add_theme_constant_override("separation", 12)
@@ -70,10 +68,11 @@ func _ready() -> void:
     map_row.add_child(prev)
 
     _map_label = Label.new()
+    _map_label.text = "TRAINING GYM"
     _map_label.theme_type_variation = &"GoldLabel"
     _map_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _map_label.custom_minimum_size = Vector2(360, 56)
     _map_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    _map_label.custom_minimum_size = Vector2(360, 56)
     _map_label.add_theme_font_size_override("font_size", 26)
     map_row.add_child(_map_label)
 
@@ -84,11 +83,11 @@ func _ready() -> void:
     map_row.add_child(nxt)
 
     _mode_btn = Button.new()
+    _mode_btn.text = "SOLO"
     _mode_btn.custom_minimum_size = Vector2(150, 56)
     _mode_btn.pressed.connect(_toggle_mode)
     map_row.add_child(_mode_btn)
 
-    # Sort tabs.
     var tab_row := HBoxContainer.new()
     tab_row.alignment = BoxContainer.ALIGNMENT_CENTER
     tab_row.add_theme_constant_override("separation", 12)
@@ -101,7 +100,6 @@ func _ready() -> void:
         tab_row.add_child(b)
         _tab_btns[str(t["stat"])] = b
 
-    # Table card.
     var card := PanelContainer.new()
     card.theme_type_variation = &"CardPanel"
     card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -113,6 +111,7 @@ func _ready() -> void:
     card.add_child(_grid)
 
     _status = Label.new()
+    _status.text = "LOADING..."
     _status.theme_type_variation = &"SmallLabel"
     _status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _status.add_theme_font_size_override("font_size", 18)
@@ -125,7 +124,10 @@ func _ready() -> void:
     back.pressed.connect(queue_free)
     vbox.add_child(back)
 
-    _refresh()
+    # Draw the screen first, then load the scores.
+    await get_tree().process_frame
+    if is_inside_tree():
+        _refresh()
 
 
 func _add_backdrop() -> void:
@@ -142,9 +144,7 @@ func _add_backdrop() -> void:
 
 
 func _step_map(dir: int) -> void:
-    if _maps.is_empty():
-        return
-    _map_idx = (_map_idx + dir + _maps.size()) % _maps.size()
+    _map_idx = (_map_idx + dir + MAPS.size()) % MAPS.size()
     _refresh()
 
 
@@ -159,17 +159,14 @@ func _set_stat(stat: String) -> void:
 
 
 func _board_id() -> String:
-    var id: String = str(_maps[_map_idx]["id"])
+    var id: String = str(MAPS[_map_idx]["id"])
     if _coop:
         id += ":coop"
     return id
 
 
 func _refresh() -> void:
-    if _maps.is_empty() or _lb == null:
-        _status.text = "LEADERBOARD UNAVAILABLE"
-        return
-    _map_label.text = str(_maps[_map_idx]["title"])
+    _map_label.text = str(MAPS[_map_idx]["title"])
     _mode_btn.text = "CO-OP" if _coop else "SOLO"
     for s in _tab_btns.keys():
         var tab: Button = _tab_btns[s]
@@ -180,10 +177,32 @@ func _refresh() -> void:
     _clear_grid()
     _status.text = "LOADING..."
     _req_id += 1
-    _lb.fetch(_board_id(), _stat, _on_rows.bind(_req_id))
+    var my_id: int = _req_id
+
+    var req := HTTPRequest.new()
+    req.timeout = 10.0
+    add_child(req)
+    req.request_completed.connect(_on_http.bind(req, my_id))
+    var url: String = "%sju_best?board=eq.%s&select=player_name,best_round,kills,headshots&order=%s.desc&limit=10" % [URL, _board_id().uri_encode(), _stat]
+    var headers := PackedStringArray(["apikey: " + KEY, "Authorization: Bearer " + KEY])
+    if req.request(url, headers) != OK:
+        req.queue_free()
+        _show_rows(false, [], my_id)
 
 
-func _on_rows(ok: bool, rows: Array, id: int) -> void:
+func _on_http(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, req: HTTPRequest, my_id: int) -> void:
+    req.queue_free()
+    if result != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
+        _show_rows(false, [], my_id)
+        return
+    var data = JSON.parse_string(body.get_string_from_utf8())
+    if data is Array:
+        _show_rows(true, data, my_id)
+    else:
+        _show_rows(false, [], my_id)
+
+
+func _show_rows(ok: bool, rows: Array, id: int) -> void:
     if id != _req_id:
         return
     _clear_grid()
