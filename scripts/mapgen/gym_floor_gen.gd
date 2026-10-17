@@ -35,6 +35,8 @@ const SUPPS: Array = [
     {"id": "pre_workout", "name": "Pre-Workout", "cost": 2000, "color": Color(0.8392, 0.6196, 0.1804), "icon": "res://resources/icons/pre_workout.svg"},
     {"id": "fish_oil", "name": "Fish Oil", "cost": 3000, "color": Color(0.1922, 0.5922, 0.5843), "icon": "res://resources/icons/fish_oil.svg"},
     {"id": "bcaas", "name": "BCAAs", "cost": 1500, "color": Color(0.2196, 0.6314, 0.4118), "icon": "res://resources/icons/bcaas.svg"},
+    {"id": "glutamine", "name": "GLUTAMINE", "cost": 3000, "color": Color(0.6, 0.25, 0.9, 1), "icon": "res://resources/icons/glutamine.svg"},
+    {"id": "collagen", "name": "COLLAGEN", "cost": 2000, "color": Color(1.0, 0.2, 0.6, 1), "icon": "res://resources/icons/collagen.svg"},
 ]
 const GUNS: Array = [
     {"w": "res://resources/weapons/smg.tres", "m": "res://resources/models/weapons/SMG_1.gltf", "name": "SMG", "buy": 1000, "ammo": 500},
