@@ -66,7 +66,7 @@ func _make_ghost(info: Dictionary) -> void:
     g.size = Vector2(float(info["w"]), float(info["h"]))
     g.pivot_offset = g.size / 2.0
     g.draw.connect(_draw_ghost.bind(g, id))
-    g.gui_input.connect(_on_ghost_input.bind(g, id))
+    g.gui_input.connect(_on_ghost_event.bind(g, id))
     add_child(g)
     _ghosts[id] = g
     _refresh_ghost(id)
@@ -119,6 +119,43 @@ func _on_ghost_input(event: InputEvent, g: Control, id: String) -> void:
         _layout.set_center(id, c, vp)
         _refresh_ghost(id)
         g.accept_event()
+
+
+func _on_ghost_event(event: InputEvent, g: Control, id: String) -> void:
+    var pressed_now: bool = false
+    var released_now: bool = false
+    var moving: bool = false
+    if event is InputEventMouseButton:
+        if event.button_index != MOUSE_BUTTON_LEFT:
+            return
+        pressed_now = event.pressed
+        released_now = not event.pressed
+    elif event is InputEventScreenTouch:
+        pressed_now = event.pressed
+        released_now = not event.pressed
+    elif event is InputEventMouseMotion:
+        moving = (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0
+    elif event is InputEventScreenDrag:
+        moving = true
+    else:
+        return
+    var xf: Transform2D = g.get_global_transform()
+    var gp: Vector2 = xf * event.position
+    var centre: Vector2 = xf * (g.size / 2.0)
+    if pressed_now:
+        _select(id)
+        _grab = gp - centre
+    elif released_now:
+        _layout.save()
+    elif moving and id == _selected:
+        var vp: Vector2 = get_viewport_rect().size
+        var half: Vector2 = g.size * _layout.scale_of(id) / 2.0
+        var c: Vector2 = gp - _grab
+        c.x = clampf(c.x, half.x, vp.x - half.x)
+        c.y = clampf(c.y, half.y, vp.y - half.y)
+        _layout.set_center(id, c, vp)
+        _refresh_ghost(id)
+    g.accept_event()
 
 
 func _select(id: String) -> void:
