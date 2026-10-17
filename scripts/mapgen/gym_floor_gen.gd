@@ -320,18 +320,18 @@ func _collect_slots() -> Array:
     return slots
 
 
-func _pop_slot(g: int, slots: Array):
+func _pop_slot(g: int, slots: Array) -> Dictionary:
     if not slots[g].is_empty():
         return slots[g].pop_back()
     for h in _g_count:
         if not slots[h].is_empty():
             return slots[h].pop_back()
-    return null
+    return {}
 
 
 func _put(kind: String, i: int, g: int, slots: Array) -> void:
-    var s = _pop_slot(g, slots)
-    if s == null:
+    var s: Dictionary = _pop_slot(g, slots)
+    if s.is_empty():
         push_warning("MapGen: no free wall slot for " + kind)
         return
     var n: Node3D = null
