@@ -59,7 +59,7 @@ func _build_extra_ui() -> void:
 
 func _on_player_died() -> void:
     var coop: bool = NetManager.is_online
-        round_label.text = "ROUND REACHED: %d" % GameManager.round_number
+    round_label.text = "ROUND REACHED: %d" % GameManager.round_number
     _credit_juice()
     _submit_leaderboard()
 
@@ -277,3 +277,5 @@ func _credit_achievements() -> void:
     vbox.add_child(banner)
     if _juice_label != null:
         vbox.move_child(banner, _juice_label.get_index() + 1)
+
+# END OF FILE
