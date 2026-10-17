@@ -109,6 +109,8 @@ func _ready() -> void:
         _sprint_button = _make_button("", _on_sprint_mode)
         vbox.add_child(_sprint_button)
         _refresh_buttons()
+        _add_section(vbox, "TOUCH CONTROLS")
+        vbox.add_child(_make_button("HUD LAYOUT", _on_hud_layout))
         _add_section(vbox, "RESET")
         var reset := _make_button("RESET TO DEFAULTS", _on_reset)
         reset.theme_type_variation = &"DangerButton"
@@ -308,6 +310,15 @@ func _on_reset() -> void:
         _update_label(key)
         _sync_slider(key)
     _refresh_buttons()
+
+
+func _on_hud_layout() -> void:
+    var script = load("res://scripts/ui/hud_layout_editor.gd")
+    if script == null:
+        return
+    var editor := Control.new()
+    editor.set_script(script)
+    add_child(editor)
 
 
 func _on_back() -> void:
