@@ -1,0 +1,111 @@
+extends RefCounted
+## Saved position / size / opacity of the on-screen HUD (user://hud_layout.cfg).
+## Loaded with load() + a null check, so a problem here can't break the game.
+## corner: "bl" bottom-left, "br" bottom-right. cx / cy = distance from that
+## corner to the element's centre (px at the 720p layout).
+
+const FILE: String = "user://hud_layout.cfg"
+const ELEMENTS: Array = [
+    {"id": "joystick", "title": "JOYSTICK", "w": 360.0, "h": 360.0, "corner": "bl", "cx": 250.0, "cy": 240.0, "scalable": false},
+    {"id": "use", "title": "USE", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 95.0, "scalable": true},
+    {"id": "reload", "title": "RELOAD", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 260.0, "scalable": true},
+    {"id": "aim", "title": "AIM", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 425.0, "scalable": true},
+    {"id": "jump", "title": "JUMP", "w": 150.0, "h": 150.0, "corner": "br", "cx": 260.0, "cy": 95.0, "scalable": true},
+    {"id": "sprint", "title": "SPRINT", "w": 150.0, "h": 150.0, "corner": "br", "cx": 260.0, "cy": 260.0, "scalable": true},
+    {"id": "switch", "title": "SWAP", "w": 150.0, "h": 150.0, "corner": "br", "cx": 260.0, "cy": 425.0, "scalable": true},
+]
+
+## id -> {"x": fraction, "y": fraction, "s": scale, "a": opacity}
+var data: Dictionary = {}
+
+
+func _init() -> void:
+    var cfg := ConfigFile.new()
+    if cfg.load(FILE) != OK:
+        return
+    for sec in cfg.get_sections():
+        if info(sec).is_empty():
+            continue
+        var d: Dictionary = {}
+        for key in ["x", "y", "s", "a"]:
+            if cfg.has_section_key(sec, key):
+                d[key] = float(cfg.get_value(sec, key))
+        if not d.is_empty():
+            data[sec] = d
+
+
+func info(id: String) -> Dictionary:
+    for e in ELEMENTS:
+        if e["id"] == id:
+            return e
+    return {}
+
+
+func has_custom() -> bool:
+    return not data.is_empty()
+
+
+## Centre of the element in screen pixels (saved spot, or the default one).
+func center(id: String, vp: Vector2) -> Vector2:
+    var d: Dictionary = data.get(id, {})
+    if d.has("x") and d.has("y"):
+        return Vector2(float(d["x"]) * vp.x, float(d["y"]) * vp.y)
+    var e: Dictionary = info(id)
+    if e.is_empty():
+        return vp / 2.0
+    var x: float = float(e["cx"])
+    if str(e["corner"]) == "br":
+        x = vp.x - x
+    return Vector2(x, vp.y - float(e["cy"]))
+
+
+func scale_of(id: String) -> float:
+    var e: Dictionary = info(id)
+    if e.is_empty() or not bool(e.get("scalable", true)):
+        return 1.0
+    var d: Dictionary = data.get(id, {})
+    return float(d.get("s", 1.0))
+
+
+func alpha_of(id: String) -> float:
+    var d: Dictionary = data.get(id, {})
+    return float(d.get("a", 1.0))
+
+
+func _entry(id: String) -> Dictionary:
+    if not data.has(id):
+        data[id] = {}
+    return data[id]
+
+
+func set_center(id: String, c: Vector2, vp: Vector2) -> void:
+    var d: Dictionary = _entry(id)
+    d["x"] = c.x / maxf(vp.x, 1.0)
+    d["y"] = c.y / maxf(vp.y, 1.0)
+
+
+func set_scale(id: String, v: float) -> void:
+    _entry(id)["s"] = v
+
+
+func set_alpha(id: String, v: float) -> void:
+    _entry(id)["a"] = v
+
+
+func reset_one(id: String) -> void:
+    data.erase(id)
+
+
+func reset_all() -> void:
+    data.clear()
+
+
+func save() -> void:
+    var cfg := ConfigFile.new()
+    for id in data.keys():
+        var d: Dictionary = data[id]
+        for key in d.keys():
+            cfg.set_value(id, key, d[key])
+    cfg.save(FILE)
+
+# END OF FILE
