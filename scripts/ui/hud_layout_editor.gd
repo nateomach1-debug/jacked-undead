@@ -10,6 +10,7 @@ var _layout = null
 var _ghosts: Dictionary = {}
 var _selected: String = ""
 var _grab: Vector2 = Vector2.ZERO
+var _hidden: Array = []
 var _title_label: Label
 var _size_label: Label
 var _alpha_label: Label
@@ -17,6 +18,7 @@ var _alpha_label: Label
 
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _hide_siblings()
     var script = load(LAYOUT_PATH)
     if script != null:
         _layout = script.new()
@@ -26,6 +28,23 @@ func _ready() -> void:
             _make_ghost(info)
     _build_panel()
     _update_labels()
+
+
+func _hide_siblings() -> void:
+    var p: Node = get_parent()
+    if p == null:
+        return
+    for c in p.get_children():
+        if c != self and c is CanvasItem and c.visible:
+            c.visible = false
+            _hidden.append(c)
+
+
+func _exit_tree() -> void:
+    for c in _hidden:
+        if is_instance_valid(c):
+            c.visible = true
+    _hidden.clear()
 
 
 func _add_backdrop() -> void:
