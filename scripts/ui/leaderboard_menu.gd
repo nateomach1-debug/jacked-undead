@@ -29,7 +29,7 @@ func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_STOP
 
-    var script = null
+    var script = load(LB_PATH)
     if script != null:
         _lb = get_tree().root.get_node_or_null("LeaderboardNet")
         if _lb == null:
@@ -172,11 +172,15 @@ func _refresh() -> void:
     _map_label.text = str(_maps[_map_idx]["title"])
     _mode_btn.text = "CO-OP" if _coop else "SOLO"
     for s in _tab_btns.keys():
-        _tab_btns[s].theme_type_variation = &"MainButton" if s == _stat else &""
+        var tab: Button = _tab_btns[s]
+        if s == _stat:
+            tab.modulate = Color(1.0, 0.8, 0.1, 1.0)
+        else:
+            tab.modulate = Color(1.0, 1.0, 1.0, 1.0)
     _clear_grid()
     _status.text = "LOADING..."
     _req_id += 1
-    _status.text = "TEST: NETWORK OFF"
+    _lb.fetch(_board_id(), _stat, _on_rows.bind(_req_id))
 
 
 func _on_rows(ok: bool, rows: Array, id: int) -> void:
