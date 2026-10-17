@@ -29,7 +29,7 @@ func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_STOP
 
-    var script = load(LB_PATH)
+    var script = null
     if script != null:
         _lb = get_tree().root.get_node_or_null("LeaderboardNet")
         if _lb == null:
