@@ -7,6 +7,7 @@ const SCREENS: Array = [
     {"text": "MARKET", "path": "res://scripts/ui/market_menu.gd"},
     {"text": "ACHIEVEMENTS", "path": "res://scripts/ui/achievements_menu.gd"},
     {"text": "LEADERBOARDS", "path": "res://scripts/ui/leaderboard_menu.gd"},
+    {"text": "NAME", "path": "res://scripts/ui/name_menu.gd"},
 ]
 
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
@@ -46,7 +47,7 @@ func _ready() -> void:
     for s in SCREENS:
         var b := Button.new()
         b.text = str(s["text"])
-        b.custom_minimum_size = Vector2(340, 80)
+        b.custom_minimum_size = Vector2(340, 64)
         b.add_theme_font_size_override("font_size", 26)
         b.pressed.connect(_open.bind(str(s["path"])))
         vbox.add_child(b)
