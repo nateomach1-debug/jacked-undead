@@ -55,6 +55,7 @@ static func current_board(tree: SceneTree) -> String:
 func _ready() -> void:
     _http = HTTPRequest.new()
     _http.timeout = 15.0
+    _http.use_threads = true
     add_child(_http)
     _http.request_completed.connect(_on_post_done)
     _load_pending()
@@ -84,6 +85,7 @@ func fetch(board: String, stat: String, cb: Callable) -> void:
     _flush()
     var req := HTTPRequest.new()
     req.timeout = 15.0
+    req.use_threads = true
     add_child(req)
     req.request_completed.connect(_on_fetch_done.bind(req, cb))
     var url: String = "%sju_best?board=eq.%s&select=player_name,best_round,kills,headshots&order=%s.desc&limit=10" % [URL, board.uri_encode(), stat]
