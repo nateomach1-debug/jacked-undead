@@ -156,6 +156,7 @@ func bind_round_manager(round_manager: Node) -> void:
 
 
 func _process(_delta: float) -> void:
+    _refresh_prompt_style()
     if _player:
         var pos: Vector3 = _player.global_position
         coords_label.text = "X: %.1f  Y: %.1f  Z: %.1f" % [pos.x, pos.y, pos.z]
@@ -211,7 +212,8 @@ func _on_zombies_changed(remaining: int, _total: int) -> void:
 
 
 func _on_prompt_changed(text: String) -> void:
-    prompt_label.text = text
+    _prompt_raw = text
+    prompt_label.text = _pad_text(text)
     prompt_label.visible = text != ""
 
 
@@ -250,5 +252,37 @@ func _on_stamina_changed(current: float, max_stamina: float) -> void:
     _stamina_bar.max_value = max_stamina
     _stamina_bar.value = current
     _stamina_bar.visible = current < max_stamina - 0.1
+
+var _prompt_raw: String = ""
+var _prompt_pad: bool = false
+var _pad_names = null
+
+
+## While a pad is active, "Tap USE" / "Hold USE" becomes e.g. "Press B" / "Hold Circle".
+func _pad_text(text: String) -> String:
+    if text == "" or not GamepadManager.gamepad_active:
+        return text
+    if _pad_names == null:
+        var script = load("res://scripts/managers/pad_names.gd")
+        if script == null:
+            return text
+        _pad_names = script.new()
+    var btn: String = _pad_names.button_name("interact")
+    if btn == "":
+        return text
+    var press_re := RegEx.create_from_string("(?i)\\b(?:tap|press)\\s+use\\b")
+    var hold_re := RegEx.create_from_string("(?i)\\bhold\\s+use\\b")
+    text = press_re.sub(text, "Press " + btn, true)
+    text = hold_re.sub(text, "Hold " + btn, true)
+    return text
+
+
+## Re-words the current prompt when you switch between touch and pad.
+func _refresh_prompt_style() -> void:
+    if GamepadManager.gamepad_active == _prompt_pad:
+        return
+    _prompt_pad = GamepadManager.gamepad_active
+    if _prompt_raw != "":
+        prompt_label.text = _pad_text(_prompt_raw)
 
 # END OF FILE
