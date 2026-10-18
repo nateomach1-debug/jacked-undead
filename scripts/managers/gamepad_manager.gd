@@ -4,9 +4,11 @@ extends Node
 const LOOK_DEG_PER_SEC: float = 200.0
 const ACTIVATE_AXIS_THRESHOLD: float = 0.5
 const DEFAULT_DEADZONE: float = 0.2
+const BINDINGS_PATH: String = "res://scripts/managers/gamepad_bindings.gd"
 
 var gamepad_active: bool = false
 var _sprint_on: bool = false
+var _bindings = null
 
 
 func _ready() -> void:
@@ -15,16 +17,27 @@ func _ready() -> void:
     _add_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
     _add_axis("move_forward", JOY_AXIS_LEFT_Y, -1.0)
     _add_axis("move_back", JOY_AXIS_LEFT_Y, 1.0)
-    _add_axis("shoot", JOY_AXIS_TRIGGER_RIGHT, 1.0)
     _add_axis("look_left", JOY_AXIS_RIGHT_X, -1.0)
     _add_axis("look_right", JOY_AXIS_RIGHT_X, 1.0)
     _add_axis("look_up", JOY_AXIS_RIGHT_Y, -1.0)
     _add_axis("look_down", JOY_AXIS_RIGHT_Y, 1.0)
+    reload_bindings()
+    _refresh_settings()
+
+
+## Loads the saved bindings (Settings > CONTROLLER BUTTONS) onto the InputMap.
+func reload_bindings() -> void:
+    var script = load(BINDINGS_PATH)
+    _bindings = script.new() if script != null else null
+    if _bindings != null:
+        _bindings.apply_to_input_map()
+        return
+    # Fallback if the bindings script is missing: the original layout.
+    _add_axis("shoot", JOY_AXIS_TRIGGER_RIGHT, 1.0)
+    _add_axis("aim", JOY_AXIS_TRIGGER_LEFT, 1.0)
     _add_button("jump", JOY_BUTTON_A)
     _add_button("reload", JOY_BUTTON_X)
     _add_button("interact", JOY_BUTTON_B)
-    _add_axis("aim", JOY_AXIS_TRIGGER_LEFT, 1.0)
-    _refresh_settings()
 
 
 func _ensure_action(action: String) -> void:
@@ -82,25 +95,38 @@ func _set_active(on: bool) -> void:
         Input.action_release("sprint")
 
 
+## True if this button is bound to the action (falls back to the original layout).
+func _bound(action: String, button: int) -> bool:
+    if _bindings != null:
+        return _bindings.matches(action, button)
+    match action:
+        "next_weapon":
+            return button == JOY_BUTTON_Y or button == JOY_BUTTON_RIGHT_SHOULDER
+        "prev_weapon":
+            return button == JOY_BUTTON_LEFT_SHOULDER
+        "sprint":
+            return button == JOY_BUTTON_LEFT_STICK
+    return false
+
+
 func _handle_button(button: int) -> void:
     if not _in_game():
         return
     var player := get_tree().get_first_node_in_group("player")
     if player == null:
         return
-    match button:
-        JOY_BUTTON_Y, JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_DPAD_RIGHT:
-            if player.has_method("switch_weapon"):
-                player.switch_weapon(1)
-        JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_DPAD_LEFT:
-            if player.has_method("switch_weapon"):
-                player.switch_weapon(-1)
-        JOY_BUTTON_LEFT_STICK:
-            _sprint_on = not _sprint_on
-            if _sprint_on:
-                Input.action_press("sprint")
-            else:
-                Input.action_release("sprint")
+    if _bound("next_weapon", button) or button == JOY_BUTTON_DPAD_RIGHT:
+        if player.has_method("switch_weapon"):
+            player.switch_weapon(1)
+    elif _bound("prev_weapon", button) or button == JOY_BUTTON_DPAD_LEFT:
+        if player.has_method("switch_weapon"):
+            player.switch_weapon(-1)
+    elif _bound("sprint", button):
+        _sprint_on = not _sprint_on
+        if _sprint_on:
+            Input.action_press("sprint")
+        else:
+            Input.action_release("sprint")
 
 
 func _process(delta: float) -> void:
@@ -232,9 +258,9 @@ func _sprint_hold_mode() -> bool:
     return _settings != null and _settings.get_value("sprint_hold") > 0.5
 
 
-## Hold mode: letting go of L3 stops sprinting.
+## Hold mode: letting go of the sprint button stops sprinting.
 func _unhandled_input(event: InputEvent) -> void:
-    if event is InputEventJoypadButton and not event.pressed and event.button_index == JOY_BUTTON_LEFT_STICK:
+    if event is InputEventJoypadButton and not event.pressed and _bound("sprint", event.button_index):
         if _sprint_hold_mode() and _sprint_on:
             _sprint_on = false
             Input.action_release("sprint")
