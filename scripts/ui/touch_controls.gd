@@ -85,7 +85,7 @@ func _apply_layout() -> void:
     if script == null:
         return
     _layout = script.new()
-    if not _layout.has_custom():
+    if not _layout.has_group("touch"):
         return
     var vp: Vector2 = get_viewport().get_visible_rect().size
     var cluster = btn_use.get_parent()
