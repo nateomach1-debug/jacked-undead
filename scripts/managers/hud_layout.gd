@@ -4,6 +4,7 @@ extends RefCounted
 ## corner: bl/br bottom corners, tl/tr top corners, tc/bc top/bottom centre.
 ## cx / cy = distance from that corner (or from the centre line for tc/bc)
 ## to the element's centre, in pixels. w / h = size of the editor box.
+## "wfrac" / "wsub": width = screen width * wfrac - wsub (the shoot area).
 
 const FILE: String = "user://hud_layout.cfg"
 const ELEMENTS: Array = [
@@ -64,31 +65,7 @@ func has_group(group: String) -> bool:
     return false
 
 
-## Centre of the element in screen pixels (saved spot, or the default one).
-func center(id: String, vp: Vector2) -> Vector2:
-    var d: Dictionary = data.get(id, {})
-    if d.has("x") and d.has("y"):
-        return Vector2(float(d["x"]) * vp.x, float(d["y"]) * vp.y)
-    var e: Dictionary = info(id)
-    if e.is_empty():
-        return vp / 2.0
-    if e.has("wfrac"):
-    var zs: Vector2 = size_of(id, vp)
-    return Vector2(vp.x - zs.x / 2.0, vp.y - zs.y / 2.0)
-    var x: float = float(e["cx"])
-    var y: float = float(e["cy"])
-    var corner: String = str(e["corner"])
-    var px: float = x
-    if corner == "br" or corner == "tr":
-        px = vp.x - x
-    elif corner == "tc" or corner == "bc":
-        px = vp.x / 2.0 + x
-    var py: float = y
-    if corner == "bl" or corner == "br" or corner == "bc":
-        py = vp.y - y
-    return Vector2(px, py)
-
-
+## Base size of the element in pixels (the shoot area depends on screen width).
 func size_of(id: String, vp: Vector2) -> Vector2:
     var e: Dictionary = info(id)
     if e.is_empty():
@@ -103,6 +80,31 @@ func size_of(id: String, vp: Vector2) -> Vector2:
 func rect_of(id: String, vp: Vector2) -> Rect2:
     var sz: Vector2 = size_of(id, vp) * scale_of(id)
     return Rect2(center(id, vp) - sz / 2.0, sz)
+
+
+## Centre of the element in screen pixels (saved spot, or the default one).
+func center(id: String, vp: Vector2) -> Vector2:
+    var d: Dictionary = data.get(id, {})
+    if d.has("x") and d.has("y"):
+        return Vector2(float(d["x"]) * vp.x, float(d["y"]) * vp.y)
+    var e: Dictionary = info(id)
+    if e.is_empty():
+        return vp / 2.0
+    if e.has("wfrac"):
+        var zs: Vector2 = size_of(id, vp)
+        return Vector2(vp.x - zs.x / 2.0, vp.y - zs.y / 2.0)
+    var x: float = float(e["cx"])
+    var y: float = float(e["cy"])
+    var corner: String = str(e["corner"])
+    var px: float = x
+    if corner == "br" or corner == "tr":
+        px = vp.x - x
+    elif corner == "tc" or corner == "bc":
+        px = vp.x / 2.0 + x
+    var py: float = y
+    if corner == "bl" or corner == "br" or corner == "bc":
+        py = vp.y - y
+    return Vector2(px, py)
 
 
 func scale_of(id: String) -> float:
