@@ -22,7 +22,7 @@ func _ready() -> void:
 
 ## Headshot = the hit is at or above the real head's height (follows size, lean and bobbing).
 ## Raise HEAD_MARGIN if head hits still miss, lower it if chest hits count.
-const HEAD_MARGIN: float = 0.10
+const HEAD_MARGIN: float = 0.05
 
 func is_headshot(world_hit_position: Vector3) -> bool:
     if _head == null or _visual == null or not is_instance_valid(_head):
