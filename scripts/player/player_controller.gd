@@ -114,6 +114,7 @@ var _fall_peak_speed: float = 0.0
 var current_weapon_index: int = 0
 var current_mag_ammo: int = 0
 var current_reserve_ammo: int = 0
+const MAX_WEAPONS: int = 2
 var _saved_mag_ammo: Array = []
 var _saved_reserve_ammo: Array = []
 var owned_weapon_names: Array = []  # base weapon_name of each gun ever bought, for wall-buy stations
@@ -675,6 +676,69 @@ func has_weapon(w: WeaponData) -> bool:
 ## Adds it to the loadout and immediately equips it. The gun in your
 ## hands keeps its current ammo for when you swap back to it.
 func add_weapon_to_loadout(w: WeaponData) -> void:
+    if has_weapon(w):
+        return
+    if weapon_loadout.size() >= MAX_WEAPONS:
+        _replace_held_weapon(w, w.mag_size, w.max_reserve_ammo)
+        return
+    _add_weapon_free_slot(w)
+
+
+## Called by a dropped-gun pickup. Brings the gun back with its saved ammo.
+func pickup_weapon(w: WeaponData, mag: int, reserve: int) -> void:
+    if w == null or _owns_base(w):
+        return
+    if weapon_loadout.size() >= MAX_WEAPONS:
+        _replace_held_weapon(w, mag, reserve)
+        return
+    _add_weapon_free_slot(w)
+    current_mag_ammo = mag
+    current_reserve_ammo = reserve
+    ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+func _owns_base(w: WeaponData) -> bool:
+    for owned in weapon_loadout:
+        if owned != null and owned.get_base_name() == w.get_base_name():
+            return true
+    return false
+
+
+## Full loadout: the held gun drops to the floor (keeping its ammo, PR level and
+## attachments) and the new gun takes its slot.
+func _replace_held_weapon(w: WeaponData, mag: int, reserve: int) -> void:
+    _cancel_actions()
+    var idx: int = current_weapon_index
+    var old: WeaponData = current_weapon
+    if old != null:
+        _drop_weapon(old, current_mag_ammo, current_reserve_ammo)
+        owned_weapon_names.erase(old.get_base_name())
+        owned_weapon_names.erase(old.weapon_name)
+    if w.weapon_name not in owned_weapon_names:
+        owned_weapon_names.append(w.weapon_name)
+    weapon_loadout[idx] = w
+    _saved_mag_ammo[idx] = mag
+    _saved_reserve_ammo[idx] = reserve
+    current_weapon = w
+    current_mag_ammo = mag
+    current_reserve_ammo = reserve
+    ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+    _update_weapon_model()
+
+
+func _drop_weapon(w: WeaponData, mag: int, reserve: int) -> void:
+    var script = load("res://scripts/stations/weapon_pickup.gd")
+    if script == null or get_parent() == null:
+        return
+    var drop := Area3D.new()
+    drop.set_script(script)
+    if drop.has_method("setup"):
+        drop.setup(w, mag, reserve)
+    get_parent().add_child(drop)
+    drop.global_position = global_position + (-global_transform.basis.z) * 1.4
+
+
+func _add_weapon_free_slot(w: WeaponData) -> void:
     if has_weapon(w):
         return
     _cancel_actions()
