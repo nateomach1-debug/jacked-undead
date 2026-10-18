@@ -336,6 +336,7 @@ func _fire_shot() -> void:
     _track_weapon()
     _badge_flash()
     current_mag_ammo -= 1
+    _pad_rumble_shot()
     ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 
     if current_weapon.fire_sound:
@@ -506,11 +507,28 @@ func _handle_regen(delta: float) -> void:
         _regen_accum -= whole
 
 
+## Null-safe call into GamepadManager (it only vibrates when a pad is active and the setting is on).
+func _pad_rumble(weak: float, strong: float, duration: float) -> void:
+    var gm = get_node_or_null("/root/GamepadManager")
+    if gm != null and gm.has_method("rumble"):
+        gm.rumble(weak, strong, duration)
+
+
+## Short pulse per shot, stronger for heavy hitters (damage x pellets).
+func _pad_rumble_shot() -> void:
+    if current_weapon == null:
+        return
+    var power: float = float(current_weapon.damage) * float(maxi(current_weapon.pellets, 1))
+    var strong: float = clampf(0.2 + power / 200.0, 0.2, 1.0)
+    _pad_rumble(0.15, strong, 0.07)
+
+
 func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
     if invuln_left > 0.0: return
     if is_downed or is_dead:
         return  # a downed or bled-out player can't be hurt further
     _show_damage_indicator(amount, from_position)
+    _pad_rumble(0.5, 1.0, 0.25)
     current_health = max(current_health - amount, 0.0)
     health_changed.emit(current_health, max_health)
     if current_health <= 0.0:
