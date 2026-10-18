@@ -20,6 +20,18 @@ func _ready() -> void:
     super._ready()
 
 
+## Headshot = the hit is at or above the real head's height (follows size, lean and bobbing).
+## Raise HEAD_MARGIN if head hits still miss, lower it if chest hits count.
+const HEAD_MARGIN: float = 0.10
+
+func is_headshot(world_hit_position: Vector3) -> bool:
+    if _head == null or _visual == null or not is_instance_valid(_head):
+        return super.is_headshot(world_hit_position)
+    var s: float = _visual.scale.y
+    var head_y: float = _head.to_global(Vector3(0.0, 0.1, 0.0)).y
+    return world_hit_position.y >= head_y - HEAD_MARGIN * s
+
+
 func _rager_leg(x: float, skin: Material, shorts: Material, vein: Material) -> Node3D:
     var pivot := Node3D.new()
     pivot.position = Vector3(x, 0.9, 0.0)
