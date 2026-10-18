@@ -120,6 +120,7 @@ func _ready() -> void:
         _refresh_buttons()
         _add_section(vbox, "TOUCH CONTROLS")
         vbox.add_child(_make_button("HUD LAYOUT", _on_hud_layout))
+        vbox.add_child(_make_button("CONTROLLER BUTTONS", _on_controller))
         _add_section(vbox, "RESET")
         var reset := _make_button("RESET TO DEFAULTS", _on_reset)
         reset.theme_type_variation = &"DangerButton"
@@ -341,6 +342,28 @@ func _on_reset() -> void:
         _update_label(key)
         _sync_slider(key)
     _refresh_buttons()
+
+
+func _on_controller() -> void:
+    var script = load("res://scripts/ui/controller_remap.gd")
+    if script == null:
+        return
+    var hidden: Array = []
+    for c in get_children():
+        var ctrl := c as Control
+        if ctrl != null and ctrl.visible:
+            ctrl.visible = false
+            hidden.append(ctrl)
+    var screen := Control.new()
+    screen.set_script(script)
+    screen.tree_exited.connect(_on_remap_closed.bind(hidden))
+    add_child(screen)
+
+
+func _on_remap_closed(hidden: Array) -> void:
+    for c in hidden:
+        if is_instance_valid(c):
+            c.visible = true
 
 
 func _on_hud_layout() -> void:
