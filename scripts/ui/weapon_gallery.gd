@@ -296,6 +296,7 @@ func _select(i: int) -> void:
 
 ## Shows what's equipped in each slot on its button.
 func _update_slot_buttons() -> void:
+    _update_level_label()
     if _guns.is_empty():
         return
     var w: WeaponData = _guns[_index]["w"]
@@ -323,7 +324,7 @@ func _on_slot_pressed(slot: String) -> void:
     var reg = reg_script.new()
     var options: Array = [""]
     for id in reg.ATTACHMENTS.keys():
-        if str(reg.ATTACHMENTS[id]["slot"]) == slot and _owns_attachment(str(id)):
+            if str(reg.ATTACHMENTS[id]["slot"]) == slot and _owns_attachment(str(id)) and _level_ok(w.get_base_name(), str(id)):
             options.append(str(id))
     var loadout: Dictionary = reg.get_loadout(w.get_base_name())
     var current: String = str(loadout.get(slot, ""))
@@ -533,8 +534,59 @@ func _owns_attachment(id: String) -> bool:
     return market_script.new().owns_attachment(profile_script.new(), id)
 
 
-# ---------- reticle picker ----------
+# ---------- weapon levels ----------
 
+const LEVELS_PATH: String = "res://scripts/managers/weapon_levels.gd"
+
+
+func _levels():
+    var script = load(LEVELS_PATH)
+    if script == null:
+        return null
+    return script.new()
+
+
+func _level_ok(base: String, id: String) -> bool:
+    var wl = _levels()
+    if wl == null:
+        return true
+    return wl.can_use(base, id)
+
+
+## "LEVEL 7 - 120 / 160 XP" plus the next attachment this gun will unlock.
+func _update_level_label() -> void:
+    if _level_label == null or _guns.is_empty():
+        return
+    var wl = _levels()
+    if wl == null:
+        _level_label.text = ""
+        return
+    var w: WeaponData = _guns[_index]["w"]
+    var p: Dictionary = wl.progress(w.get_base_name())
+    var lv: int = int(p["level"])
+    var text: String = "LEVEL %d" % lv
+    if int(p["need"]) > 0:
+        text += "   -   %d / %d XP" % [int(p["into"]), int(p["need"])]
+    else:
+        text += "   -   MAX"
+    var reg_script = load(ATTACH_REGISTRY)
+    if reg_script != null:
+        var atts: Dictionary = reg_script.ATTACHMENTS
+        var best_lv: int = 9999
+        var best_name: String = ""
+        for id in atts.keys():
+            var req: int = wl.required_level(str(id))
+            if req > lv and req < best_lv:
+                best_lv = req
+                best_name = str(atts[id]["name"])
+        if best_name != "":
+            text += "\nNEXT UNLOCK: %s AT LV %d" % [best_name, best_lv]
+        else:
+            text += "\nALL ATTACHMENTS UNLOCKED"
+    _level_label.text = text.to_upper()
+
+
+# ---------- reticle picker ----------
 const ACH_PATH: String = "res://scripts/managers/achievements.gd"
 const RETICLES_LIB_PATH: String = "res://scripts/ui/reticles.gd"
 
