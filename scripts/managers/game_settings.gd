@@ -16,6 +16,10 @@ const DEFAULTS: Dictionary = {
     "hit_markers": 1.0,     # 1 = show hit markers, 0 = hide them
     "outline": 0.0,         # 1 = draw an outline around reticles
     "outline_color": 0.0,   # index into OUTLINE_COLORS
+    "pad_dz_look": 20.0,    # percent: right stick deadzone
+    "pad_dz_move": 20.0,    # percent: left stick deadzone
+    "pad_curve": 0.0,       # 0 = linear, 1 = smooth, 2 = precise
+    "pad_invert_y": 0.0,    # 1 = invert gamepad look Y
 }
 
 const RETICLE_COLORS: Array = [
