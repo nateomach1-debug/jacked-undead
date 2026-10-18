@@ -32,6 +32,7 @@ var _name_label: Label
 var _stats_box: VBoxContainer
 var _spin: bool = true
 var _spin_button: Button
+var _level_label: Label = null
 var _slot_buttons: Dictionary = {}   # slot name -> Button
 var _max_scores: Dictionary = {}     # stat key -> best base score across all guns
 
@@ -179,6 +180,10 @@ func _build_ui() -> void:
     _name_label.theme_type_variation = "GoldLabel"
     _name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     mid.add_child(_name_label)
+    _level_label = Label.new()
+    _level_label.theme_type_variation = "SmallLabel"
+    _level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    mid.add_child(_level_label)
 
     var container := SubViewportContainer.new()
     container.custom_minimum_size = Vector2(300, 200)
@@ -324,7 +329,7 @@ func _on_slot_pressed(slot: String) -> void:
     var reg = reg_script.new()
     var options: Array = [""]
     for id in reg.ATTACHMENTS.keys():
-            if str(reg.ATTACHMENTS[id]["slot"]) == slot and _owns_attachment(str(id)) and _level_ok(w.get_base_name(), str(id)):
+        if str(reg.ATTACHMENTS[id]["slot"]) == slot and _owns_attachment(str(id)) and _level_ok(w.get_base_name(), str(id)):
             options.append(str(id))
     var loadout: Dictionary = reg.get_loadout(w.get_base_name())
     var current: String = str(loadout.get(slot, ""))
@@ -587,6 +592,7 @@ func _update_level_label() -> void:
 
 
 # ---------- reticle picker ----------
+
 const ACH_PATH: String = "res://scripts/managers/achievements.gd"
 const RETICLES_LIB_PATH: String = "res://scripts/ui/reticles.gd"
 
