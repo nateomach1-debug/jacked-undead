@@ -7,6 +7,7 @@ extends RefCounted
 
 const FILE: String = "user://hud_layout.cfg"
 const ELEMENTS: Array = [
+    {"id": "shoot_zone", "group": "touch", "title": "SHOOT AREA", "w": 1000.0, "h": 330.0, "wfrac": 0.5, "wsub": 164.0, "corner": "br", "cx": 500.0, "cy": 165.0, "scalable": true, "alpha_min": 0.0},
     {"id": "joystick", "group": "touch", "title": "JOYSTICK", "w": 360.0, "h": 360.0, "corner": "bl", "cx": 250.0, "cy": 240.0, "scalable": true},
     {"id": "use", "group": "touch", "title": "USE", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 95.0, "scalable": true},
     {"id": "reload", "group": "touch", "title": "RELOAD", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 260.0, "scalable": true},
@@ -71,6 +72,9 @@ func center(id: String, vp: Vector2) -> Vector2:
     var e: Dictionary = info(id)
     if e.is_empty():
         return vp / 2.0
+    if e.has("wfrac"):
+    var zs: Vector2 = size_of(id, vp)
+    return Vector2(vp.x - zs.x / 2.0, vp.y - zs.y / 2.0)
     var x: float = float(e["cx"])
     var y: float = float(e["cy"])
     var corner: String = str(e["corner"])
@@ -83,6 +87,22 @@ func center(id: String, vp: Vector2) -> Vector2:
     if corner == "bl" or corner == "br" or corner == "bc":
         py = vp.y - y
     return Vector2(px, py)
+
+
+func size_of(id: String, vp: Vector2) -> Vector2:
+    var e: Dictionary = info(id)
+    if e.is_empty():
+        return Vector2.ZERO
+    var w: float = float(e["w"])
+    if e.has("wfrac"):
+        w = maxf(vp.x * float(e["wfrac"]) - float(e.get("wsub", 0.0)), 100.0)
+    return Vector2(w, float(e["h"]))
+
+
+## On-screen rectangle of an element (size and scale applied).
+func rect_of(id: String, vp: Vector2) -> Rect2:
+    var sz: Vector2 = size_of(id, vp) * scale_of(id)
+    return Rect2(center(id, vp) - sz / 2.0, sz)
 
 
 func scale_of(id: String) -> float:
