@@ -60,12 +60,29 @@ func _level_filtered(base_name: String, loadout: Dictionary) -> Dictionary:
     return out
 
 
+## PR Rack roll: every slot the player left empty gets a random attachment from ALL
+## attachments of that slot (ignores ownership and level). Chosen slots are untouched.
+## Rolled fresh on every PR Rack use and never saved.
+func _with_random_slots(chosen: Dictionary) -> Dictionary:
+    var out: Dictionary = chosen.duplicate()
+    for slot in SLOTS:
+        if str(out.get(slot, "")) != "":
+            continue
+        var pool: Array = []
+        for id in ATTACHMENTS.keys():
+            if str(ATTACHMENTS[id]["slot"]) == slot:
+                pool.append(str(id))
+        if not pool.is_empty():
+            out[slot] = pool[randi() % pool.size()]
+    return out
+
+
 ## Applies the gun's attachments to w (a PR-upgraded copy). Un-upgraded guns are untouched:
 ## attachments only work after the PR Rack.
 func apply_to(w: WeaponData) -> void:
     if w == null or w.pr_level < 1:
         return
-    var loadout: Dictionary = get_loadout(w.get_base_name())
+    var loadout: Dictionary = _with_random_slots(get_loadout(w.get_base_name()))
     var total: Dictionary = {
         "damage_mult": 1.0, "range_mult": 1.0, "spread_mult": 1.0, "fire_rate_mult": 1.0,
         "mag_mult": 1.0, "reserve_mult": 1.0, "reload_speed_mult": 1.0, "ads_zoom_mult": 1.0,
