@@ -206,6 +206,10 @@ func _rect_for(kind: String):
                         return _control_rect(c)
             return null
         "shoot_zone":
+            var script = load("res://scripts/managers/hud_layout.gd")
+            if script != null:
+                var lay = script.new()
+                return lay.rect_of("shoot_zone", vp)
             var left: float = vp.x * 0.5 + 164.0
             return Rect2(left, vp.y - 330.0, vp.x - left, 330.0)
         "round":
