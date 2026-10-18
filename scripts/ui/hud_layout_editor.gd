@@ -102,25 +102,6 @@ func _draw_ghost(g: Control, id: String) -> void:
     g.draw_string(font, Vector2((g.size.x - ts.x) / 2.0, g.size.y / 2.0 + fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
 
 
-func _on_ghost_input(event: InputEvent, g: Control, id: String) -> void:
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-        if event.pressed:
-            _select(id)
-            _grab = g.get_global_mouse_position() - (g.global_position + g.size / 2.0)
-        else:
-            _layout.save()
-        g.accept_event()
-    elif event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0 and id == _selected:
-        var vp: Vector2 = get_viewport_rect().size
-        var half: Vector2 = g.size * _layout.scale_of(id) / 2.0
-        var c: Vector2 = g.get_global_mouse_position() - _grab
-        c.x = clampf(c.x, half.x, vp.x - half.x)
-        c.y = clampf(c.y, half.y, vp.y - half.y)
-        _layout.set_center(id, c, vp)
-        _refresh_ghost(id)
-        g.accept_event()
-
-
 func _on_ghost_event(event: InputEvent, g: Control, id: String) -> void:
     var pressed_now: bool = false
     var released_now: bool = false
@@ -268,8 +249,7 @@ func _on_size(dir: int) -> void:
         return
     if not bool(_layout.info(_selected).get("scalable", true)):
         return
-    var amin: float = float(_layout.info(_selected).get("alpha_min", 0.2))
-    var v: float = snappedf(clampf(_layout.alpha_of(_selected) + 0.05 * float(dir), amin, 1.0), 0.05)
+    var v: float = snappedf(clampf(_layout.scale_of(_selected) + 0.05 * float(dir), 0.5, 2.0), 0.05)
     _layout.pin(_selected, get_viewport_rect().size)
     _layout.set_scale(_selected, v)
     _layout.save()
@@ -280,7 +260,8 @@ func _on_size(dir: int) -> void:
 func _on_alpha(dir: int) -> void:
     if _layout == null or _selected == "":
         return
-    var v: float = snappedf(clampf(_layout.alpha_of(_selected) + 0.05 * float(dir), 0.2, 1.0), 0.05)
+    var amin: float = float(_layout.info(_selected).get("alpha_min", 0.2))
+    var v: float = snappedf(clampf(_layout.alpha_of(_selected) + 0.05 * float(dir), amin, 1.0), 0.05)
     _layout.pin(_selected, get_viewport_rect().size)
     _layout.set_alpha(_selected, v)
     _layout.save()
