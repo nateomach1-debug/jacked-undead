@@ -171,7 +171,11 @@ func _build_panel() -> void:
     panel.anchor_right = 0.5
     panel.offset_left = -300.0
     panel.offset_right = 300.0
-    panel.offset_top = 60.0
+    panel.anchor_top = 0.5
+    panel.anchor_bottom = 0.5
+    panel.offset_top = -130.0
+    panel.offset_bottom = 130.0
+    panel.grow_vertical = Control.GROW_DIRECTION_BOTH
     add_child(panel)
 
     var margin := MarginContainer.new()
@@ -265,6 +269,7 @@ func _on_size(dir: int) -> void:
     if not bool(_layout.info(_selected).get("scalable", true)):
         return
     var v: float = snappedf(clampf(_layout.scale_of(_selected) + 0.05 * float(dir), 0.5, 2.0), 0.05)
+    _layout.pin(_selected, get_viewport_rect().size)
     _layout.set_scale(_selected, v)
     _layout.save()
     _refresh_ghost(_selected)
@@ -275,6 +280,7 @@ func _on_alpha(dir: int) -> void:
     if _layout == null or _selected == "":
         return
     var v: float = snappedf(clampf(_layout.alpha_of(_selected) + 0.05 * float(dir), 0.2, 1.0), 0.05)
+    _layout.pin(_selected, get_viewport_rect().size)
     _layout.set_alpha(_selected, v)
     _layout.save()
     _refresh_ghost(_selected)
