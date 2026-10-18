@@ -63,7 +63,7 @@ func _add_backdrop() -> void:
 func _make_ghost(info: Dictionary) -> void:
     var id: String = str(info["id"])
     var g := Control.new()
-    g.size = Vector2(float(info["w"]), float(info["h"]))
+    g.size = _layout.size_of(id, get_viewport_rect().size)
     g.pivot_offset = g.size / 2.0
     g.draw.connect(_draw_ghost.bind(g, id))
     g.gui_input.connect(_on_ghost_event.bind(g, id))
@@ -268,7 +268,8 @@ func _on_size(dir: int) -> void:
         return
     if not bool(_layout.info(_selected).get("scalable", true)):
         return
-    var v: float = snappedf(clampf(_layout.scale_of(_selected) + 0.05 * float(dir), 0.5, 2.0), 0.05)
+    var amin: float = float(_layout.info(_selected).get("alpha_min", 0.2))
+    var v: float = snappedf(clampf(_layout.alpha_of(_selected) + 0.05 * float(dir), amin, 1.0), 0.05)
     _layout.pin(_selected, get_viewport_rect().size)
     _layout.set_scale(_selected, v)
     _layout.save()
