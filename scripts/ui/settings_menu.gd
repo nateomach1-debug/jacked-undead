@@ -31,6 +31,7 @@ var _sliders: Dictionary = {}
 var _sprint_button: Button
 var _curve_button: Button
 var _invert_button: Button
+var _vibration_button: Button
 var _color_button: Button
 var _hit_button: Button
 var _outline_button: Button
@@ -117,6 +118,8 @@ func _ready() -> void:
         vbox.add_child(_curve_button)
         _invert_button = _make_button("", _on_pad_invert)
         vbox.add_child(_invert_button)
+        _vibration_button = _make_button("", _on_pad_vibration)
+        vbox.add_child(_vibration_button)
         _refresh_buttons()
         _add_section(vbox, "TOUCH CONTROLS")
         vbox.add_child(_make_button("HUD LAYOUT", _on_hud_layout))
@@ -301,9 +304,17 @@ func _on_pad_invert() -> void:
     _refresh_buttons()
 
 
+func _on_pad_vibration() -> void:
+    var on: bool = _settings.get_value("pad_vibration") > 0.5
+    _settings.set_value("pad_vibration", 0.0 if on else 1.0)
+    _refresh_buttons()
+
+
 func _refresh_pad_buttons() -> void:
     if _curve_button == null or _invert_button == null:
         return
+    if _vibration_button != null:
+        _vibration_button.text = "GAMEPAD VIBRATION: " + ("ON" if _settings.get_value("pad_vibration") > 0.5 else "OFF")
     var names: Array = ["LINEAR", "SMOOTH", "PRECISE"]
     var c: int = clampi(int(_settings.get_value("pad_curve")), 0, 2)
     _curve_button.text = "GAMEPAD LOOK CURVE: " + str(names[c])
