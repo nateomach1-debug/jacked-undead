@@ -60,6 +60,18 @@ func _add_button(action: String, button: JoyButton) -> void:
     InputMap.action_add_event(action, ev)
 
 
+## Short vibration on the active pad. Does nothing unless a pad is in use and the setting is on.
+func rumble(weak: float, strong: float, duration: float) -> void:
+    if not gamepad_active:
+        return
+    if _setting("pad_vibration") < 0.5:
+        return
+    var pads: Array = Input.get_connected_joypads()
+    if pads.is_empty():
+        return
+    Input.start_joy_vibration(int(pads[0]), clampf(weak, 0.0, 1.0), clampf(strong, 0.0, 1.0), duration)
+
+
 func _in_game() -> bool:
     return not get_tree().paused and get_tree().get_first_node_in_group("player") != null
 
