@@ -223,6 +223,7 @@ func _credit_juice() -> void:
     var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
     _juice_label.text = "+%d JUICE EARNED  (TOTAL %d)" % [earned, profile.get_juice()]
     _credit_achievements()
+    _credit_weapon_xp()
 
 
 ## Sends this run to the online leaderboard (only with default dev settings).
@@ -274,6 +275,31 @@ func _credit_achievements() -> void:
     banner.theme_type_variation = &"GoodLabel"
     banner.add_theme_font_size_override("font_size", 20)
     banner.text = "\n".join(lines).to_upper()
+    vbox.add_child(banner)
+    if _juice_label != null:
+        vbox.move_child(banner, _juice_label.get_index() + 1)
+
+## Saves this run's weapon XP and shows it (only runs with unchanged dev settings).
+func _credit_weapon_xp() -> void:
+    var script = load("res://scripts/managers/weapon_levels.gd")
+    if script == null:
+        return
+    var run_kills = GameManager.get("weapon_kills")
+    var run_heads = GameManager.get("weapon_headshots")
+    if not (run_kills is Dictionary) or not (run_heads is Dictionary):
+        return
+    var wl = script.new()
+    var lines: Array = wl.record_run(run_kills, run_heads)
+    if lines.is_empty():
+        return
+    if lines.size() > 6:
+        lines = lines.slice(0, 6)
+    var vbox: Node = kills_label.get_parent()
+    var banner := Label.new()
+    banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    banner.theme_type_variation = &"GoodLabel"
+    banner.add_theme_font_size_override("font_size", 18)
+    banner.text = "WEAPON XP\n" + "\n".join(lines).to_upper()
     vbox.add_child(banner)
     if _juice_label != null:
         vbox.move_child(banner, _juice_label.get_index() + 1)
