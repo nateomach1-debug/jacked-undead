@@ -39,6 +39,7 @@ func _ready() -> void:
     GameManager.round_changed.connect(_on_round_changed)
     _on_gains_changed(GameManager.gains)
     _on_round_changed(GameManager.round_number)
+    _setup_weapon_level()
 
     _perk_icons = {
         "trt": perk_trt,
@@ -193,8 +194,8 @@ func _on_health_changed(current: float, max_hp: float) -> void:
 func _on_ammo_changed(current_mag: int, reserve: int) -> void:
     ammo_label.text = "Ammo: %d / %d" % [current_mag, reserve]
     if _player and _player.current_weapon:
-        weapon_label.text = _player.current_weapon.weapon_name
-
+            weapon_label.text = _player.current_weapon.weapon_name
+        _refresh_weapon_level()
 
 func _on_gains_changed(amount: int) -> void:
     gains_label.text = "Gains: %d" % amount
@@ -284,5 +285,101 @@ func _refresh_prompt_style() -> void:
     _prompt_pad = GamepadManager.gamepad_active
     if _prompt_raw != "":
         prompt_label.text = _pad_text(_prompt_raw)
+
+var _wl = null
+var _xp_bar: ProgressBar = null
+var _lv_banner: Label = null
+var _lv_seen: Dictionary = {}   # base gun name -> level already shown (no banner for it)
+var _lv_tween: Tween = null
+
+
+## Thin yellow XP bar under the weapon name, "LV n" after the name, and the level-up banner.
+func _setup_weapon_level() -> void:
+    var script = load("res://scripts/managers/weapon_levels.gd")
+    if script == null:
+        return
+    _wl = script.new()
+
+    _xp_bar = ProgressBar.new()
+    _xp_bar.custom_minimum_size = Vector2(280, 12)
+    _xp_bar.show_percentage = false
+    _xp_bar.min_value = 0.0
+    _xp_bar.max_value = 1.0
+    _xp_bar.step = 0.001
+    _xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var fill := StyleBoxFlat.new()
+    fill.bg_color = Color(1.0, 0.77, 0.0, 1.0)
+    var back := StyleBoxFlat.new()
+    back.bg_color = Color(0.06, 0.02, 0.02, 0.7)
+    _xp_bar.add_theme_stylebox_override("fill", fill)
+    _xp_bar.add_theme_stylebox_override("background", back)
+    var stack: Node = health_label.get_parent()
+    stack.add_child(_xp_bar)
+    stack.move_child(_xp_bar, weapon_label.get_index() + 1)
+
+    _lv_banner = Label.new()
+    _lv_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _lv_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _lv_banner.add_theme_font_size_override("font_size", 40)
+    _lv_banner.add_theme_color_override("font_color", Color(1.0, 0.77, 0.0, 1.0))
+    _lv_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+    _lv_banner.add_theme_constant_override("outline_size", 8)
+    _lv_banner.visible = false
+    add_child(_lv_banner)
+    _lv_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 200)
+    _lv_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+
+    GameManager.kills_changed.connect(_on_kills_for_xp)
+
+
+func _refresh_weapon_level() -> void:
+    if _wl == null or _player == null or _player.current_weapon == null:
+        return
+    var w = _player.current_weapon
+    var base: String = w.get_base_name()
+    var p: Dictionary = _wl.progress(base)
+    weapon_label.text = "%s  LV %d" % [w.weapon_name, int(p["level"])]
+    _xp_bar.value = float(p["frac"])
+    if not _lv_seen.has(base):
+        _lv_seen[base] = _wl.get_level(base, false)
+
+
+func _on_kills_for_xp(_total: int) -> void:
+    if _wl == null:
+        return
+    _refresh_weapon_level()
+    var gun: String = GameManager.last_weapon
+    if gun == "":
+        return
+    var lv: int = _wl.get_level(gun)
+    if not _lv_seen.has(gun):
+        _lv_seen[gun] = _wl.get_level(gun, false)
+    var seen: int = int(_lv_seen[gun])
+    if lv > seen:
+        _lv_seen[gun] = lv
+        _show_level_up(gun, seen, lv)
+
+
+func _show_level_up(gun: String, from_lv: int, to_lv: int) -> void:
+    var text: String = "%s  LEVEL %d" % [gun, to_lv]
+    var names := PackedStringArray()
+    var att_script = load("res://scripts/weapons/attachments.gd")
+    if att_script != null:
+        var atts: Dictionary = att_script.ATTACHMENTS
+        for id in _wl.REQUIRED.keys():
+            var req: int = int(_wl.REQUIRED[id])
+            if req > from_lv and req <= to_lv and atts.has(id):
+                names.append(str(atts[id]["name"]))
+    if not names.is_empty():
+        text += "\nNOW USABLE: " + ", ".join(names)
+    _lv_banner.text = text.to_upper()
+    _lv_banner.modulate.a = 1.0
+    _lv_banner.visible = true
+    if _lv_tween != null:
+        _lv_tween.kill()
+    _lv_tween = create_tween()
+    _lv_tween.tween_interval(2.6)
+    _lv_tween.tween_property(_lv_banner, "modulate:a", 0.0, 0.7)
+    _lv_tween.tween_callback(_lv_banner.hide)
 
 # END OF FILE
