@@ -502,7 +502,7 @@ func _refresh_stats(w: WeaponData) -> void:
         _stats_box.add_child(bar)
 
     var note := Label.new()
-    note.text = "Bars show the gun before PR upgrades. Attachments only work after a PR Rack upgrade."
+    note.text = "Bars show the gun before PR upgrades. Attachments only work after a PR Rack upgrade, and empty slots get a random one each time."
     note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     note.theme_type_variation = "SmallLabel"
     _stats_box.add_child(note)
