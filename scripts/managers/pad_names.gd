@@ -65,4 +65,17 @@ func _button_text(index: int, ps: bool) -> String:
             return "Create" if ps else "View"
     return "Button %d" % index
 
+## Name for a saved binding such as "b:0" or "a:5".
+func descriptor_name(desc: String) -> String:
+    var ps: bool = is_playstation()
+    if desc.begins_with("b:"):
+        return _button_text(int(desc.substr(2)), ps)
+    if desc.begins_with("a:"):
+        var axis: int = int(desc.substr(2))
+        if axis == JOY_AXIS_TRIGGER_LEFT:
+            return "L2" if ps else "LT"
+        if axis == JOY_AXIS_TRIGGER_RIGHT:
+            return "R2" if ps else "RT"
+    return "?"
+
 # END OF FILE
