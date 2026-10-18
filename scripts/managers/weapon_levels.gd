@@ -59,9 +59,10 @@ func get_saved_xp(base_name: String) -> int:
     return int(_load_all().get(base_name, 0))
 
 
-## XP this gun has earned so far in the current run.
+## XP this gun has earned so far in the current run (0 once the run is over,
+## because the game over screen has already saved it).
 func run_xp(base_name: String) -> int:
-        if GameManager.is_game_over:
+    if GameManager.is_game_over:
         return 0
     var k = GameManager.get("weapon_kills")
     var h = GameManager.get("weapon_headshots")
@@ -108,17 +109,17 @@ func record_run(run_kills: Dictionary, run_heads: Dictionary) -> Array:
     var all: Dictionary = _load_all()
     var lines: Array = []
     for gun in run_kills.keys():
-        var name: String = str(gun)
-        if name == "Unknown" or name == "":
+        var gun_name: String = str(gun)
+        if gun_name == "Unknown" or gun_name == "":
             continue
         var gained: int = int(run_kills[gun]) + int(run_heads.get(gun, 0))
         if gained <= 0:
             continue
-        var old_xp: int = int(all.get(name, 0))
-        all[name] = old_xp + gained
+        var old_xp: int = int(all.get(gun_name, 0))
+        all[gun_name] = old_xp + gained
         var from_lv: int = level_for_xp(old_xp)
         var to_lv: int = level_for_xp(old_xp + gained)
-        var line: String = "%s +%d XP  (LV %d" % [name, gained, to_lv]
+        var line: String = "%s +%d XP  (LV %d" % [gun_name, gained, to_lv]
         if to_lv > from_lv:
             line += ", UP FROM %d" % from_lv
         line += ")"
