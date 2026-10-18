@@ -20,6 +20,7 @@ const DEFAULTS: Dictionary = {
     "pad_dz_move": 20.0,    # percent: left stick deadzone
     "pad_curve": 0.0,       # 0 = linear, 1 = smooth, 2 = precise
     "pad_invert_y": 0.0,    # 1 = invert gamepad look Y
+    "pad_vibration": 1.0,   # 1 = gamepad vibration on, 0 = off
 }
 
 const RETICLE_COLORS: Array = [
