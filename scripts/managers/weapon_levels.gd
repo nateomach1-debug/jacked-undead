@@ -61,6 +61,8 @@ func get_saved_xp(base_name: String) -> int:
 
 ## XP this gun has earned so far in the current run.
 func run_xp(base_name: String) -> int:
+        if GameManager.is_game_over:
+        return 0
     var k = GameManager.get("weapon_kills")
     var h = GameManager.get("weapon_headshots")
     var xp: int = 0
