@@ -9,6 +9,8 @@ const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 const ROWS: Array = [
     {"key": "touch_look", "title": "Touch look speed", "min": 0.5, "max": 2.0, "step": 0.1, "fmt": "x%.1f"},
     {"key": "pad_look", "title": "Gamepad look speed", "min": 100.0, "max": 400.0, "step": 20.0, "fmt": "%d DEG/S"},
+    {"key": "pad_dz_look", "title": "Look stick deadzone", "min": 0.0, "max": 40.0, "step": 5.0, "fmt": "%d%%"},
+    {"key": "pad_dz_move", "title": "Move stick deadzone", "min": 0.0, "max": 40.0, "step": 5.0, "fmt": "%d%%"},
     {"key": "fov", "title": "Field of view", "min": 60.0, "max": 110.0, "step": 5.0, "fmt": "%d"},
     {"key": "ads_sens", "title": "ADS sensitivity", "min": 25.0, "max": 150.0, "step": 5.0, "fmt": "%d%%"},
     {"key": "ads_zoom", "title": "ADS zoom", "min": 50.0, "max": 150.0, "step": 5.0, "fmt": "%d%%"},
@@ -17,6 +19,7 @@ const ROWS: Array = [
 # A section header is drawn above the row with this key.
 const SECTIONS: Dictionary = {
     "touch_look": "LOOK SPEED",
+    "pad_dz_look": "GAMEPAD STICKS",
     "fov": "VIEW",
     "ads_sens": "AIMING",
 }
@@ -26,6 +29,8 @@ var _slider_script = null
 var _labels: Dictionary = {}
 var _sliders: Dictionary = {}
 var _sprint_button: Button
+var _curve_button: Button
+var _invert_button: Button
 var _color_button: Button
 var _hit_button: Button
 var _outline_button: Button
@@ -108,6 +113,10 @@ func _ready() -> void:
         vbox.add_child(_outline_color_button)
         _sprint_button = _make_button("", _on_sprint_mode)
         vbox.add_child(_sprint_button)
+        _curve_button = _make_button("", _on_pad_curve)
+        vbox.add_child(_curve_button)
+        _invert_button = _make_button("", _on_pad_invert)
+        vbox.add_child(_invert_button)
         _refresh_buttons()
         _add_section(vbox, "TOUCH CONTROLS")
         vbox.add_child(_make_button("HUD LAYOUT", _on_hud_layout))
@@ -279,6 +288,27 @@ func _on_hit_markers() -> void:
     _refresh_buttons()
 
 
+func _on_pad_curve() -> void:
+    var idx: int = (int(_settings.get_value("pad_curve")) + 1) % 3
+    _settings.set_value("pad_curve", float(idx))
+    _refresh_buttons()
+
+
+func _on_pad_invert() -> void:
+    var on: bool = _settings.get_value("pad_invert_y") > 0.5
+    _settings.set_value("pad_invert_y", 0.0 if on else 1.0)
+    _refresh_buttons()
+
+
+func _refresh_pad_buttons() -> void:
+    if _curve_button == null or _invert_button == null:
+        return
+    var names: Array = ["LINEAR", "SMOOTH", "PRECISE"]
+    var c: int = clampi(int(_settings.get_value("pad_curve")), 0, 2)
+    _curve_button.text = "GAMEPAD LOOK CURVE: " + str(names[c])
+    _invert_button.text = "GAMEPAD INVERT Y: " + ("ON" if _settings.get_value("pad_invert_y") > 0.5 else "OFF")
+
+
 func _on_sprint_mode() -> void:
     var hold: bool = _settings.get_value("sprint_hold") > 0.5
     _settings.set_value("sprint_hold", 0.0 if hold else 1.0)
@@ -286,6 +316,7 @@ func _on_sprint_mode() -> void:
 
 
 func _refresh_buttons() -> void:
+    _refresh_pad_buttons()
     var count: int = _settings.RETICLE_COLORS.size()
     var idx: int = clampi(int(_settings.get_value("reticle_color")), 0, count - 1)
     var entry: Dictionary = _settings.RETICLE_COLORS[idx]
