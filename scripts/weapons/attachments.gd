@@ -60,6 +60,18 @@ func _level_filtered(base_name: String, loadout: Dictionary) -> Dictionary:
     return out
 
 
+## The player's chosen attachments for this gun, with the gun's rarity attachments
+## (meta "rarity_slots", rolled by the Loot Locker) laid on top. Rarity slots always win
+## and ignore the level requirement.
+func _loadout_for(w: WeaponData) -> Dictionary:
+    var lo: Dictionary = get_loadout(w.get_base_name()).duplicate()
+    var rs = w.get_meta("rarity_slots", {})
+    if rs is Dictionary:
+        for slot in rs.keys():
+            lo[slot] = rs[slot]
+    return lo
+
+
 ## PR Rack roll: every slot the player left empty gets a random attachment from ALL
 ## attachments of that slot (ignores ownership and level). Chosen slots are untouched.
 ## Rolled fresh on every PR Rack use and never saved.
@@ -82,7 +94,7 @@ func _with_random_slots(chosen: Dictionary) -> Dictionary:
 func apply_to(w: WeaponData) -> void:
     if w == null or w.pr_level < 1:
         return
-    _apply_loadout(w, _with_random_slots(get_loadout(w.get_base_name())))
+    _apply_loadout(w, _with_random_slots(_loadout_for(w)))
 
 
 ## For guns that are not PR-upgraded: a copy of w with the player's chosen attachments
@@ -92,7 +104,7 @@ func apply_to(w: WeaponData) -> void:
 func attached_copy(w: WeaponData) -> WeaponData:
     if w == null or w.pr_level > 0 or w.pr_base != null or w.has_meta("attach_base"):
         return w
-    var loadout: Dictionary = get_loadout(w.get_base_name())
+    var loadout: Dictionary = _loadout_for(w)
     if loadout.is_empty():
         return w
     var c: WeaponData = w.duplicate() as WeaponData
