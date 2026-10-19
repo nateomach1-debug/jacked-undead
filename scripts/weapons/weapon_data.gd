@@ -79,7 +79,7 @@ func get_base_name() -> String:
 ## Returns the next PR level of this gun, built from its ORIGINAL stats so
 ## the bonuses never compound. Capped at PR_MAX_LEVEL.
 func get_pr_upgraded_copy() -> WeaponData:
-	var base: WeaponData = pr_base if pr_base != null else self
+	var base: WeaponData = pr_base if pr_base != null else (get_meta("attach_base") if has_meta("attach_base") else self)
 	var level: int = mini(pr_level + 1, PR_MAX_LEVEL)
 	var i: int = level - 1
 	var up: WeaponData = base.duplicate()
