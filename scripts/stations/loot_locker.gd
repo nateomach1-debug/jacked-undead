@@ -5,6 +5,9 @@ extends Area3D
 ## the locker closes and you lose it. Built entirely in code.
 ## Pulling a gun you already own gives it a full ammo refill (player.grant_weapon).
 ##
+## Rarity: every roll also rolls a tier (weapon_rarity.gd) before the gun is shown.
+## Higher tiers add damage and fixed random attachments to that gun.
+##
 ## Several lockers on one map: only ONE is usable at a time (picked at random
 ## when the map loads); the rest show an OUT OF ORDER sign. Every roll also has
 ## a chance to lock the locker (same odds as one gun): you are refunded, the
@@ -25,6 +28,8 @@ var _will_lock: bool = false
 var _pool: Array = []
 var _total_weight: int = 0
 var _rolled: WeaponData = null
+var _tier: String = "common"
+var _rarity = null
 var _timer: float = 0.0
 var _cycle_timer: float = 0.0
 
@@ -44,6 +49,9 @@ func _ready() -> void:
         _pool = locker_weapons.build_pool()
     for entry in _pool:
         _total_weight += int(entry["weight"])
+    var rarity_script = load("res://scripts/weapons/weapon_rarity.gd")
+    if rarity_script:
+        _rarity = rarity_script.new()
     _set_idle_label()
     _init_active.call_deferred()
 
@@ -148,10 +156,12 @@ func _set_active(on: bool) -> void:
         _state = State.LOCKED
         _rolled = null
         _will_lock = false
+        _tier = "common"
         _visual_root.position = Vector3.ZERO
         _clear_model()
         _set_door_open(false)
         _sign.visible = true
+        _label.modulate = Color.WHITE
         _label.text = "OUT OF ORDER"
 
 
@@ -208,7 +218,7 @@ func get_prompt_text() -> String:
     if _state == State.IDLE:
         return "Tap USE to open Loot Locker - %d Gains" % GameManager.loot_locker_cost(cost)
     if _state == State.READY and _rolled:
-        return "Tap USE to grab %s" % _rolled.weapon_name
+        return "Tap USE to grab %s%s" % [_rarity_prefix(), _rolled.weapon_name]
     if _state == State.LOCKED:
         return "Out of order"
     return ""
@@ -217,9 +227,14 @@ func get_prompt_text() -> String:
 func _start_roll() -> void:
     _will_lock = _roll_lock()
     _rolled = _pick_weapon()
+    _tier = "common"
+    if _rarity != null and _rolled != null:
+        _tier = _rarity.roll_tier()
+        _rolled = _rarity.apply(_rolled, _tier)
     _state = State.ROLLING
     _timer = roll_time
     _cycle_timer = 0.0
+    _label.modulate = Color.WHITE
     _label.text = "..."
 
 
@@ -242,7 +257,12 @@ func _finish_roll() -> void:
     _set_door_open(true)
     _state = State.READY
     _timer = take_window
-    _label.text = _rolled.weapon_name if _rolled else "Empty"
+    if _rolled:
+        _label.text = "%s%s" % [_rarity_prefix(), _rolled.weapon_name]
+        if _rarity != null:
+            _label.modulate = _rarity.tier_color(_tier)
+    else:
+        _label.text = "Empty"
 
 
 ## Out of order: refund the roll, show the sign, and move to another locker.
@@ -261,13 +281,22 @@ func _lock_up() -> void:
 func _close_locker() -> void:
     _state = State.IDLE
     _rolled = null
+    _tier = "common"
     _visual_root.position = Vector3.ZERO
     _clear_model()
     _set_door_open(false)
     _set_idle_label()
 
 
+## "Epic " for non-common tiers, "" for common.
+func _rarity_prefix() -> String:
+    if _rarity == null or _tier == "common":
+        return ""
+    return _rarity.tier_name(_tier) + " "
+
+
 func _set_idle_label() -> void:
+    _label.modulate = Color.WHITE
     _label.text = "LOOT LOCKER\n%d Gains" % GameManager.loot_locker_cost(cost)
 
 
@@ -337,7 +366,7 @@ func _pick_weapon() -> WeaponData:
         roll -= int(entry["weight"])
         if roll < 0:
             return entry["weapon"]
-    return _pool[0]["weapon"]
+    return _pool[0][“weapon”]
 
 
 func _random_weapon() -> WeaponData:
