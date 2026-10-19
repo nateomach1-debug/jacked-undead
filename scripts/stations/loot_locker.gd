@@ -372,4 +372,4 @@ func _pick_weapon() -> WeaponData:
 func _random_weapon() -> WeaponData:
     if _pool.is_empty():
         return null
-    return _pool[randi() % _pool.size()]["weapon"]
+    return _pool[0]["weapon"]
