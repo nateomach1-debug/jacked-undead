@@ -6,7 +6,7 @@ extends RefCounted
 
 const SLOTS: Array = ["optic", "barrel", "magazine", "grip"]
 
-# TEST MODE: every PR-upgraded gun gets this loadout. Keep false.
+# TEST MODE: every gun gets this loadout when none is saved. Keep false.
 const TEST_MODE: bool = false
 const TEST_LOADOUT: Dictionary = {"optic": "red_dot", "barrel": "long_barrel", "magazine": "ext_mag", "grip": "foregrip"}
 
@@ -77,12 +77,33 @@ func _with_random_slots(chosen: Dictionary) -> Dictionary:
     return out
 
 
-## Applies the gun's attachments to w (a PR-upgraded copy). Un-upgraded guns are untouched:
-## attachments only work after the PR Rack.
+## PR Rack: applies the chosen attachments + random ones for empty slots to a freshly
+## PR-upgraded copy.
 func apply_to(w: WeaponData) -> void:
     if w == null or w.pr_level < 1:
         return
-    var loadout: Dictionary = _with_random_slots(get_loadout(w.get_base_name()))
+    _apply_loadout(w, _with_random_slots(get_loadout(w.get_base_name())))
+
+
+## For guns that are not PR-upgraded: a copy of w with the player's chosen attachments
+## applied. w itself is never changed. Returns w if nothing is chosen. The copy remembers
+## the original in meta "attach_base" so a later PR upgrade starts from the original
+## stats (bonuses never stack twice).
+func attached_copy(w: WeaponData) -> WeaponData:
+    if w == null or w.pr_level > 0 or w.pr_base != null or w.has_meta("attach_base"):
+        return w
+    var loadout: Dictionary = get_loadout(w.get_base_name())
+    if loadout.is_empty():
+        return w
+    var c: WeaponData = w.duplicate() as WeaponData
+    if c == null:
+        return w
+    c.set_meta("attach_base", w)
+    _apply_loadout(c, loadout)
+    return c
+
+
+func _apply_loadout(w: WeaponData, loadout: Dictionary) -> void:
     var total: Dictionary = {
         "damage_mult": 1.0, "range_mult": 1.0, "spread_mult": 1.0, "fire_rate_mult": 1.0,
         "mag_mult": 1.0, "reserve_mult": 1.0, "reload_speed_mult": 1.0, "ads_zoom_mult": 1.0,
