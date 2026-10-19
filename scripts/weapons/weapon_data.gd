@@ -95,4 +95,8 @@ func get_pr_upgraded_copy() -> WeaponData:
     up.mag_size = int(base.mag_size * PR_MAG[i])
     up.max_reserve_ammo = int(base.max_reserve_ammo * PR_RESERVE[i])
     up.is_pr_upgraded = true
+    # Rarity (set by the Loot Locker) survives PR upgrades.
+    for key in ["rarity", "rarity_slots"]:
+        if base.has_meta(key):
+            up.set_meta(key, base.get_meta(key))
     return up
