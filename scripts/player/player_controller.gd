@@ -150,7 +150,7 @@ func _ready() -> void:
 
     muzzle_ray.collision_mask = 1 | 4  # world (layer 1) + zombies (layer 4)
 
-        _attach_start_guns()
+    _attach_start_guns()
     if not weapon_loadout.is_empty():
         current_weapon_index = 0
         current_weapon = weapon_loadout[0]
@@ -680,7 +680,7 @@ func add_weapon_to_loadout(w: WeaponData) -> void:
     if has_weapon(w):
         return
     if weapon_loadout.size() >= MAX_WEAPONS:
-                w = _with_attachments(w)
+        w = _with_attachments(w)
         _replace_held_weapon(w, w.mag_size, w.max_reserve_ammo)
         return
     _add_weapon_free_slot(w)
