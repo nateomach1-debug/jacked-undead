@@ -150,6 +150,7 @@ func _ready() -> void:
 
     muzzle_ray.collision_mask = 1 | 4  # world (layer 1) + zombies (layer 4)
 
+        _attach_start_guns()
     if not weapon_loadout.is_empty():
         current_weapon_index = 0
         current_weapon = weapon_loadout[0]
@@ -567,7 +568,7 @@ func strip_for_downed() -> void:
         var kept: WeaponData = weapon_loadout[i]
         if kept.pr_base != null:
             kept = kept.pr_base
-        keep.append(kept)
+        keep.append(_with_attachments(kept))
     weapon_loadout = keep
     owned_weapon_names.clear()
     _saved_mag_ammo.clear()
@@ -679,6 +680,7 @@ func add_weapon_to_loadout(w: WeaponData) -> void:
     if has_weapon(w):
         return
     if weapon_loadout.size() >= MAX_WEAPONS:
+                w = _with_attachments(w)
         _replace_held_weapon(w, w.mag_size, w.max_reserve_ammo)
         return
     _add_weapon_free_slot(w)
@@ -739,6 +741,7 @@ func _drop_weapon(w: WeaponData, mag: int, reserve: int) -> void:
 
 
 func _add_weapon_free_slot(w: WeaponData) -> void:
+    w = _with_attachments(w)
     if has_weapon(w):
         return
     _cancel_actions()
@@ -1074,6 +1077,26 @@ func _settings_fov() -> float:
 
 
 var _attach_root: Node3D = null
+
+
+## A copy of w with the player's chosen attachments applied (w itself if none/PR).
+func _with_attachments(w: WeaponData) -> WeaponData:
+    if w == null or w.pr_level > 0 or w.pr_base != null or w.has_meta("attach_base"):
+        return w
+    var script = load("res://scripts/weapons/attachments.gd")
+    if script == null:
+        return w
+    return script.new().attached_copy(w)
+
+
+## Starting guns get their chosen attachments too.
+func _attach_start_guns() -> void:
+    for i in range(weapon_loadout.size()):
+        var g = weapon_loadout[i]
+        if g is WeaponData:
+            weapon_loadout[i] = _with_attachments(g)
+    if weapon_loadout.is_empty() and current_weapon != null:
+        current_weapon = _with_attachments(current_weapon)
 
 
 ## Applies the gun's equipped attachments to a freshly PR-upgraded copy.
