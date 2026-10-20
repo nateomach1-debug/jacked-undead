@@ -3,6 +3,8 @@ extends RefCounted
 ## ATTACHMENTS and a graphic in attachment_models.gd. The player, and later the weapon
 ## gallery and market, all read this. Loaded with load() + a null check.
 ## Weapon level requirements live in weapon_levels.gd (REQUIRED).
+## Custom game mode: with attachments switched off no attachment applies in a run
+## (the weapon gallery still shows your setup).
 
 const SLOTS: Array = ["optic", "barrel", "magazine", "grip"]
 
@@ -62,8 +64,10 @@ func _level_filtered(base_name: String, loadout: Dictionary) -> Dictionary:
 
 ## The player's chosen attachments for this gun, with the gun's rarity attachments
 ## (meta "rarity_slots", rolled by the Loot Locker) laid on top. Rarity slots always win
-## and ignore the level requirement.
+## and ignore the level requirement. Custom game mode with attachments off: nothing.
 func _loadout_for(w: WeaponData) -> Dictionary:
+    if not GameManager.custom_on("attachments"):
+        return {}
     var lo: Dictionary = get_loadout(w.get_base_name()).duplicate()
     var rs = w.get_meta("rarity_slots", {})
     if rs is Dictionary:
@@ -90,9 +94,11 @@ func _with_random_slots(chosen: Dictionary) -> Dictionary:
 
 
 ## PR Rack: applies the chosen attachments + random ones for empty slots to a freshly
-## PR-upgraded copy.
+## PR-upgraded copy. Does nothing when custom game mode has attachments off.
 func apply_to(w: WeaponData) -> void:
     if w == null or w.pr_level < 1:
+        return
+    if not GameManager.custom_on("attachments"):
         return
     _apply_loadout(w, _with_random_slots(_loadout_for(w)))
 
