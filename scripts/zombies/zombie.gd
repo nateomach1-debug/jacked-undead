@@ -13,8 +13,11 @@ class_name Zombie
 ## (is_puppet = true) that do nothing but show where the host's zombie is.
 ## Zombies ignore players who are downed or dead.
 ##
-## Look: the body is built in code (see _build_visuals). Only the base zombie
-## script builds it; subclasses such as RoidRager keep their own look for now.
+## Look: NEW_LOOK = true uses scripts/zombies/zombie_look.gd (rounded body, gear,
+## rot detail, extra animation, gore). Set NEW_LOOK = false to go back to the
+## classic code-built body below (_build_visuals), with no rise / stagger / gore.
+## Subclasses such as RoidRager keep their own body but still get the rise,
+## hit stagger and gore.
 ##
 ## Custom mode: max_health is multiplied by the ZOMBIE HEALTH setting (x1 / x1.5 / x2).
 
@@ -33,6 +36,11 @@ const SEPARATION_INTERVAL: float = 0.12   # separation is recalculated this ofte
 const LOS_INTERVAL: float = 0.25          # how often to check for a wall between us and the target
 
 # Look settings
+const NEW_LOOK: bool = true          # true = new look + rise/stagger/gore; false = classic look
+const LOOK_PATH: String = "res://scripts/zombies/zombie_look.gd"
+const RISE_TIME: float = 1.1         # seconds a new zombie takes to climb out of the ground (no moving yet)
+const STAGGER_TIME: float = 0.28     # how long a zombie reels after a hit that doesn't kill it
+const STAGGER_SLOW: float = 0.4      # walking speed lost at the start of a stagger (0.0 = looks only)
 const BASE_SCRIPT_END: String = "scripts/zombies/zombie.gd"
 const HIDE_OLD_MESHES: bool = true   # hides the old capsule/mesh the scene had; set false to show it again
 const MODEL_HEIGHT: float = 1.9      # the code-built body is 1.9 m tall, scaled to the capsule
@@ -96,6 +104,8 @@ var _has_los: bool = true
 
 # Look / animation state
 static var _box_cache: Dictionary = {}
+static var _look_script: Script = null
+static var _look_tried: bool = false
 var _visual: Node3D = null
 var _visual_base_y: float = 0.0
 var _upper: Node3D = null
@@ -115,6 +125,9 @@ var _anim_phase: float = 0.0
 var _anim_time: float = 0.0
 var _idle_seed: float = 0.0
 var _swipe: float = 0.0
+var _look_data: Dictionary = {}   # filled by zombie_look.gd (jaw, limp, twitch ...)
+var _rise_left: float = 0.0       # > 0 while climbing out of the ground
+var _stagger: float = 0.0         # > 0 while reeling from a hit
 
 
 func _ready() -> void:
@@ -127,6 +140,8 @@ func _ready() -> void:
     _los_timer = randf() * LOS_INTERVAL
     _find_target()
     _build_visuals()
+    if _visual != null and _look() != null:
+        _rise_left = RISE_TIME
 
 
 ## Custom mode ZOMBIE HEALTH setting (1.0 normally).
@@ -136,6 +151,23 @@ func _custom_hp_multiplier() -> float:
         if float(v) > 0.0:
             return float(v)
     return 1.0
+
+
+## The new look script, or null when NEW_LOOK is off or the file is missing.
+static func _look() -> Script:
+    if not NEW_LOOK:
+        return null
+    if not _look_tried:
+        _look_tried = true
+        _look_script = load(LOOK_PATH) as Script
+        if _look_script == null:
+            push_warning("zombie_look.gd is missing or broken; using the classic zombie look.")
+    return _look_script
+
+
+## Walking speed while reeling from a hit.
+func _speed_mult() -> float:
+    return 1.0 - STAGGER_SLOW * clampf(_stagger / STAGGER_TIME, 0.0, 1.0)
 
 
 # ---------- look (all built in code) ----------
@@ -196,6 +228,12 @@ func _build_visuals() -> void:
     if HIDE_OLD_MESHES:
         for n in find_children("*", "MeshInstance3D", true, false):
             (n as MeshInstance3D).visible = false
+
+    # New look (zombie_look.gd). If it is off or fails, the classic body below is built.
+    var look: Script = _look()
+    if look != null:
+        if look.build(self):
+            return
 
     var h: float = MODEL_HEIGHT
     var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
@@ -303,6 +341,11 @@ func _process(delta: float) -> void:
     _arm_l.rotation.z = -0.08
     _arm_r.rotation.z = 0.08
 
+    # New look extras on top: rise from the ground, hit stagger, limp, head twitch, jaw.
+    var look: Script = _look()
+    if look != null:
+        look.animate(self, delta, amp)
+
 
 ## Quick red flash on every shot that doesn't kill.
 func _flash_hit() -> void:
@@ -365,6 +408,17 @@ func _physics_process(delta: float) -> void:
     if is_puppet:
         return
 
+    # Still climbing out of the ground: no walking or attacking yet.
+    if _rise_left > 0.0:
+        velocity.x = 0.0
+        velocity.z = 0.0
+        if not is_on_floor():
+            velocity.y -= GRAVITY * delta
+        else:
+            velocity.y = 0.0
+        move_and_slide()
+        return
+
     # Drop a target that went down / died / left right away; re-pick regularly.
     if _target != null and (not is_instance_valid(_target) or _is_out(_target)):
         _target = null
@@ -397,8 +451,8 @@ func _physics_process(delta: float) -> void:
             var direction := _get_move_direction(to_target, delta)
             direction = _apply_unstuck(direction, delta)
             direction = _apply_separation(direction)
-            velocity.x = direction.x * move_speed
-            velocity.z = direction.z * move_speed
+            velocity.x = direction.x * move_speed * _speed_mult()
+            velocity.z = direction.z * move_speed * _speed_mult()
             if direction.length() > 0.01:
                 look_at(global_position + Vector3(direction.x, 0.0, direction.z), Vector3.UP)
         else:
@@ -638,6 +692,7 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
         return
     if is_puppet:
         _flash_hit()
+        _gore_hit(was_headshot)
         _forward_hit_to_host(amount, was_headshot)
         return
     _last_source = source
@@ -646,6 +701,14 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
         _die(was_headshot)
     else:
         _flash_hit()
+        _gore_hit(was_headshot)
+
+
+## Blood and stagger on a hit that doesn't kill (new look only).
+func _gore_hit(was_headshot: bool) -> void:
+    var look: Script = _look()
+    if look != null:
+        look.hit_gore(self, was_headshot)
 
 
 ## Co-op: a puppet can't die on its own, so it tells the host it was hit.
@@ -664,6 +727,9 @@ func _die(was_headshot: bool = false) -> void:
     else:
         GameManager.add_gains(reward)
         GameManager.add_kill(was_headshot)
+    var look: Script = _look()
+    if look != null:
+        look.death_gore(self, was_headshot)
     _spawn_corpse()
     died.emit(self)
     queue_free()
