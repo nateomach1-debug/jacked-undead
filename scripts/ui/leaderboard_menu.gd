@@ -1,6 +1,8 @@
 extends Control
 ## Leaderboards screen (self-contained): pick a map (arrows) and SOLO / CO-OP,
 ## then sort by ROUND, KILLS or HEADSHOTS. Shows the top 10 players.
+## The MODE button cycles NORMAL and every custom mode combination that has
+## at least one run on that map (solo or co-op).
 
 const URL: String = "https://qnomdtgtfdocdpoaqyxa.supabase.co/rest/v1/"
 const KEY: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFub21kdGd0ZmRvY2Rwb2FxeXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDAxNTIsImV4cCI6MjEwMjIxNjE1Mn0.A8Duae95xq3eAlHBTJokspTMC-pn_1A2Z2wQhP2PSXI"
@@ -23,13 +25,24 @@ const TABS: Array = [
     {"stat": "headshots", "text": "HEADSHOTS"},
 ]
 
+## Readable names for custom mode code parts. Unknown parts show as typed (uppercase).
+const TOKEN_NAMES: Dictionary = {
+    "nopr": "NO PR",
+    "noloot": "NO LOCKER",
+    "hp15": "HP X1.5",
+}
+
 var _map_idx: int = 0
 var _coop: bool = false
 var _stat: String = "best_round"
+var _mode_code: String = ""          # "" = NORMAL, otherwise a GameManager.custom_code()
+var _modes: Array = [""]             # codes that have runs on the current map / solo-coop
 var _req_id: int = 0
+var _modes_req_id: int = 0
 
 var _map_label: Label = null
 var _mode_btn: Button = null
+var _custom_btn: Button = null
 var _tab_btns: Dictionary = {}
 var _grid: GridContainer = null
 var _status: Label = null
@@ -100,6 +113,14 @@ func _ready() -> void:
         tab_row.add_child(b)
         _tab_btns[str(t["stat"])] = b
 
+    _custom_btn = Button.new()
+    _custom_btn.text = "MODE: NORMAL"
+    _custom_btn.custom_minimum_size = Vector2(340, 52)
+    _custom_btn.clip_text = true
+    _custom_btn.add_theme_font_size_override("font_size", 18)
+    _custom_btn.pressed.connect(_cycle_custom)
+    tab_row.add_child(_custom_btn)
+
     var card := PanelContainer.new()
     card.theme_type_variation = &"CardPanel"
     card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -128,6 +149,7 @@ func _ready() -> void:
     await get_tree().process_frame
     if is_inside_tree():
         _refresh()
+        _load_modes()
 
 
 func _add_backdrop() -> void:
@@ -146,11 +168,13 @@ func _add_backdrop() -> void:
 func _step_map(dir: int) -> void:
     _map_idx = (_map_idx + dir + MAPS.size()) % MAPS.size()
     _refresh()
+    _load_modes()
 
 
 func _toggle_mode() -> void:
     _coop = not _coop
     _refresh()
+    _load_modes()
 
 
 func _set_stat(stat: String) -> void:
@@ -158,16 +182,99 @@ func _set_stat(stat: String) -> void:
     _refresh()
 
 
+## Steps through NORMAL and the custom combos that have runs here.
+func _cycle_custom() -> void:
+    if _modes.size() <= 1:
+        return
+    var i: int = _modes.find(_mode_code)
+    _mode_code = str(_modes[(i + 1) % _modes.size()])
+    _refresh()
+
+
+## Board name start for custom boards of the current map and SOLO / CO-OP.
+func _custom_prefix() -> String:
+    var id: String = str(MAPS[_map_idx]["id"])
+    if _coop:
+        id += ":coop"
+    return id + ":custom:"
+
+
 func _board_id() -> String:
     var id: String = str(MAPS[_map_idx]["id"])
     if _coop:
         id += ":coop"
+    if _mode_code != "":
+        id += ":custom:" + _mode_code
     return id
+
+
+func _mode_text(code: String) -> String:
+    if code == "":
+        return "NORMAL"
+    var parts := PackedStringArray()
+    for t in code.split("-"):
+        parts.append(str(TOKEN_NAMES.get(t, t.to_upper())))
+    return " + ".join(parts)
+
+
+func _update_custom_btn() -> void:
+    _custom_btn.text = "MODE: " + _mode_text(_mode_code)
+    _custom_btn.disabled = _modes.size() <= 1
+    _custom_btn.modulate = Color(1.0, 0.8, 0.1, 1.0) if _mode_code != "" else Color(1.0, 1.0, 1.0, 1.0)
+
+
+## Asks the server which custom combos have runs for this map and SOLO / CO-OP.
+func _load_modes() -> void:
+    _modes_req_id += 1
+    var my_id: int = _modes_req_id
+    # Until the answer arrives, offer NORMAL (and the mode already shown).
+    _modes = [""]
+    if _mode_code != "":
+        _modes.append(_mode_code)
+    _update_custom_btn()
+
+    var prefix: String = _custom_prefix()
+    var req := HTTPRequest.new()
+    req.timeout = 10.0
+    add_child(req)
+    req.request_completed.connect(_on_modes_http.bind(req, my_id, prefix))
+    var url: String = "%sju_best?select=board&board=like.%s*&limit=1000" % [URL, prefix.uri_encode()]
+    var headers := PackedStringArray(["apikey: " + KEY, "Authorization: Bearer " + KEY])
+    if req.request(url, headers) != OK:
+        req.queue_free()
+
+
+func _on_modes_http(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, req: HTTPRequest, my_id: int, prefix: String) -> void:
+    req.queue_free()
+    if my_id != _modes_req_id:
+        return
+    if result != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
+        return
+    var data = JSON.parse_string(body.get_string_from_utf8())
+    if not (data is Array):
+        return
+    var found: Dictionary = {}
+    for r in data:
+        var b: String = str(r.get("board", ""))
+        if b.begins_with(prefix):
+            var c: String = b.substr(prefix.length())
+            if c != "":
+                found[c] = true
+    var codes: Array = found.keys()
+    codes.sort()
+    _modes = [""]
+    _modes.append_array(codes)
+    if not _modes.has(_mode_code):
+        _mode_code = ""
+        _refresh()
+    else:
+        _update_custom_btn()
 
 
 func _refresh() -> void:
     _map_label.text = str(MAPS[_map_idx]["title"])
     _mode_btn.text = "CO-OP" if _coop else "SOLO"
+    _update_custom_btn()
     for s in _tab_btns.keys():
         var tab: Button = _tab_btns[s]
         if s == _stat:
