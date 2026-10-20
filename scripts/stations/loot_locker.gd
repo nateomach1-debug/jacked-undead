@@ -14,6 +14,15 @@ extends Area3D
 ## sign appears and a different locker becomes the usable one.
 ## Co-op: the host picks the first one, then every lock is sent to all phones.
 
+## TEST MODE for the rarity swap. Set to true to test, back to false when done.
+## On: every pull gives the SAME gun, with the rarity stepping through TEST_TIERS
+## (and looping). The locker never locks up while this is on.
+const TEST_RARITY_SWAP: bool = true
+## Gun to use in test mode (exact weapon name). Leave "" for a random gun.
+const TEST_GUN_NAME: String = ""
+## Rarity of each pull in test mode, in order, then it starts over.
+const TEST_TIERS: Array = ["common", "uncommon", "rare", "rare", "common", "legendary"]
+
 const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to this length (meters)
 
 enum State { IDLE, ROLLING, READY, LOCKED }
@@ -21,6 +30,9 @@ enum State { IDLE, ROLLING, READY, LOCKED }
 @export var cost: int = 950
 @export var roll_time: float = 2.5
 @export var take_window: float = 8.0
+
+static var _test_gun: WeaponData = null
+static var _test_step: int = 0
 
 var _state: int = State.IDLE
 var _is_active: bool = true
@@ -225,17 +237,40 @@ func get_prompt_text() -> String:
 
 
 func _start_roll() -> void:
-    _will_lock = _roll_lock()
-    _rolled = _pick_weapon()
     _tier = "common"
-    if _rarity != null and _rolled != null:
-        _tier = _rarity.roll_tier()
-        _rolled = _rarity.apply(_rolled, _tier)
+    if TEST_RARITY_SWAP:
+        # Test mode: same gun every pull, rarity steps through TEST_TIERS, no lock-up.
+        _will_lock = false
+        _rolled = _test_weapon()
+        _tier = str(TEST_TIERS[_test_step % TEST_TIERS.size()])
+        _test_step += 1
+        if _rarity != null and _rolled != null:
+            _rolled = _rarity.apply(_rolled, _tier)
+    else:
+        _will_lock = _roll_lock()
+        _rolled = _pick_weapon()
+        if _rarity != null and _rolled != null:
+            _tier = _rarity.roll_tier()
+            _rolled = _rarity.apply(_rolled, _tier)
     _state = State.ROLLING
     _timer = roll_time
     _cycle_timer = 0.0
     _label.modulate = Color.WHITE
     _label.text = "..."
+
+
+## Test mode gun: TEST_GUN_NAME if set and found, otherwise one random gun that
+## is then kept for every later pull.
+func _test_weapon() -> WeaponData:
+    if _test_gun == null:
+        if TEST_GUN_NAME != "":
+            for entry in _pool:
+                if entry["weapon"].weapon_name == TEST_GUN_NAME:
+                    _test_gun = entry["weapon"]
+                    break
+        if _test_gun == null:
+            _test_gun = _pick_weapon()
+    return _test_gun
 
 
 ## The lock outcome has the same weight as one gun (the average gun weight).
