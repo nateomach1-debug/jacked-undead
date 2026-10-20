@@ -507,4 +507,74 @@ static func _step_blood(t: float, parts: Array, vels: Array, origin: Vector3, fl
         var t_land: float = (v.y + sqrt(v.y * v.y + 19.6 * drop)) / 9.8
         var tt: float = minf(t, t_land)
         var p: Vector3 = origin + v * tt + Vector3(0.0, -4.9 * tt * tt, 0.0)
-        (part
+        (parts[i] as Node3D).global_position = p
+
+
+static func _free_blood(parts: Array) -> void:
+    for mi in parts:
+        if is_instance_valid(mi):
+            (mi as Node).queue_free()
+    _blood_live = maxi(_blood_live - parts.size(), 0)
+
+
+## Flat blood puddle on the floor under a dead zombie (fades out by itself).
+static func _splat(scene: Node, pos: Vector3) -> void:
+    if _splat_live > 30:
+        return
+    var mi := MeshInstance3D.new()
+    mi.mesh = _cylm(0.5, 0.01)
+    mi.material_override = _smat("splat", Color(0.32, 0.02, 0.02), 0.3)
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    var r: float = randf_range(0.3, 0.55)
+    mi.scale = Vector3(r, 1.0, r * randf_range(0.7, 1.1))
+    scene.add_child(mi)
+    mi.global_position = pos
+    mi.rotation.y = randf() * TAU
+    _splat_live += 1
+    var tw := scene.create_tween()
+    tw.tween_interval(20.0)
+    tw.tween_callback(_free_splat.bind(mi))
+
+
+static func _free_splat(mi: Node) -> void:
+    if is_instance_valid(mi):
+        mi.queue_free()
+    _splat_live = maxi(_splat_live - 1, 0)
+
+
+## Headshot kill: the head flies off, a red stump is left on the neck.
+static func pop_head(z: Zombie) -> void:
+    if z._head == null or not is_instance_valid(z._head) or not z.is_inside_tree():
+        return
+    var scene: Node = z.get_tree().current_scene
+    if scene == null:
+        return
+    var xf: Transform3D = z._head.global_transform
+    z._head.visible = false
+    var stump = z._look_data.get("stump")
+    if stump != null and is_instance_valid(stump):
+        (stump as Node3D).visible = true
+
+    var flying := Node3D.new()
+    scene.add_child(flying)
+    flying.global_transform = xf
+    _ell(flying, Vector3(0.27, 0.29, 0.27), Vector3(0.0, 0.15, 0.0), _smat("head_pop", Color(0.55, 0.62, 0.45), 0.8))
+    _ell(flying, Vector3(0.12, 0.1, 0.04), Vector3(0.0, 0.15, -0.13), _smat("flesh", Color(0.5, 0.06, 0.08), 0.35))
+
+    var start: Vector3 = flying.global_position
+    var vel := Vector3(randf_range(-1.5, 1.5), randf_range(2.5, 3.5), randf_range(-1.5, 1.5))
+    var floor_y: float = z._feet_y() + 0.15
+    var tw := scene.create_tween()
+    tw.tween_method(_step_head.bind(flying, start, vel, floor_y), 0.0, 1.0, 1.0)
+    tw.tween_interval(2.5)
+    tw.tween_callback(flying.queue_free)
+
+
+static func _step_head(t: float, flying: Node3D, start: Vector3, vel: Vector3, floor_y: float) -> void:
+    if not is_instance_valid(flying):
+        return
+    var p: Vector3 = start + vel * t + Vector3(0.0, -4.9 * t * t, 0.0)
+    if p.y < floor_y:
+        p.y = floor_y
+    flying.global_position = p
+    flying.rotate_x(0.15)
