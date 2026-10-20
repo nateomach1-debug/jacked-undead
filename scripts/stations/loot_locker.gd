@@ -13,11 +13,14 @@ extends Area3D
 ## a chance to lock the locker (same odds as one gun): you are refunded, the
 ## sign appears and a different locker becomes the usable one.
 ## Co-op: the host picks the first one, then every lock is sent to all phones.
+##
+## Custom game mode: Loot Locker off = the locker is hidden and unusable;
+## weapon rarity off = every gun it gives is common.
 
 ## TEST MODE for the rarity swap. Set to true to test, back to false when done.
 ## On: every pull gives the SAME gun, with the rarity stepping through TEST_TIERS
 ## (and looping). The locker never locks up while this is on.
-const TEST_RARITY_SWAP: bool = true
+const TEST_RARITY_SWAP: bool = false
 ## Gun to use in test mode (exact weapon name). Leave "" for a random gun.
 const TEST_GUN_NAME: String = ""
 ## Rarity of each pull in test mode, in order, then it starts over.
@@ -34,6 +37,7 @@ enum State { IDLE, ROLLING, READY, LOCKED }
 static var _test_gun: WeaponData = null
 static var _test_step: int = 0
 
+var _disabled: bool = false
 var _state: int = State.IDLE
 var _is_active: bool = true
 var _will_lock: bool = false
@@ -54,6 +58,15 @@ var _sign: Node3D
 
 
 func _ready() -> void:
+    if not GameManager.custom_on("loot_locker"):
+        # Custom game mode: this locker is not part of the run.
+        _disabled = true
+        visible = false
+        monitoring = false
+        monitorable = false
+        set_process(false)
+        _disable_shapes.call_deferred(self)
+        return
     add_to_group("loot_lockers")
     _build_visuals()
     var locker_weapons = load("res://scripts/weapons/locker_weapons.gd")
@@ -62,10 +75,18 @@ func _ready() -> void:
     for entry in _pool:
         _total_weight += int(entry["weight"])
     var rarity_script = load("res://scripts/weapons/weapon_rarity.gd")
-    if rarity_script:
+    if rarity_script and GameManager.custom_on("rarity"):
         _rarity = rarity_script.new()
     _set_idle_label()
     _init_active.call_deferred()
+
+
+## Turns off every collision shape under this node (after the scene is fully built).
+func _disable_shapes(node: Node) -> void:
+    if node is CollisionShape3D:
+        (node as CollisionShape3D).disabled = true
+    for child in node.get_children():
+        _disable_shapes(child)
 
 
 func _build_visuals() -> void:
@@ -217,6 +238,8 @@ func _process(delta: float) -> void:
 
 
 func interact(player: Node) -> void:
+    if _disabled:
+        return
     if _state == State.IDLE:
         if GameManager.try_spend_gains(GameManager.loot_locker_cost(cost)):
             _start_roll()
@@ -227,6 +250,8 @@ func interact(player: Node) -> void:
 
 
 func get_prompt_text() -> String:
+    if _disabled:
+        return ""
     if _state == State.IDLE:
         return "Tap USE to open Loot Locker - %d Gains" % GameManager.loot_locker_cost(cost)
     if _state == State.READY and _rolled:
