@@ -115,6 +115,7 @@ var current_weapon_index: int = 0
 var current_mag_ammo: int = 0
 var current_reserve_ammo: int = 0
 const MAX_WEAPONS: int = 2
+const RARITY_ORDER: Array = ["common", "uncommon", "rare", "epic", "legendary"]
 var _saved_mag_ammo: Array = []
 var _saved_reserve_ammo: Array = []
 var owned_weapon_names: Array = []  # base weapon_name of each gun ever bought, for wall-buy stations
@@ -687,8 +688,14 @@ func add_weapon_to_loadout(w: WeaponData) -> void:
 
 
 ## Called by a dropped-gun pickup. Brings the gun back with its saved ammo.
+## If you already carry this gun, only a higher-rarity version swaps in.
 func pickup_weapon(w: WeaponData, mag: int, reserve: int) -> void:
-    if w == null or _owns_base(w):
+    if w == null:
+        return
+    if _owns_base(w):
+        var slot: int = _owned_slot_of(w)
+        if slot >= 0 and _rarity_rank(w) > _rarity_rank(weapon_loadout[slot]):
+            _swap_in_place(slot, w, mag, reserve)
         return
     if weapon_loadout.size() >= MAX_WEAPONS:
         _replace_held_weapon(w, mag, reserve)
@@ -697,6 +704,64 @@ func pickup_weapon(w: WeaponData, mag: int, reserve: int) -> void:
     current_mag_ammo = mag
     current_reserve_ammo = reserve
     ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+## Rarity tier of a gun (0 = common). No "rarity" meta counts as common.
+func _rarity_rank(w: WeaponData) -> int:
+    if w == null:
+        return 0
+    var key: String = str(w.get_meta("rarity", "common"))
+    return maxi(RARITY_ORDER.find(key), 0)
+
+
+func _owned_slot_of(w: WeaponData) -> int:
+    for i in range(weapon_loadout.size()):
+        var owned: WeaponData = weapon_loadout[i]
+        if owned != null and owned.get_base_name() == w.get_base_name():
+            return i
+    return -1
+
+
+## True if you already carry this gun and w is a higher rarity than your copy.
+## Used by the dropped-gun pickup to offer a swap.
+func is_rarity_upgrade(w: WeaponData) -> bool:
+    if w == null:
+        return false
+    var slot: int = _owned_slot_of(w)
+    if slot < 0:
+        return false
+    return _rarity_rank(w) > _rarity_rank(weapon_loadout[slot])
+
+
+## Replaces the owned copy in slot i with w (same slot, same base gun).
+## mag / reserve below 0 means a full magazine and full reserve.
+func _swap_in_place(i: int, w: WeaponData, mag: int, reserve: int) -> void:
+    if i < 0 or i >= weapon_loadout.size():
+        return
+    _cancel_actions()
+    var old: WeaponData = weapon_loadout[i]
+    if old != null:
+        owned_weapon_names.erase(old.get_base_name())
+        owned_weapon_names.erase(old.weapon_name)
+    w = _with_attachments(w)
+    if w.weapon_name not in owned_weapon_names:
+        owned_weapon_names.append(w.weapon_name)
+    if mag < 0:
+        mag = w.mag_size
+    if reserve < 0:
+        reserve = w.max_reserve_ammo
+    weapon_loadout[i] = w
+    while _saved_mag_ammo.size() <= i:
+        _saved_mag_ammo.append(0)
+        _saved_reserve_ammo.append(0)
+    _saved_mag_ammo[i] = mag
+    _saved_reserve_ammo[i] = reserve
+    if i == current_weapon_index:
+        current_weapon = w
+        current_mag_ammo = mag
+        current_reserve_ammo = reserve
+        ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+        _update_weapon_model()
 
 
 func _owns_base(w: WeaponData) -> bool:
@@ -761,7 +826,8 @@ func _add_weapon_free_slot(w: WeaponData) -> void:
 
 
 ## Called by the Loot Locker. A gun you don't own is added and equipped;
-## a gun you already own (including its PR-upgraded copy) gets a full refill.
+## a gun you already own (including its PR-upgraded copy) gets a full refill,
+## unless the new one has a higher rarity: then it replaces your copy in its slot.
 func grant_weapon(w: WeaponData) -> void:
     if w == null:
         return
@@ -771,6 +837,9 @@ func grant_weapon(w: WeaponData) -> void:
     for i in range(weapon_loadout.size()):
         var owned: WeaponData = weapon_loadout[i]
         if owned.get_base_name() == w.get_base_name():
+            if _rarity_rank(w) > _rarity_rank(owned):
+                _swap_in_place(i, w, -1, -1)
+                return
             if i == current_weapon_index:
                 current_mag_ammo = owned.mag_size
                 current_reserve_ammo = owned.max_reserve_ammo
