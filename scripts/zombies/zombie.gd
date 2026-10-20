@@ -15,6 +15,8 @@ class_name Zombie
 ##
 ## Look: the body is built in code (see _build_visuals). Only the base zombie
 ## script builds it; subclasses such as RoidRager keep their own look for now.
+##
+## Custom mode: max_health is multiplied by the ZOMBIE HEALTH setting (x1 / x1.5 / x2).
 
 signal died(zombie: Zombie)
 
@@ -116,6 +118,7 @@ var _swipe: float = 0.0
 
 
 func _ready() -> void:
+    max_health *= _custom_hp_multiplier()
     current_health = max_health
     add_to_group("zombies")
     floor_snap_length = 0.4
@@ -124,6 +127,15 @@ func _ready() -> void:
     _los_timer = randf() * LOS_INTERVAL
     _find_target()
     _build_visuals()
+
+
+## Custom mode ZOMBIE HEALTH setting (1.0 normally).
+func _custom_hp_multiplier() -> float:
+    var v = GameManager.custom_get("zombie_hp")
+    if v is float or v is int:
+        if float(v) > 0.0:
+            return float(v)
+    return 1.0
 
 
 # ---------- look (all built in code) ----------
