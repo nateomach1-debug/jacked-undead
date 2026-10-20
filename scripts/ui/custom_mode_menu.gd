@@ -1,9 +1,10 @@
 extends Control
 ## Custom game mode screen, opened over the map select by its CUSTOM MODE button.
-## Each row switches one feature on or off for your next run. Weapon levels and
-## Juice still count. Settings live in GameManager.custom and stay until you
-## reset them or close the app.
+## Each row switches one feature on or off for your next run, or steps a value
+## through a list (zombie health). Weapon levels and Juice still count.
+## Settings live in GameManager.custom and stay until you reset them or close the app.
 ## To add a toggle: add a line to OPTIONS (key must exist in GameManager.CUSTOM_DEFAULTS).
+## To add a stepper: add a line with a "steps" list (values cycle on each press).
 
 signal closed
 
@@ -15,6 +16,9 @@ const OPTIONS: Array = [
     {"key": "loot_locker", "label": "LOOT LOCKER"},
     {"key": "rarity", "label": "WEAPON RARITY"},
     {"key": "attachments", "label": "ATTACHMENTS"},
+    {"key": "supplements", "label": "SUPPLEMENTS"},
+    {"key": "wall_buys", "label": "GUN WALL BUYS"},
+    {"key": "zombie_hp", "label": "ZOMBIE HEALTH", "steps": [1.0, 1.5, 2.0]},
 ]
 
 var _buttons: Dictionary = {}
@@ -64,7 +68,7 @@ func _build_ui() -> void:
         outer.add_child(divider)
 
     var info := Label.new()
-    info.text = "SWITCH FEATURES OFF FOR YOUR NEXT RUN. WEAPON LEVELS AND JUICE STILL COUNT."
+    info.text = "SWITCH FEATURES OFF OR MAKE ZOMBIES TOUGHER FOR YOUR NEXT RUN. WEAPON LEVELS AND JUICE STILL COUNT."
     info.theme_type_variation = &"SmallLabel"
     info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -87,7 +91,10 @@ func _build_ui() -> void:
         b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         b.custom_minimum_size = Vector2(0, 64)
         b.add_theme_font_size_override("font_size", 24)
-        b.pressed.connect(_on_toggle.bind(key))
+        if opt.has("steps"):
+            b.pressed.connect(_on_step.bind(key, opt["steps"]))
+        else:
+            b.pressed.connect(_on_toggle.bind(key))
         rows.add_child(b)
         _buttons[key] = b
 
@@ -118,13 +125,43 @@ func _refresh() -> void:
         var b: Button = _buttons.get(key)
         if b == null:
             continue
-        var on: bool = GameManager.custom_on(key)
-        b.text = "%s: %s" % [str(opt["label"]), "ON" if on else "OFF"]
-        b.theme_type_variation = &"OwnedButton" if on else &"DangerButton"
+        if opt.has("steps"):
+            var steps: Array = opt["steps"]
+            var idx: int = _step_index(key, steps)
+            b.text = "%s: %s" % [str(opt["label"]), _step_text(float(steps[idx]))]
+            b.theme_type_variation = &"OwnedButton" if idx == 0 else &"DangerButton"
+        else:
+            var on: bool = GameManager.custom_on(key)
+            b.text = "%s: %s" % [str(opt["label"]), "ON" if on else "OFF"]
+            b.theme_type_variation = &"OwnedButton" if on else &"DangerButton"
+
+
+## Which entry of the steps list is the current value (0 if it matches none).
+func _step_index(key: String, steps: Array) -> int:
+    var cur = GameManager.custom_get(key)
+    var v: float = float(steps[0])
+    if cur is float or cur is int:
+        v = float(cur)
+    for i in range(steps.size()):
+        if absf(float(steps[i]) - v) < 0.01:
+            return i
+    return 0
+
+
+func _step_text(v: float) -> String:
+    if absf(v - roundf(v)) < 0.01:
+        return "x%d" % int(roundf(v))
+    return "x%s" % str(v)
 
 
 func _on_toggle(key: String) -> void:
     GameManager.custom_set(key, not GameManager.custom_on(key))
+    _refresh()
+
+
+func _on_step(key: String, steps: Array) -> void:
+    var idx: int = (_step_index(key, steps) + 1) % steps.size()
+    GameManager.custom_set(key, float(steps[idx]))
     _refresh()
 
 
