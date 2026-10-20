@@ -73,9 +73,15 @@ var _lamp_on: bool = true
 var _flash: float = 0.0
 var _t: float = 0.0
 var _player: Node = null
+var _switched_off: bool = false  # custom mode: supplements OFF
 
 
 func _ready() -> void:
+    add_to_group("supplement_station")
+    if not GameManager.custom_on("supplements"):
+        _switch_off()
+        return
+
     if COLOR_OVERRIDES.has(supplement_id):
         body_color = COLOR_OVERRIDES[supplement_id]
     var mat := StandardMaterial3D.new()
@@ -91,9 +97,26 @@ func _ready() -> void:
     _build_machine()
 
     var others: Array = get_tree().get_nodes_in_group("supplement_station")
-    add_to_group("supplement_station")
+    others.erase(self)
     if not is_extra and others.is_empty():
         _spawn_extras.call_deferred()
+
+
+## Custom mode (supplements OFF): hide the machine and make it unusable and
+## non-solid. No extra stations are spawned either.
+func _switch_off() -> void:
+    _switched_off = true
+    visible = false
+    set_process(false)
+    set_deferred("monitoring", false)
+    set_deferred("monitorable", false)
+    collision_layer = 0
+    collision_mask = 0
+    for c in find_children("*", "CollisionObject3D", true, false):
+        (c as CollisionObject3D).collision_layer = 0
+        (c as CollisionObject3D).collision_mask = 0
+    for s in find_children("*", "CollisionShape3D", true, false):
+        (s as CollisionShape3D).set_deferred("disabled", true)
 
 
 func _process(delta: float) -> void:
@@ -279,6 +302,8 @@ func _player_owns(p: Node) -> bool:
 
 
 func interact(player: Node) -> void:
+    if _switched_off:
+        return
     if _player_owns(player):
         return
     if GameManager.try_spend_gains(GameManager.supplement_cost(cost)):
@@ -297,6 +322,8 @@ func _get_description() -> String:
 
 
 func get_prompt_text() -> String:
+    if _switched_off:
+        return ""
     var me: Node = get_tree().get_first_node_in_group("player")
     if _player_owns(me):
         return "%s (already stacked)" % display_name
