@@ -180,6 +180,7 @@ static func _make_arm(z: Zombie, x: float, skin: Material, wound_mat: Material, 
     var pivot := Node3D.new()
     pivot.position = Vector3(x, 0.55, 0.0)
     z._upper.add_child(pivot)
+    _ell(pivot, Vector3(0.14, 0.14, 0.14), Vector3.ZERO, skin)
     _cap(pivot, 0.055, 0.64, Vector3(0.0, -0.30, 0.0), skin)
     _ell(pivot, Vector3(0.11, 0.15, 0.10), Vector3(0.0, -0.66, 0.0), skin)
     if bandaged:
@@ -245,7 +246,7 @@ static func build(z: Zombie) -> bool:
     # Legs and hips (the front of the zombie is -Z).
     z._leg_l = _make_leg(z, -0.12, skin, shorts, wound, randf() < 0.15, randf() < 0.12)
     z._leg_r = _make_leg(z, 0.12, skin, shorts, wound, limp > 0.0 or randf() < 0.2, limp > 0.0 and randf() < 0.6)
-    _ell(vis, Vector3(0.5, 0.2, 0.28), Vector3(0.0, 0.93, 0.0), shorts)
+    _ell(vis, Vector3(0.52, 0.22, 0.30), Vector3(0.0, 0.94, 0.0), shorts)
 
     # Upper body leans forward.
     var upper := Node3D.new()
@@ -256,13 +257,17 @@ static func build(z: Zombie) -> bool:
     _ell(upper, Vector3(0.5, 0.7, 0.29), Vector3(0.0, 0.33, 0.0), skin)
     _ell(upper, Vector3(0.53, 0.46, 0.31), Vector3(0.0, 0.26, 0.0), tank)
     _ell(upper, Vector3(0.2, 0.14, 0.03), Vector3(0.09, 0.22, -0.14), blood)
+    # Shoulder line and neck so the arms and head join the torso with no gaps.
+    _ell(upper, Vector3(0.46, 0.16, 0.24), Vector3(0.0, 0.57, 0.0), skin)
+    _cyl(upper, 0.05, 0.12, Vector3(0.0, 0.66, 0.0), skin)
 
     # Torn tank top with exposed ribs on one side.
     if randf() < 0.6:
         var side: float = 1.0 if randf() < 0.5 else -1.0
-        _ell(upper, Vector3(0.2, 0.22, 0.04), Vector3(side * 0.1, 0.34, -0.148), flesh)
+        _ell(upper, Vector3(0.2, 0.22, 0.04), Vector3(side * 0.1, 0.34, -0.135), flesh)
+        var rib_z: Array = [-0.157, -0.152, -0.146, -0.141]  # follows the curve of the chest
         for i in range(4):
-            _box(upper, Vector3(0.17, 0.018, 0.02), Vector3(side * 0.1, 0.26 + float(i) * 0.055, -0.172), bone, Vector3(0.0, 0.0, side * 0.15))
+            _box(upper, Vector3(0.17, 0.018, 0.02), Vector3(side * 0.1, 0.26 + float(i) * 0.055, rib_z[i]), bone, Vector3(0.0, 0.0, side * 0.15))
 
     # Torn flesh patches.
     if randf() < 0.7:
@@ -333,8 +338,8 @@ static func build(z: Zombie) -> bool:
             _cyl(head, 0.065, 0.05, Vector3(sx * 0.165, 0.13, 0.0), cup, Vector3.ONE, Vector3(0.0, 0.0, PI * 0.5))
 
     # Arms.
-    z._arm_l = _make_arm(z, -0.32, skin, wound, randf() < 0.25, randf() < 0.3)
-    z._arm_r = _make_arm(z, 0.32, skin, wound, randf() < 0.25, randf() < 0.3)
+    z._arm_l = _make_arm(z, -0.235, skin, wound, randf() < 0.25, randf() < 0.3)
+    z._arm_r = _make_arm(z, 0.235, skin, wound, randf() < 0.25, randf() < 0.3)
     z._arm_base_l = 1.25 + randf_range(-0.2, 0.2)
     z._arm_base_r = 1.25 + randf_range(-0.2, 0.2)
     if randf() < 0.25:  # one arm hangs down instead of reaching
@@ -413,7 +418,7 @@ static func animate(z: Zombie, delta: float, amp: float) -> void:
     # Hanging jaw: loose, chewing a little, snaps open on a twitch.
     var jaw = d.get("jaw")
     if jaw != null and is_instance_valid(jaw):
-        jaw.rotation.x = -(0.22 + 0.12 * sin(z._anim_time * 2.3 + z._idle_seed) + 0.5 * k_tw)
+        jaw.rotation.x = -(0.14 + 0.1 * sin(z._anim_time * 2.3 + z._idle_seed) + 0.5 * k_tw)
 
 
 # ---------- gore ----------
