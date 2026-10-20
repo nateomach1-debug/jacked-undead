@@ -93,15 +93,73 @@ func _build_visuals() -> void:
     _visual_root = Node3D.new()
     add_child(_visual_root)
 
-    # Locker body
-    _add_box(_visual_root, Vector3(1.0, 2.0, 0.8), Vector3(0, 1.0, 0), Color(0.2, 0.35, 0.6))
+    var paint := Color(0.16, 0.30, 0.55)
+    var paint_dark := Color(0.10, 0.19, 0.36)
+    var door_col := Color(0.24, 0.42, 0.72)
+    var door_light := Color(0.30, 0.50, 0.80)
+    var chrome := Color(0.78, 0.80, 0.84)
+    var yellow := Color(1.0, 0.77, 0.0)
+    var dark := Color(0.04, 0.04, 0.06)
+    var blood := Color(0.35, 0.02, 0.02)
 
-    # Door, hinged on its left edge
+    # Body shell, rounded front/back corners, top cap and base plinth
+    _add_box(_visual_root, Vector3(1.0, 2.0, 0.8), Vector3(0, 1.0, 0), paint)
+    for cx in [-0.5, 0.5]:
+        for cz in [-0.4, 0.4]:
+            _add_cyl(_visual_root, 0.035, 2.0, Vector3(cx, 1.0, cz), paint_dark)
+    _add_box(_visual_root, Vector3(1.06, 0.06, 0.86), Vector3(0, 2.03, 0), paint_dark, 0.45, 0.3)
+    _add_box(_visual_root, Vector3(1.06, 0.12, 0.86), Vector3(0, 0.06, 0), dark, 0.8)
+    for sx in [-0.506, 0.506]:
+        for sz in [-0.2, 0.2]:
+            _add_box(_visual_root, Vector3(0.012, 1.8, 0.04), Vector3(sx, 1.0, sz), paint_dark)
+
+    # Inside (seen when the door is open): dark back, glow strip, hook, towel
+    _add_box(_visual_root, Vector3(0.9, 1.9, 0.02), Vector3(0, 1.0, 0.402), Color(0.03, 0.04, 0.07), 0.9)
+    _add_box(_visual_root, Vector3(0.8, 0.025, 0.01), Vector3(0, 1.88, 0.412), yellow, 0.4, 0.0, Vector3.ZERO, 1.5)
+    _add_cyl(_visual_root, 0.012, 0.7, Vector3(0, 1.75, 0.42), chrome, Vector3(0, 0, PI * 0.5), 0.3, 0.8)
+    _add_box(_visual_root, Vector3(0.28, 0.55, 0.015), Vector3(-0.2, 1.45, 0.42), Color(0.9, 0.9, 0.9), 0.95)
+    _add_box(_visual_root, Vector3(0.28, 0.04, 0.016), Vector3(-0.2, 1.3, 0.42), Color(0.85, 0.15, 0.15), 0.95)
+
+    # Door, hinged on its left edge (slightly smaller than the body so the frame shows)
     _door_pivot = Node3D.new()
-    _door_pivot.position = Vector3(-0.5, 1.0, 0.42)
+    _door_pivot.position = Vector3(-0.47, 1.0, 0.42)
     _visual_root.add_child(_door_pivot)
-    _add_box(_door_pivot, Vector3(1.0, 1.9, 0.05), Vector3(0.5, 0, 0), Color(0.3, 0.5, 0.8))
-    _add_box(_door_pivot, Vector3(0.05, 0.25, 0.06), Vector3(0.85, 0, 0.04), Color(0.9, 0.9, 0.9))
+    _add_box(_door_pivot, Vector3(0.94, 1.86, 0.05), Vector3(0.47, 0, 0), door_col, 0.5, 0.2)
+    _add_box(_door_pivot, Vector3(0.80, 1.70, 0.012), Vector3(0.47, 0, 0.03), door_light, 0.55, 0.2)
+    # Vent slots (top and bottom)
+    for vy in [0.74, 0.66, 0.58, -0.72, -0.80, -0.88]:
+        _add_box(_door_pivot, Vector3(0.5, 0.025, 0.012), Vector3(0.47, vy, 0.036), dark, 0.9)
+    # Number plate
+    _add_box(_door_pivot, Vector3(0.16, 0.09, 0.01), Vector3(0.47, 0.42, 0.038), yellow, 0.5)
+    var num := Label3D.new()
+    num.text = "%02d" % (1 + randi() % 98)
+    num.font_size = 24
+    num.pixel_size = 0.003
+    num.modulate = dark
+    num.outline_size = 0
+    num.position = Vector3(0.47, 0.42, 0.046)
+    _door_pivot.add_child(num)
+    # Latch and handle
+    _add_box(_door_pivot, Vector3(0.07, 0.32, 0.02), Vector3(0.82, 0.0, 0.042), chrome, 0.3, 0.8)
+    _add_box(_door_pivot, Vector3(0.03, 0.22, 0.03), Vector3(0.82, 0.0, 0.066), chrome, 0.25, 0.9)
+    # Hinges
+    for hy in [0.7, 0.0, -0.7]:
+        _add_cyl(_door_pivot, 0.018, 0.14, Vector3(0.0, hy, 0.0), chrome, Vector3.ZERO, 0.3, 0.8)
+    # Gym sticker, scuffs, rust and blood
+    _add_box(_door_pivot, Vector3(0.22, 0.12, 0.006), Vector3(0.3, 0.12, 0.037), Color(0.8, 0.08, 0.08), 0.6, 0.0, Vector3(0, 0, 0.15))
+    var sticker := Label3D.new()
+    sticker.text = "NO PAIN"
+    sticker.font_size = 14
+    sticker.pixel_size = 0.003
+    sticker.outline_size = 0
+    sticker.position = Vector3(0.3, 0.12, 0.042)
+    sticker.rotation.z = 0.15
+    _door_pivot.add_child(sticker)
+    _add_box(_door_pivot, Vector3(0.18, 0.05, 0.006), Vector3(0.62, -0.25, 0.037), paint_dark, 0.8, 0.0, Vector3(0, 0, -0.4))
+    _add_box(_door_pivot, Vector3(0.34, 0.04, 0.006), Vector3(0.4, -0.9, 0.037), Color(0.35, 0.2, 0.08), 0.9)
+    _add_box(_door_pivot, Vector3(0.05, 0.2, 0.006), Vector3(0.2, -0.38, 0.037), blood, 0.4, 0.0, Vector3(0, 0, 0.1))
+    _add_box(_door_pivot, Vector3(0.02, 0.14, 0.006), Vector3(0.12, -0.55, 0.037), blood, 0.4)
+    _add_box(_door_pivot, Vector3(0.02, 0.09, 0.006), Vector3(0.27, -0.5, 0.037), blood, 0.4)
 
     # OUT OF ORDER sign, taped across the door
     _sign = Node3D.new()
@@ -132,15 +190,64 @@ func _build_visuals() -> void:
     add_child(_display_mount)
 
 
-func _add_box(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
+## Shared materials and meshes: all lockers reuse the same ones.
+static var _mat_cache: Dictionary = {}
+static var _mesh_cache: Dictionary = {}
+
+
+static func _mat(color: Color, rough: float, metal: float, glow: float) -> StandardMaterial3D:
+    var key: String = "%s_%.2f_%.2f_%.2f" % [color.to_html(), rough, metal, glow]
+    var cached = _mat_cache.get(key)
+    if cached != null:
+        return cached as StandardMaterial3D
+    var m := StandardMaterial3D.new()
+    m.albedo_color = color
+    m.roughness = rough
+    m.metallic = metal
+    if glow > 0.0:
+        m.emission_enabled = true
+        m.emission = color
+        m.emission_energy_multiplier = glow
+    _mat_cache[key] = m
+    return m
+
+
+func _add_box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, rough: float = 0.6, metal: float = 0.0, rot: Vector3 = Vector3.ZERO, glow: float = 0.0) -> MeshInstance3D:
+    var key: String = "box_%.3f_%.3f_%.3f" % [size.x, size.y, size.z]
+    var mesh = _mesh_cache.get(key)
+    if mesh == null:
+        var box := BoxMesh.new()
+        box.size = size
+        _mesh_cache[key] = box
+        mesh = box
     var mesh_instance := MeshInstance3D.new()
-    var box := BoxMesh.new()
-    box.size = size
-    mesh_instance.mesh = box
-    var mat := StandardMaterial3D.new()
-    mat.albedo_color = color
-    mesh_instance.material_override = mat
+    mesh_instance.mesh = mesh as Mesh
+    mesh_instance.material_override = _mat(color, rough, metal, glow)
     mesh_instance.position = pos
+    mesh_instance.rotation = rot
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(mesh_instance)
+    return mesh_instance
+
+
+func _add_cyl(parent: Node3D, radius: float, height: float, pos: Vector3, color: Color, rot: Vector3 = Vector3.ZERO, rough: float = 0.6, metal: float = 0.0) -> MeshInstance3D:
+    var key: String = "cyl_%.3f_%.3f" % [radius, height]
+    var mesh = _mesh_cache.get(key)
+    if mesh == null:
+        var c := CylinderMesh.new()
+        c.top_radius = radius
+        c.bottom_radius = radius
+        c.height = height
+        c.radial_segments = 10
+        c.rings = 1
+        _mesh_cache[key] = c
+        mesh = c
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.mesh = mesh as Mesh
+    mesh_instance.material_override = _mat(color, rough, metal, 0.0)
+    mesh_instance.position = pos
+    mesh_instance.rotation = rot
+    mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(mesh_instance)
     return mesh_instance
 
