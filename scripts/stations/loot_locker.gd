@@ -366,10 +366,12 @@ func _pick_weapon() -> WeaponData:
         roll -= int(entry["weight"])
         if roll < 0:
             return entry["weapon"]
-    return _pool[0][“weapon”]
+    return _pool[0]["weapon"]
 
 
 func _random_weapon() -> WeaponData:
     if _pool.is_empty():
         return null
-    return _pool[0]["weapon"]
+    return _pool[randi() % _pool.size()]["weapon"]
+
+# END OF FILE
