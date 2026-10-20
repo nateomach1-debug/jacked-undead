@@ -3,12 +3,14 @@ extends Control
 ## MAPS tab: Arena, Building and the other normal maps (from map_config.gd).
 ## DLC tab: the buyable maps; locked ones point to the Market.
 ## Cards resize to fit however many maps the current tab shows.
+## CUSTOM MODE button (next to BACK) opens the custom game mode toggles.
 
 const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
 const MARKET_PATH: String = "res://scripts/managers/market.gd"
 const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
+const CUSTOM_MENU_PATH: String = "res://scripts/ui/custom_mode_menu.gd"
 const MAIN_MENU_PATH: String = "res://scenes/main_menu/main_menu.tscn"
 
 const GRID_GAP: int = 14
@@ -29,6 +31,7 @@ var _grid: GridContainer
 var _message: Label
 var _maps_tab: Button
 var _dlc_tab: Button
+var _custom_btn: Button
 var _normal_cards: Array = []
 var _dlc_cards: Array = []
 var _dlc_mode: bool = false
@@ -150,13 +153,24 @@ func _build_ui() -> void:
     _message.visible = false
     outer.add_child(_message)
 
+    var bottom := HBoxContainer.new()
+    bottom.alignment = BoxContainer.ALIGNMENT_CENTER
+    bottom.add_theme_constant_override("separation", 14)
+    outer.add_child(bottom)
+
     var back := Button.new()
     back.text = "BACK"
     back.custom_minimum_size = Vector2(240, 70)
-    back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     back.add_theme_font_size_override("font_size", 24)
     back.pressed.connect(_on_back_pressed)
-    outer.add_child(back)
+    bottom.add_child(back)
+
+    _custom_btn = Button.new()
+    _custom_btn.custom_minimum_size = Vector2(380, 70)
+    _custom_btn.add_theme_font_size_override("font_size", 24)
+    _custom_btn.pressed.connect(_on_custom_pressed)
+    bottom.add_child(_custom_btn)
+    _refresh_custom_label()
 
 
 func _make_tab(label: String, dlc: bool) -> Button:
@@ -311,6 +325,32 @@ func _add_dlc_cards() -> void:
                 price = _market.map_cost(id)
             _dlc_cards.append(_add_card(str(m["title"]).to_upper(), desc, &"CardPanelLocked",
                     "%d JUICE" % price, &"LockedTag", "LOCKED", &"DangerButton", _on_locked_pressed))
+
+
+# ---------- custom game mode ----------
+
+## Button text/look: plain when the run is normal, yellow when custom mode is on.
+func _refresh_custom_label() -> void:
+    if _custom_btn == null:
+        return
+    if GameManager.custom_is_default():
+        _custom_btn.text = "CUSTOM MODE"
+        _custom_btn.theme_type_variation = &""
+    else:
+        _custom_btn.text = "CUSTOM MODE: ON"
+        _custom_btn.theme_type_variation = &"MainButton"
+
+
+func _on_custom_pressed() -> void:
+    var script = load(CUSTOM_MENU_PATH)
+    if script == null:
+        _message.text = "CUSTOM MODE SCREEN IS MISSING (custom_mode_menu.gd)."
+        _message.visible = true
+        return
+    var menu := Control.new()
+    menu.set_script(script)
+    add_child(menu)
+    menu.connect("closed", _refresh_custom_label)
 
 
 # ---------- actions ----------
