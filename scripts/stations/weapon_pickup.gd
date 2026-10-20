@@ -2,6 +2,7 @@ extends Area3D
 ## A gun dropped on the floor when you swap it out at the 2-weapon limit.
 ## Keeps the gun's ammo (and PR level / attachments, which live on the WeaponData).
 ## A glowing ring + light beam marks it; the color shows its rarity.
+## If you already carry this gun, a higher-rarity version can swap in for your copy.
 
 ## Rarity colors. A weapon's rarity is read from its "rarity" meta
 ## (weapon.set_meta("rarity", "rare")). No meta = common (white).
@@ -35,6 +36,13 @@ func _rarity_color() -> Color:
     if weapon != null:
         key = str(weapon.get_meta("rarity", "common"))
     return RARITY_COLORS.get(key, RARITY_COLORS["common"])
+
+
+func _rarity_name(w: WeaponData) -> String:
+    var key: String = "common"
+    if w != null:
+        key = str(w.get_meta("rarity", "common"))
+    return key.capitalize()
 
 
 func _ready() -> void:
@@ -144,10 +152,25 @@ func _owns_base(player: Node) -> bool:
     return false
 
 
+func _owned_copy(player: Node) -> WeaponData:
+    if weapon == null or not ("weapon_loadout" in player):
+        return null
+    for owned in player.weapon_loadout:
+        if owned != null and owned.get_base_name() == weapon.get_base_name():
+            return owned
+    return null
+
+
+func _is_upgrade(player: Node) -> bool:
+    if weapon == null or not player.has_method("is_rarity_upgrade"):
+        return false
+    return player.is_rarity_upgrade(weapon)
+
+
 func interact(player: Node) -> void:
     if weapon == null or not player.has_method("pickup_weapon"):
         return
-    if _owns_base(player):
+    if _owns_base(player) and not _is_upgrade(player):
         return
     player.pickup_weapon(weapon, mag_ammo, reserve_ammo)
     queue_free()
@@ -162,6 +185,8 @@ func get_prompt_text() -> String:
         return ""
     var wname: String = weapon.get_base_name()
     if _owns_base(_player):
+        if _is_upgrade(_player):
+            return "Tap USE to swap your %s (%s) for %s (%s)" % [wname, _rarity_name(_owned_copy(_player)), wname, _rarity_name(weapon)]
         return "You already carry %s" % wname
     if _player.weapon_loadout.size() >= 2 and _player.current_weapon != null:
         return "Tap USE to swap %s for %s" % [_player.current_weapon.get_base_name(), wname]
