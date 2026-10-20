@@ -1,7 +1,10 @@
 extends Node
 ## Online leaderboard (Supabase). Runs are queued on the phone and sent when
-## there is internet. Board id = map scene file name (+ ":coop" online).
-## Challenge modes later: add a suffix in current_board(), e.g. ":no_locker".
+## there is internet.
+## Board id = map scene file name, then ":coop" online, then ":custom:" + the
+## custom mode code when any custom toggle differs from normal
+## (e.g. "main:custom:nopr-noloot", "main:coop:custom:hp15").
+## A normal run keeps the old board name.
 
 const URL: String = "https://qnomdtgtfdocdpoaqyxa.supabase.co/rest/v1/"
 const KEY: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFub21kdGd0ZmRvY2Rwb2FxeXhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDAxNTIsImV4cCI6MjEwMjIxNjE1Mn0.A8Duae95xq3eAlHBTJokspTMC-pn_1A2Z2wQhP2PSXI"
@@ -49,6 +52,9 @@ static func current_board(tree: SceneTree) -> String:
         id = scene.scene_file_path.get_file().get_basename()
     if NetManager.is_online:
         id += ":coop"
+    var code: String = str(GameManager.custom_code())
+    if code != "":
+        id += ":custom:" + code
     return id
 
 
