@@ -35,6 +35,7 @@ static func _extra_script() -> Resource: return load("res://scripts/weapons/gun_
 ## tried first; a gun not handled there falls back to the old model below.
 const UPGRADE_FILES: Array = [
     "res://scripts/weapons/gun_upgrade_2.gd",
+    "res://scripts/weapons/gun_upgrade_3.gd",
 ]
 
 
@@ -48,10 +49,24 @@ static func _upgrade_for(kind: String) -> Resource:
     return null
 
 
+## Size multiplier for a gun: this file first, then gun_models_extra.gd's table.
+static func _scale_for(kind: String) -> float:
+    if SCALE_BY_KIND.has(kind):
+        return float(SCALE_BY_KIND[kind])
+    var extra = _extra_script()
+    if extra != null:
+        var consts = extra.call("get_script_constant_map")
+        if consts is Dictionary:
+            var table = consts.get("SCALE_BY_KIND", {})
+            if table is Dictionary and table.has(kind):
+                return float(table[kind])
+    return 1.5
+
+
 static func build(kind: String) -> Node3D:
     var upgrade = _upgrade_for(kind)
     if upgrade != null:
-        return upgrade.call("build_upgrade", kind, float(SCALE_BY_KIND.get(kind, 1.5)))
+        return upgrade.call("build_upgrade", kind, _scale_for(kind))
     return _build_base(kind) if _extra_script() == null or not _extra_script().call("handles", kind) else _extra_script().call("build_extra", kind)
 
 static func _build_base(kind: String) -> Node3D:
