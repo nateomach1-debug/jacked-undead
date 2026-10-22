@@ -47,7 +47,7 @@ func _gui_input(event: InputEvent) -> void:
 
     if event is InputEventScreenTouch:
         if event.pressed:
-            if _zone.has_point(event.position) and not _is_over_joystick(event.position):
+            if _zone.has_point(event.position):
                 if _shoot_touch_index == -1:
                     _shoot_touch_index = event.index
                     _shoot_origin = event.position
