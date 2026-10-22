@@ -10,6 +10,7 @@ var _look_touch_index: int = -1
 var _shoot_touch_index: int = -1
 var _ignored_look_touch_indices: Dictionary = {}
 var _look_fingers: Dictionary = {}
+var _last_pos: Dictionary = {}
 var _shoot_origin: Vector2 = Vector2.ZERO
 var _shoot_knob_offset: Vector2 = Vector2.ZERO
 var _zone: Rect2 = Rect2()
@@ -51,9 +52,11 @@ func _gui_input(event: InputEvent) -> void:
             if _is_over_joystick(event.position):
                 _ignored_look_touch_indices[event.index] = true
                 _look_fingers.erase(event.index)
+                _last_pos.erase(event.index)
             else:
                 # Only fingers that start here may turn the camera.
                 _look_fingers[event.index] = true
+                _last_pos[event.index] = event.position
                 if _zone.has_point(event.position):
                     if _shoot_touch_index == -1:
                         _shoot_touch_index = event.index
@@ -72,6 +75,7 @@ func _gui_input(event: InputEvent) -> void:
         else:
             _ignored_look_touch_indices.erase(event.index)
             _look_fingers.erase(event.index)
+            _last_pos.erase(event.index)
 
             if event.index == _shoot_touch_index:
                 _shoot_touch_index = -1
@@ -94,10 +98,17 @@ func _gui_input(event: InputEvent) -> void:
             and _player
             and _player.has_method("apply_look_delta")
         ):
-            _player.apply_look_delta(
-                event.screen_relative,
-                TOUCH_LOOK_SENSITIVITY * _look_mult
-            )
+            # Movement from this finger's own positions. The browser's
+            # relative value can be wrong with two fingers down.
+            var delta: Vector2 = Vector2.ZERO
+            if _last_pos.has(event.index):
+                delta = (event.position - _last_pos[event.index]) * _screen_scale()
+            _last_pos[event.index] = event.position
+            if delta != Vector2.ZERO:
+                _player.apply_look_delta(
+                    delta,
+                    TOUCH_LOOK_SENSITIVITY * _look_mult
+                )
 
         # Only the shoot finger moves the shoot-stick graphic.
         if event.index == _shoot_touch_index:
@@ -116,6 +127,12 @@ func _gui_input(event: InputEvent) -> void:
         # camera when a second finger lands. Swallow it while fingers are down.
         if not _look_fingers.is_empty() or not _ignored_look_touch_indices.is_empty():
             accept_event()
+
+
+## Screen pixels per viewport unit, so the look speed feels like screen_relative did.
+func _screen_scale() -> float:
+    var s: Vector2 = get_viewport().get_screen_transform().get_scale()
+    return maxf((absf(s.x) + absf(s.y)) * 0.5, 0.01)
 
 
 func _draw() -> void:
