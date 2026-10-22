@@ -1,4 +1,3 @@
-
 extends Control
 
 const TOUCH_LOOK_SENSITIVITY: float = 0.006
@@ -41,57 +40,58 @@ func _update_zone() -> void:
     queue_redraw()
 
 
-
 func _gui_input(event: InputEvent) -> void:
     if not _player:
         _player = get_tree().get_first_node_in_group("player")
 
     if event is InputEventScreenTouch:
-    if event.pressed:
-        # Remember fingers that start on the movement joystick.
-        if _is_over_joystick(event.position):
-            _ignored_look_touch_indices[event.index] = true
+        if event.pressed:
+            # Remember fingers that start on the movement joystick.
+            if _is_over_joystick(event.position):
+                _ignored_look_touch_indices[event.index] = true
+            elif _zone.has_point(event.position):
+                if _shoot_touch_index == -1:
+                    _shoot_touch_index = event.index
+                    _shoot_origin = event.position
+                    _shoot_knob_offset = Vector2.ZERO
 
-        if _zone.has_point(event.position):
-            if _shoot_touch_index == -1:
-                _shoot_touch_index = event.index
-                _shoot_origin = event.position
-                _shoot_knob_offset = Vector2.ZERO
+                    if _player:
+                        _player.touch_shooting = true
+
+                    Input.action_press("shoot")
+
+                    if _player and _player.has_method("fire_once_if_ready"):
+                        _player.fire_once_if_ready()
+
+                    queue_redraw()
+        else:
+            _ignored_look_touch_indices.erase(event.index)
+
+            if event.index == _shoot_touch_index:
+                _shoot_touch_index = -1
 
                 if _player:
-                    _player.touch_shooting = true
+                    _player.touch_shooting = false
 
-                Input.action_press("shoot")
-
-                if _player and _player.has_method("fire_once_if_ready"):
-                    _player.fire_once_if_ready()
-
+                Input.action_release("shoot")
                 queue_redraw()
-    else:
-        _ignored_look_touch_indices.erase(event.index)
 
-        if event.index == _shoot_touch_index:
-            _shoot_touch_index = -1
-
-            if _player:
-                _player.touch_shooting = false
-
-            Input.action_release("shoot")
-            queue_redraw()
-
-    accept_event()
+        # Don't swallow touches that belong to the joystick.
+        if not _ignored_look_touch_indices.has(event.index):
+            accept_event()
 
     elif event is InputEventScreenDrag:
         # Ignore movement-joystick fingers when rotating the camera.
-if (
-    not _ignored_look_touch_indices.has(event.index)
-    and _player
-    and _player.has_method("apply_look_delta")
-):
-    _player.apply_look_delta(
-        event.screen_relative,
-        TOUCH_LOOK_SENSITIVITY * _look_mult
-    )
+        if (
+            not _ignored_look_touch_indices.has(event.index)
+            and _player
+            and _player.has_method("apply_look_delta")
+        ):
+            _player.apply_look_delta(
+                event.screen_relative,
+                TOUCH_LOOK_SENSITIVITY * _look_mult
+            )
+
         # Only the shoot finger moves the shoot-stick graphic.
         if event.index == _shoot_touch_index:
             var offset: Vector2 = event.position - _shoot_origin
@@ -101,7 +101,8 @@ if (
             _shoot_knob_offset = offset
             queue_redraw()
 
-        accept_event()
+        if not _ignored_look_touch_indices.has(event.index):
+            accept_event()
 
 
 func _draw() -> void:
