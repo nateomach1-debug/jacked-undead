@@ -9,6 +9,7 @@ const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
 var _player: Node
 var _look_touch_index: int = -1
 var _shoot_touch_index: int = -1
+var _ignored_look_touch_indices: Dictionary = {}
 var _shoot_origin: Vector2 = Vector2.ZERO
 var _shoot_knob_offset: Vector2 = Vector2.ZERO
 var _zone: Rect2 = Rect2()
@@ -46,34 +47,51 @@ func _gui_input(event: InputEvent) -> void:
         _player = get_tree().get_first_node_in_group("player")
 
     if event is InputEventScreenTouch:
-        if event.pressed:
-            if _zone.has_point(event.position):
-                if _shoot_touch_index == -1:
-                    _shoot_touch_index = event.index
-                    _shoot_origin = event.position
-                    _shoot_knob_offset = Vector2.ZERO
-                    Input.action_press("shoot")
+    if event.pressed:
+        # Remember fingers that start on the movement joystick.
+        if _is_over_joystick(event.position):
+            _ignored_look_touch_indices[event.index] = true
 
-                    if _player and _player.has_method("fire_once_if_ready"):
-                        _player.fire_once_if_ready()
+        if _zone.has_point(event.position):
+            if _shoot_touch_index == -1:
+                _shoot_touch_index = event.index
+                _shoot_origin = event.position
+                _shoot_knob_offset = Vector2.ZERO
 
-                    queue_redraw()
-        else:
-            if event.index == _shoot_touch_index:
-                _shoot_touch_index = -1
-                Input.action_release("shoot")
+                if _player:
+                    _player.touch_shooting = true
+
+                Input.action_press("shoot")
+
+                if _player and _player.has_method("fire_once_if_ready"):
+                    _player.fire_once_if_ready()
+
                 queue_redraw()
+    else:
+        _ignored_look_touch_indices.erase(event.index)
 
-        accept_event()
+        if event.index == _shoot_touch_index:
+            _shoot_touch_index = -1
+
+            if _player:
+                _player.touch_shooting = false
+
+            Input.action_release("shoot")
+            queue_redraw()
+
+    accept_event()
 
     elif event is InputEventScreenDrag:
-        # Camera aiming works across the whole screen.
-        if _player and _player.has_method("apply_look_delta"):
-            _player.apply_look_delta(
-                event.screen_relative,
-                TOUCH_LOOK_SENSITIVITY * _look_mult
-            )
-
+        # Ignore movement-joystick fingers when rotating the camera.
+if (
+    not _ignored_look_touch_indices.has(event.index)
+    and _player
+    and _player.has_method("apply_look_delta")
+):
+    _player.apply_look_delta(
+        event.screen_relative,
+        TOUCH_LOOK_SENSITIVITY * _look_mult
+    )
         # Only the shoot finger moves the shoot-stick graphic.
         if event.index == _shoot_touch_index:
             var offset: Vector2 = event.position - _shoot_origin
