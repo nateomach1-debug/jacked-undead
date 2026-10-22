@@ -9,6 +9,7 @@ var _player: Node
 var _look_touch_index: int = -1
 var _shoot_touch_index: int = -1
 var _ignored_look_touch_indices: Dictionary = {}
+var _look_fingers: Dictionary = {}
 var _shoot_origin: Vector2 = Vector2.ZERO
 var _shoot_knob_offset: Vector2 = Vector2.ZERO
 var _zone: Rect2 = Rect2()
@@ -49,23 +50,28 @@ func _gui_input(event: InputEvent) -> void:
             # Remember fingers that start on the movement joystick.
             if _is_over_joystick(event.position):
                 _ignored_look_touch_indices[event.index] = true
-            elif _zone.has_point(event.position):
-                if _shoot_touch_index == -1:
-                    _shoot_touch_index = event.index
-                    _shoot_origin = event.position
-                    _shoot_knob_offset = Vector2.ZERO
+                _look_fingers.erase(event.index)
+            else:
+                # Only fingers that start here may turn the camera.
+                _look_fingers[event.index] = true
+                if _zone.has_point(event.position):
+                    if _shoot_touch_index == -1:
+                        _shoot_touch_index = event.index
+                        _shoot_origin = event.position
+                        _shoot_knob_offset = Vector2.ZERO
 
-                    if _player:
-                        _player.touch_shooting = true
+                        if _player:
+                            _player.touch_shooting = true
 
-                    Input.action_press("shoot")
+                        Input.action_press("shoot")
 
-                    if _player and _player.has_method("fire_once_if_ready"):
-                        _player.fire_once_if_ready()
+                        if _player and _player.has_method("fire_once_if_ready"):
+                            _player.fire_once_if_ready()
 
-                    queue_redraw()
+                        queue_redraw()
         else:
             _ignored_look_touch_indices.erase(event.index)
+            _look_fingers.erase(event.index)
 
             if event.index == _shoot_touch_index:
                 _shoot_touch_index = -1
@@ -81,9 +87,10 @@ func _gui_input(event: InputEvent) -> void:
             accept_event()
 
     elif event is InputEventScreenDrag:
-        # Ignore movement-joystick fingers when rotating the camera.
+        # Only look-area fingers rotate the camera, never the joystick finger.
         if (
-            not _ignored_look_touch_indices.has(event.index)
+            _look_fingers.has(event.index)
+            and not _ignored_look_touch_indices.has(event.index)
             and _player
             and _player.has_method("apply_look_delta")
         ):
@@ -102,6 +109,12 @@ func _gui_input(event: InputEvent) -> void:
             queue_redraw()
 
         if not _ignored_look_touch_indices.has(event.index):
+            accept_event()
+
+    elif event is InputEventMouseMotion or event is InputEventMouseButton:
+        # Browsers can turn touches into fake mouse input, which jumps the
+        # camera when a second finger lands. Swallow it while fingers are down.
+        if not _look_fingers.is_empty() or not _ignored_look_touch_indices.is_empty():
             accept_event()
 
 
