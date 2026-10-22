@@ -122,5 +122,4 @@ func _is_over_joystick(position: Vector2) -> bool:
         * viewport_position
     )
 
-    return Rect2(Vector2.ZERO, joystick.size).has_point(joystick_positi
-on)
+    return Rect2(Vector2.ZERO, joystick.size).has_point(joystick_position)
