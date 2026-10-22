@@ -319,7 +319,7 @@ func _handle_shooting(delta: float) -> void:
                 _fire_cooldown = current_weapon.fire_rate
         return
 
-        var wants_to_shoot: bool = false
+    var wants_to_shoot: bool = false
 
     if OS.has_feature("mobile") or DisplayServer.is_touchscreen_available():
         wants_to_shoot = touch_shooting
