@@ -5,10 +5,13 @@ extends RefCounted
 ## cx / cy = distance from that corner (or from the centre line for tc/bc)
 ## to the element's centre, in pixels. w / h = size of the editor box.
 ## "wfrac" / "wsub": width = screen width * wfrac - wsub (the shoot area).
+## "reshape": true = the editor can drag its corners to any rectangle
+## (saved as wf / hf = size as a fraction of the screen, before scale).
 
 const FILE: String = "user://hud_layout.cfg"
+const MIN_SHAPE: float = 60.0
 const ELEMENTS: Array = [
-    {"id": "shoot_zone", "group": "touch", "title": "SHOOT AREA", "w": 1000.0, "h": 330.0, "wfrac": 0.5, "wsub": 164.0, "corner": "br", "cx": 500.0, "cy": 165.0, "scalable": true, "alpha_min": 0.0},
+    {"id": "shoot_zone", "group": "touch", "title": "SHOOT AREA", "w": 1000.0, "h": 330.0, "wfrac": 0.5, "wsub": 164.0, "corner": "br", "cx": 500.0, "cy": 165.0, "scalable": true, "alpha_min": 0.0, "reshape": true},
     {"id": "joystick", "group": "touch", "title": "JOYSTICK", "w": 360.0, "h": 360.0, "corner": "bl", "cx": 250.0, "cy": 240.0, "scalable": true},
     {"id": "use", "group": "touch", "title": "USE", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 95.0, "scalable": true},
     {"id": "reload", "group": "touch", "title": "RELOAD", "w": 150.0, "h": 150.0, "corner": "br", "cx": 95.0, "cy": 260.0, "scalable": true},
@@ -23,7 +26,7 @@ const ELEMENTS: Array = [
     {"id": "hud_coords", "group": "hud", "title": "COORDS", "w": 276.0, "h": 36.0, "corner": "tr", "cx": 162.0, "cy": 42.0, "scalable": true},
 ]
 
-## id -> {"x": fraction, "y": fraction, "s": scale, "a": opacity}
+## id -> {"x": fraction, "y": fraction, "s": scale, "a": opacity, "wf": width fraction, "hf": height fraction}
 var data: Dictionary = {}
 
 
@@ -35,7 +38,7 @@ func _init() -> void:
         if info(sec).is_empty():
             continue
         var d: Dictionary = {}
-        for key in ["x", "y", "s", "a"]:
+        for key in ["x", "y", "s", "a", "wf", "hf"]:
             if cfg.has_section_key(sec, key):
                 d[key] = float(cfg.get_value(sec, key))
         if not d.is_empty():
@@ -65,11 +68,15 @@ func has_group(group: String) -> bool:
     return false
 
 
-## Base size of the element in pixels (the shoot area depends on screen width).
+## Base size of the element in pixels (the shoot area depends on screen width,
+## or on its dragged shape when the player reshaped it).
 func size_of(id: String, vp: Vector2) -> Vector2:
     var e: Dictionary = info(id)
     if e.is_empty():
         return Vector2.ZERO
+    var d: Dictionary = data.get(id, {})
+    if bool(e.get("reshape", false)) and d.has("wf") and d.has("hf"):
+        return Vector2(maxf(float(d["wf"]) * vp.x, MIN_SHAPE), maxf(float(d["hf"]) * vp.y, MIN_SHAPE))
     var w: float = float(e["w"])
     if e.has("wfrac"):
         w = maxf(vp.x * float(e["wfrac"]) - float(e.get("wsub", 0.0)), 100.0)
@@ -137,6 +144,15 @@ func set_center(id: String, c: Vector2, vp: Vector2) -> void:
     var d: Dictionary = _entry(id)
     d["x"] = c.x / maxf(vp.x, 1.0)
     d["y"] = c.y / maxf(vp.y, 1.0)
+
+
+## Sets the on-screen rectangle (position and shape) of a reshapable element.
+func set_rect(id: String, r: Rect2, vp: Vector2) -> void:
+    var d: Dictionary = _entry(id)
+    var s: float = maxf(scale_of(id), 0.01)
+    set_center(id, r.position + r.size / 2.0, vp)
+    d["wf"] = r.size.x / s / maxf(vp.x, 1.0)
+    d["hf"] = r.size.y / s / maxf(vp.y, 1.0)
 
 
 func set_scale(id: String, v: float) -> void:
