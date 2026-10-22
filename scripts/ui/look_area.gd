@@ -47,7 +47,7 @@ func _gui_input(event: InputEvent) -> void:
 
     if event is InputEventScreenTouch:
         if event.pressed:
-            if _zone.has_point(event.position):
+            if _zone.has_point(event.position) and not _is_over_joystick(event.position):
                 if _shoot_touch_index == -1:
                     _shoot_touch_index = event.index
                     _shoot_origin = event.position
@@ -107,3 +107,20 @@ func _load_look_multiplier() -> void:
     if script != null:
         var s = script.new()
         _look_mult = float(s.get_value("touch_look"))
+
+
+func _is_over_joystick(position: Vector2) -> bool:
+    var joystick = get_parent().get_node_or_null("Joystick")
+    if joystick == null:
+        return false
+
+    var viewport_position: Vector2 = (
+        get_global_transform_with_canvas() * position
+    )
+    var joystick_position: Vector2 = (
+        joystick.get_global_transform_with_canvas().affine_inverse()
+        * viewport_position
+    )
+
+    return Rect2(Vector2.ZERO, joystick.size).has_point(joystick_positi
+on)
