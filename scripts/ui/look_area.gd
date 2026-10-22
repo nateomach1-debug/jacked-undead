@@ -41,15 +41,20 @@ func _gui_input(event: InputEvent) -> void:
         _player = get_tree().get_first_node_in_group("player")
 
     if event is InputEventScreenDrag:
-        if _player and _player.has_method("apply_look_delta"):
-            _player.apply_look_delta(event.screen_relative, TOUCH_LOOK_SENSITIVITY * _look_mult)
-        if event.index == _shoot_touch_index:
-            var offset: Vector2 = event.position - _shoot_origin
-            if offset.length() > STICK_VISUAL_RADIUS:
-                offset = offset.normalized() * STICK_VISUAL_RADIUS
-            _shoot_knob_offset = offset
-            queue_redraw()
-        accept_event()
+    if event.index == _shoot_touch_index:
+        var offset: Vector2 = event.position - _shoot_origin
+        if offset.length() > STICK_VISUAL_RADIUS:
+            offset = offset.normalized() * STICK_VISUAL_RADIUS
+        _shoot_knob_offset = offset
+        queue_redraw()
+
+    if _player and _player.has_method("apply_look_delta"):
+        _player.apply_look_delta(
+            event.screen_relative,
+            TOUCH_LOOK_SENSITIVITY * _look_mult
+        )
+
+    accept_event()
     elif event is InputEventScreenTouch:
         if event.pressed:
             var in_shoot_zone: bool = _zone.has_point(event.position)
