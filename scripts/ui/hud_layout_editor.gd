@@ -1,10 +1,14 @@
 extends Control
 ## HUD layout editor (Settings > HUD LAYOUT). Tap a box to select it, drag to
-## move it, use the - / + buttons for size and opacity. Saves automatically.
+## move it, use the - / + buttons for size and opacity. The SHOOT AREA also gets
+## four corner arrows: drag a corner to reshape it into any rectangle.
+## Saves automatically.
 
 const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const YELLOW: Color = Color(1.0, 0.769, 0.0)
+const HANDLE_SIZE: float = 80.0
+const MIN_SHAPE: Vector2 = Vector2(170.0, 170.0)
 
 var _layout = null
 var _ghosts: Dictionary = {}
@@ -14,6 +18,9 @@ var _hidden: Array = []
 var _title_label: Label
 var _size_label: Label
 var _alpha_label: Label
+var _handles: Array = []
+var _drag_anchor: Vector2 = Vector2.ZERO
+var _drag_grab: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -27,6 +34,8 @@ func _ready() -> void:
         for info in _layout.ELEMENTS:
             _make_ghost(info)
     _build_panel()
+    _build_handles()
+    _place_handles()
     _update_labels()
 
 
@@ -75,9 +84,12 @@ func _make_ghost(info: Dictionary) -> void:
 func _refresh_ghost(id: String) -> void:
     var g: Control = _ghosts[id]
     var vp: Vector2 = get_viewport_rect().size
+    g.size = _layout.size_of(id, vp)
+    g.pivot_offset = g.size / 2.0
     g.position = _layout.center(id, vp) - g.size / 2.0
     g.scale = Vector2.ONE * _layout.scale_of(id)
     g.queue_redraw()
+    _place_handles()
 
 
 func _draw_ghost(g: Control, id: String) -> void:
@@ -143,8 +155,110 @@ func _select(id: String) -> void:
     _selected = id
     for k in _ghosts.keys():
         (_ghosts[k] as Control).queue_redraw()
+    _place_handles()
     _update_labels()
 
+
+# ------------------------------------------------------------ corner arrows
+
+## Four corner handles: 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right.
+func _build_handles() -> void:
+    for i in range(4):
+        var h := Control.new()
+        h.size = Vector2(HANDLE_SIZE, HANDLE_SIZE)
+        h.visible = false
+        h.draw.connect(_draw_handle.bind(h, i))
+        h.gui_input.connect(_on_handle_event.bind(h, i))
+        add_child(h)
+        _handles.append(h)
+
+
+func _draw_handle(h: Control, i: int) -> void:
+    var c: Vector2 = h.size / 2.0
+    h.draw_circle(c, 36.0, Color(0.055, 0.055, 0.067, 0.88))
+    h.draw_arc(c, 36.0, 0.0, TAU, 40, YELLOW, 4.0)
+    var d: Vector2 = Vector2(1.0, 1.0).normalized()
+    if i == 1 or i == 2:
+        d = Vector2(1.0, -1.0).normalized()
+    var side: Vector2 = Vector2(-d.y, d.x)
+    var a: Vector2 = c - d * 19.0
+    var b: Vector2 = c + d * 19.0
+    h.draw_line(a, b, YELLOW, 5.0)
+    h.draw_colored_polygon(PackedVector2Array([b + d * 9.0, b - d * 5.0 + side * 10.0, b - d * 5.0 - side * 10.0]), YELLOW)
+    h.draw_colored_polygon(PackedVector2Array([a - d * 9.0, a + d * 5.0 + side * 10.0, a + d * 5.0 - side * 10.0]), YELLOW)
+
+
+func _corner_of(r: Rect2, i: int) -> Vector2:
+    var x: float = r.size.x if i % 2 == 1 else 0.0
+    var y: float = r.size.y if i >= 2 else 0.0
+    return r.position + Vector2(x, y)
+
+
+## Handles sit just inside the corners so they stay reachable at the screen edge.
+func _place_handles() -> void:
+    if _handles.is_empty() or _layout == null:
+        return
+    var show: bool = _selected != "" and bool(_layout.info(_selected).get("reshape", false))
+    for i in range(4):
+        var h: Control = _handles[i]
+        h.visible = show
+        if not show:
+            continue
+        var r: Rect2 = _layout.rect_of(_selected, get_viewport_rect().size)
+        var inward: Vector2 = Vector2(1.0 if i % 2 == 0 else -1.0, 1.0 if i < 2 else -1.0)
+        h.position = _corner_of(r, i) + inward * (HANDLE_SIZE * 0.55) - Vector2(HANDLE_SIZE, HANDLE_SIZE) / 2.0
+        h.queue_redraw()
+
+
+func _on_handle_event(event: InputEvent, h: Control, i: int) -> void:
+    var pressed_now: bool = false
+    var released_now: bool = false
+    var moving: bool = false
+    if event is InputEventMouseButton:
+        if event.button_index != MOUSE_BUTTON_LEFT:
+            return
+        pressed_now = event.pressed
+        released_now = not event.pressed
+    elif event is InputEventScreenTouch:
+        pressed_now = event.pressed
+        released_now = not event.pressed
+    elif event is InputEventMouseMotion:
+        moving = (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0
+    elif event is InputEventScreenDrag:
+        moving = true
+    else:
+        return
+    if _selected == "" or _layout == null:
+        return
+    var gp: Vector2 = h.get_global_transform() * event.position
+    if pressed_now:
+        var r: Rect2 = _layout.rect_of(_selected, get_viewport_rect().size)
+        _drag_grab = _corner_of(r, i) - gp
+        _drag_anchor = _corner_of(r, 3 - i)
+    elif released_now:
+        _layout.save()
+    elif moving:
+        _drag_corner(i, gp)
+    h.accept_event()
+
+
+## The dragged corner follows the finger; the opposite corner stays put.
+func _drag_corner(i: int, gp: Vector2) -> void:
+    var vp: Vector2 = get_viewport_rect().size
+    var c: Vector2 = gp + _drag_grab
+    var sx: float = -1.0 if i % 2 == 0 else 1.0
+    var sy: float = -1.0 if i < 2 else 1.0
+    var room_x: float = _drag_anchor.x if sx < 0.0 else vp.x - _drag_anchor.x
+    var room_y: float = _drag_anchor.y if sy < 0.0 else vp.y - _drag_anchor.y
+    var w: float = clampf(sx * (c.x - _drag_anchor.x), minf(MIN_SHAPE.x, room_x), room_x)
+    var h: float = clampf(sy * (c.y - _drag_anchor.y), minf(MIN_SHAPE.y, room_y), room_y)
+    var corner: Vector2 = _drag_anchor + Vector2(sx * w, sy * h)
+    var top_left := Vector2(minf(_drag_anchor.x, corner.x), minf(_drag_anchor.y, corner.y))
+    _layout.set_rect(_selected, Rect2(top_left, Vector2(w, h)), vp)
+    _refresh_ghost(_selected)
+
+
+# ------------------------------------------------------------------- panel
 
 func _build_panel() -> void:
     var panel := PanelContainer.new()
@@ -237,6 +351,8 @@ func _update_labels() -> void:
         return
     var info: Dictionary = _layout.info(_selected)
     _title_label.text = "SELECTED: " + str(info["title"])
+    if bool(info.get("reshape", false)):
+        _title_label.text += " - DRAG CORNERS"
     if bool(info.get("scalable", true)):
         _size_label.text = "%d%%" % roundi(_layout.scale_of(_selected) * 100.0)
     else:
