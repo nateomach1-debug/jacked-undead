@@ -1,0 +1,121 @@
+name: Build and deploy Jacked Undead Web
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.3
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          GODOT_VERSION="4.3-stable"
+
+          curl -L --fail --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v4.3-stable_linux.x86_64.zip" \
+            -o /tmp/godot.zip
+
+          unzip -q /tmp/godot.zip -d /tmp/godot
+
+          sudo install -m 0755 \
+            /tmp/godot/Godot_v4.3-stable_linux.x86_64 \
+            /usr/local/bin/godot
+
+      - name: Install Web export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -L --fail --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz" \
+            -o /tmp/templates.tpz
+
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/4.3.stable"
+
+          mkdir -p "$TEMPLATE_DIR"
+
+          unzip -q -j /tmp/templates.tpz \
+            'templates/*' \
+            -d "$TEMPLATE_DIR"
+
+      - name: Configure Compatibility renderer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("project.godot")
+          text = path.read_text()
+
+          text = text.replace(
+              'config/features=PackedStringArray("4.3", "Forward Plus")',
+              'config/features=PackedStringArray("4.3", "GL Compatibility")'
+          )
+
+          marker = "[rendering]\n"
+
+          if marker not in text:
+              text += "\n[rendering]\n"
+              marker = "[rendering]\n"
+
+          if 'renderer/rendering_method=' not in text:
+              text = text.replace(
+                  marker,
+                  marker
+                  + 'renderer/rendering_method="gl_compatibility"\n'
+                  + 'renderer/rendering_method.mobile="gl_compatibility"\n',
+                  1
+              )
+
+          path.write_text(text)
+          PY
+
+      - name: Import project assets
+        run: |
+          godot --headless --editor --path . --quit
+
+      - name: Export Web build
+        run: |
+          mkdir -p build
+          godot --headless --path . \
+            --export-release "Web" build/index.html
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Web build
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
