@@ -16,6 +16,7 @@ const ENABLED: Dictionary = {
     "solar_substation": true,
     "cheese_cube": true,
     "random_gym": true,
+    "swarm_underground": true,
 }
 
 # coop = also offered on the Co-op host screen.
@@ -29,6 +30,7 @@ const MAPS: Array = [
     {"id": "solar_substation", "title": "SOLAR SUBSTATION", "path": "res://scenes/main/solar_substation.tscn", "coop": true, "dlc": true},
     {"id": "cheese_cube", "title": "CHEESE CUBE", "path": "res://scenes/main/cheese_cube_map.tscn", "coop": true, "dlc": true},
     {"id": "random_gym", "title": "RANDOM GYM", "path": "res://scenes/main/generated_gym_map.tscn", "coop": false},
+    {"id": "swarm_underground", "title": "SWARM: UNDERGROUND", "path": "res://scenes/main/swarm_underground_map.tscn", "coop": true},
 ]
 
 
