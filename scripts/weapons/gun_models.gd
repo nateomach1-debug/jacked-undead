@@ -37,6 +37,7 @@ const UPGRADE_FILES: Array = [
     "res://scripts/weapons/gun_upgrade_2.gd",
     "res://scripts/weapons/gun_upgrade_3.gd",
     "res://scripts/weapons/gun_upgrade_4.gd",
+    "res://scripts/weapons/gun_upgrade_5.gd",
 ]
 
 
