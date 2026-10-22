@@ -322,12 +322,12 @@ func _handle_shooting(delta: float) -> void:
     var wants_to_shoot: bool = false
 
 if OS.has_feature("mobile") or DisplayServer.is_touchscreen_available():
-    wants_to_shoot = touch_shooting
+     wants_to_shoot = touch_shooting
  else:
      wants_to_shoot = Input.is_action_pressed("shoot")
 
 if wants_to_shoot and _fire_cooldown <= 0.0:
-     _try_trigger()
+    _try_trigger()
 
 ## One trigger pull: fires the first (or only) round, sets up the rest of
 ## a burst if the weapon has one, or auto-reloads if the mag is empty.
