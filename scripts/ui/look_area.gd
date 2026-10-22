@@ -40,13 +40,13 @@ func _update_zone() -> void:
     queue_redraw()
 
 
+
 func _gui_input(event: InputEvent) -> void:
     if not _player:
         _player = get_tree().get_first_node_in_group("player")
 
     if event is InputEventScreenTouch:
         if event.pressed:
-            # Assign each finger to only one role.
             if _zone.has_point(event.position):
                 if _shoot_touch_index == -1:
                     _shoot_touch_index = event.index
@@ -58,29 +58,23 @@ func _gui_input(event: InputEvent) -> void:
                         _player.fire_once_if_ready()
 
                     queue_redraw()
-            elif _look_touch_index == -1:
-                _look_touch_index = event.index
         else:
             if event.index == _shoot_touch_index:
                 _shoot_touch_index = -1
                 Input.action_release("shoot")
                 queue_redraw()
 
-            if event.index == _look_touch_index:
-                _look_touch_index = -1
-
         accept_event()
 
-    
     elif event is InputEventScreenDrag:
-        # Every screen drag can rotate the camera, including the shoot zone.
+        # Camera aiming works across the whole screen.
         if _player and _player.has_method("apply_look_delta"):
             _player.apply_look_delta(
                 event.screen_relative,
                 TOUCH_LOOK_SENSITIVITY * _look_mult
             )
 
-        # Only update the shoot-stick graphic for its assigned finger.
+        # Only the shoot finger moves the shoot-stick graphic.
         if event.index == _shoot_touch_index:
             var offset: Vector2 = event.position - _shoot_origin
             if offset.length() > STICK_VISUAL_RADIUS:
