@@ -34,6 +34,7 @@ const SEPARATION_RADIUS: float = 1.0      # zombies closer than this push each o
 const SEPARATION_STRENGTH: float = 1.5
 const SEPARATION_INTERVAL: float = 0.12   # separation is recalculated this often (cheaper)
 const LOS_INTERVAL: float = 0.25          # how often to check for a wall between us and the target
+const OUT_CHECK_INTERVAL: float = 0.1     # how often to check whether the target went down or left
 
 # Look settings
 const NEW_LOOK: bool = true          # true = new look + rise/stagger/gore; false = classic look
@@ -101,6 +102,10 @@ var _sep_timer: float = 0.0
 var _sep_vector: Vector3 = Vector3.ZERO
 var _los_timer: float = 0.0
 var _has_los: bool = true
+var _feet_offset: float = NAN
+var _out_timer: float = 0.0
+var _test_params: PhysicsTestMotionParameters3D = null
+var _test_result: PhysicsTestMotionResult3D = null
 
 # Look / animation state
 static var _box_cache: Dictionary = {}
@@ -384,7 +389,6 @@ func _spawn_corpse() -> void:
     tw.tween_property(body, "position:y", y0 - 0.8, 1.2)
     tw.tween_callback(body.queue_free)
 
-
 ## Picks the nearest player who is still up: this phone's player plus any
 ## co-op players. Becomes null if everyone is downed or dead.
 func _find_target() -> void:
@@ -419,10 +423,16 @@ func _physics_process(delta: float) -> void:
         move_and_slide()
         return
 
-    # Drop a target that went down / died / left right away; re-pick regularly.
-    if _target != null and (not is_instance_valid(_target) or _is_out(_target)):
+    # Drop a target that went down / died / left (checked a few times a second); re-pick regularly.
+    _out_timer -= delta
+    if _target != null and not is_instance_valid(_target):
         _target = null
         _retarget_timer = 0.0
+    elif _target != null and _out_timer <= 0.0:
+        _out_timer = OUT_CHECK_INTERVAL
+        if _is_out(_target):
+            _target = null
+            _retarget_timer = 0.0
     _retarget_timer -= delta
     if _retarget_timer <= 0.0:
         _retarget_timer = RETARGET_INTERVAL
@@ -552,7 +562,7 @@ func _apply_separation(direction: Vector3) -> Vector3:
 func _get_move_direction(to_target: Vector3, delta: float) -> Vector3:
     _repath_timer -= delta
     if _repath_timer <= 0.0:
-        _repath_timer = repath_interval
+        _repath_timer = repath_interval * clampf(to_target.length() / 12.0, 1.0, 3.0)  # far zombies repath less often
         _refresh_path()
 
     while _path_index < _path.size():
@@ -573,10 +583,12 @@ func _get_move_direction(to_target: Vector3, delta: float) -> Vector3:
 
 ## World Y of this zombie's feet (the body origin is the middle of its capsule).
 func _feet_y() -> float:
-    var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
-    if shape_node and shape_node.shape is CapsuleShape3D:
-        return global_position.y - (shape_node.shape as CapsuleShape3D).height * 0.5
-    return global_position.y - 0.95
+    if is_nan(_feet_offset):
+        _feet_offset = 0.95
+        var shape_node := get_node_or_null("CollisionShape3D") as CollisionShape3D
+        if shape_node and shape_node.shape is CapsuleShape3D:
+            _feet_offset = (shape_node.shape as CapsuleShape3D).height * 0.5
+    return global_position.y - _feet_offset
 
 
 func _refresh_path() -> void:
@@ -638,15 +650,16 @@ func _start_detour(direction: Vector3) -> void:
 
 ## True only if something ahead would stop us AND it is not a walkable slope.
 func _blocked_by_steep(motion: Vector3) -> bool:
-    var params := PhysicsTestMotionParameters3D.new()
-    params.from = global_transform
-    params.motion = motion
-    params.max_collisions = 4
-    var result := PhysicsTestMotionResult3D.new()
-    if not PhysicsServer3D.body_test_motion(get_rid(), params, result):
+    if _test_params == null:
+        _test_params = PhysicsTestMotionParameters3D.new()
+        _test_params.max_collisions = 4
+        _test_result = PhysicsTestMotionResult3D.new()
+    _test_params.from = global_transform
+    _test_params.motion = motion
+    if not PhysicsServer3D.body_test_motion(get_rid(), _test_params, _test_result):
         return false
-    for i in result.get_collision_count():
-        if result.get_collision_normal(i).angle_to(Vector3.UP) > deg_to_rad(30.0):
+    for i in _test_result.get_collision_count():
+        if _test_result.get_collision_normal(i).angle_to(Vector3.UP) > deg_to_rad(30.0):
             return true
     return false
 
@@ -656,6 +669,8 @@ func _blocked_by_steep(motion: Vector3) -> bool:
 func _step_up_if_blocked(delta: float) -> void:
     if not is_on_floor():
         return
+    if not is_on_wall():
+        return  # last move didn't touch a wall, so there is no step to climb
     var motion := Vector3(velocity.x, 0.0, velocity.z) * delta
     if motion.length() < 0.001:
         return
