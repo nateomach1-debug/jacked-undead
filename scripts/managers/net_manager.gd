@@ -1,15 +1,26 @@
 extends Node
-## NetManager (autoload): hosts or joins a LAN game over ENet.
+## NetManager (autoload): hosts or joins a game.
+## Default: WebRTC with a room code (works on web and Android, cross-play).
+## Backup: ENet with the host's IP (Android to Android, same Wi-Fi/Tailscale).
 ## The host is always peer id 1 and has authority over the game.
 
 signal status_changed(text: String)
+signal room_code_ready(code: String)
 
 const PORT: int = 7777
 const MAX_CLIENTS: int = 4
 const GAME_MAP: String = "res://scenes/main/main.tscn"
 
+const SIGNALING_PATH: String = "res://scripts/managers/webrtc_signaling.gd"
+const JOIN_WATCHDOG_SECONDS: float = 35.0
+
 var is_online: bool = false
 var is_host: bool = false
+var use_webrtc: bool = false
+var room_code: String = ""
+
+var _signaling: Node = null
+var _join_token: int = 0
 
 
 func _ready() -> void:
@@ -23,7 +34,49 @@ func _ready() -> void:
     multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 
+## Host with a room code (WebRTC). The code arrives in room_code_ready.
 func host_game() -> bool:
+    leave()
+    var sig: Node = _get_signaling()
+    if sig == null:
+        status_changed.emit("webrtc_signaling.gd is missing or broken")
+        return false
+    if not sig.host():
+        return false
+    multiplayer.multiplayer_peer = sig.rtc
+    is_online = true
+    is_host = true
+    use_webrtc = true
+    status_changed.emit("Opening room...")
+    return true
+
+
+## Join with a room code. Anything that looks like an IP uses the ENet backup.
+func join_game(target: String) -> bool:
+    var text: String = target.strip_edges()
+    if text.contains(".") or text.contains(":"):
+        return join_game_ip(text)
+    leave()
+    if text == "":
+        status_changed.emit("Type the room code first")
+        return false
+    var sig: Node = _get_signaling()
+    if sig == null:
+        status_changed.emit("webrtc_signaling.gd is missing or broken")
+        return false
+    if not sig.join(text):
+        return false
+    multiplayer.multiplayer_peer = sig.rtc
+    is_online = true
+    is_host = false
+    use_webrtc = true
+    status_changed.emit("Joining room %s ..." % text.to_upper())
+    _join_watchdog(_join_token)
+    return true
+
+
+## Backup: host over ENet (needs the same network).
+func host_game_ip() -> bool:
     leave()
     var peer := ENetMultiplayerPeer.new()
     peer.set_bind_ip("0.0.0.0")
@@ -34,11 +87,13 @@ func host_game() -> bool:
     multiplayer.multiplayer_peer = peer
     is_online = true
     is_host = true
+    use_webrtc = false
     status_changed.emit("Hosting.\n" + _address_text())
     return true
 
 
-func join_game(ip: String) -> bool:
+## Backup: join over ENet with the host's IP.
+func join_game_ip(ip: String) -> bool:
     leave()
     var address: String = ip.strip_edges()
     if address == "":
@@ -53,21 +108,81 @@ func join_game(ip: String) -> bool:
     multiplayer.multiplayer_peer = peer
     is_online = true
     is_host = false
+    use_webrtc = false
     status_changed.emit("Connecting to %s ..." % address)
     return true
 
 
 func leave() -> void:
+    _join_token += 1
+    if _signaling != null and is_instance_valid(_signaling):
+        _signaling.reset()
     var peer := multiplayer.multiplayer_peer
     if peer != null:
         peer.close()
     multiplayer.multiplayer_peer = null
     is_online = false
     is_host = false
+    use_webrtc = false
+    room_code = ""
     # A joining phone gets its own custom mode settings back.
     if _custom_backup is Dictionary:
         GameManager.custom_apply_override(_custom_backup)
         _custom_backup = null
+
+
+# ---------- WebRTC signaling ----------
+
+func _get_signaling() -> Node:
+    if _signaling != null and is_instance_valid(_signaling):
+        return _signaling
+    var script = load(SIGNALING_PATH)
+    if script == null:
+        return null
+    var node := Node.new()
+    node.set_script(script)
+    node.name = "WebRtcSignaling"
+    add_child(node)
+    node.room_ready.connect(_on_room_ready)
+    node.status.connect(_on_signal_status)
+    node.failed.connect(_on_signal_failed)
+    _signaling = node
+    return node
+
+
+func _stop_signaling() -> void:
+    if _signaling != null and is_instance_valid(_signaling):
+        _signaling.stop()
+
+
+func _on_room_ready(code: String) -> void:
+    room_code = code
+    status_changed.emit("Hosting.\n" + _address_text())
+    room_code_ready.emit(code)
+
+
+func _on_signal_status(text: String) -> void:
+    # Once the host has a room code, peer messages take over the status line.
+    if is_host and room_code != "":
+        return
+    status_changed.emit(text)
+
+
+func _on_signal_failed(text: String) -> void:
+    leave()
+    status_changed.emit(text)
+
+
+## A joiner that has not connected after a while gets a clear message.
+func _join_watchdog(token: int) -> void:
+    await get_tree().create_timer(JOIN_WATCHDOG_SECONDS).timeout
+    if token != _join_token or not is_online or is_host:
+        return
+    var peer := multiplayer.multiplayer_peer
+    if peer != null and peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
+        return
+    leave()
+    status_changed.emit("Connection failed. Check the room code and try again")
 
 
 ## Every private IPv4 address on this phone (Wi-Fi, mobile data, VPN...).
@@ -103,6 +218,8 @@ func _is_172_private(a: String) -> bool:
 
 
 func _address_text() -> String:
+    if use_webrtc:
+        return "Room code: %s" % room_code
     var all_ips: Array = get_all_local_ips()
     var text: String = "Join IP: %s" % get_local_ip()
     var ts: String = get_tailscale_ip()
@@ -114,17 +231,17 @@ func _address_text() -> String:
 
 func _player_count() -> int:
     return multiplayer.get_peers().size() + 1
-
-
 ## Host only: loads the map on every phone at once.
 func start_game() -> void:
     if not is_host:
         return
+    _stop_signaling()
     _load_map.rpc(GAME_MAP)
 
 
 @rpc("authority", "call_local", "reliable")
 func _load_map(path: String) -> void:
+    _stop_signaling()
     get_tree().change_scene_to_file(path)
 
 func _on_peer_connected(id: int) -> void:
@@ -142,12 +259,16 @@ func _on_peer_disconnected(id: int) -> void:
 
 
 func _on_connected_to_server() -> void:
+    _stop_signaling()
     status_changed.emit("Connected! You are player %d" % multiplayer.get_unique_id())
 
 
 func _on_connection_failed() -> void:
     is_online = false
-    status_changed.emit("Connection failed. Check the IP and that both phones are on the same Wi-Fi")
+    if use_webrtc:
+        status_changed.emit("Connection failed. Check the room code and try again")
+    else:
+        status_changed.emit("Connection failed. Check the IP and that both phones are on the same Wi-Fi")
 
 
 func _on_server_disconnected() -> void:
@@ -204,9 +325,9 @@ func start_game_on(map_path: String) -> void:
     _apply_host_dev.rpc(GameManager.dev)
     _apply_host_custom.rpc(GameManager.custom)
     _load_map_coop.rpc(map_path)
-
 @rpc("authority", "call_local", "reliable")
 func _load_map_coop(path: String) -> void:
+    _stop_signaling()
     get_tree().paused = false
     _round_manager_ref = null
     if not get_tree().node_added.is_connected(_on_node_added):
