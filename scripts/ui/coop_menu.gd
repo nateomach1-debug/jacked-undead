@@ -1,7 +1,10 @@
 extends Control
-## Co-op screen: host or join a LAN game. The host also gets MAP and START.
+## Co-op screen: host or join a game. The host also gets MAP and START.
+## Default is a 4-letter room code (WebRTC, works on web and Android).
+## The IP mode (Android to Android) is the backup.
 ## Uses on-screen pads because the phone keyboard won't open here:
-## a number pad for the host IP and a letter pad for your display name.
+## a letter pad for the room code, a number pad for the host IP and a
+## letter pad for your display name.
 
 # Keep in sync with the maps listed in map_select.gd.
 const MAPS: Array = [
@@ -20,6 +23,13 @@ const NAME_KEYS: Array = [
     "4", "5", "6", "7", "8", "9", "SPACE", "DEL", "OK", "CANCEL",
 ]
 
+# Same letters the room codes use (no I or O).
+const CODE_KEYS: Array = [
+    "A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M",
+    "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+]
+const CODE_LENGTH: int = 4
+
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 
@@ -32,6 +42,14 @@ var _name_pad: Control
 var _name_display: Label
 var _name_buffer: String = ""
 var _ip: String = ""
+var _code: String = ""
+var _hosted_code: String = ""
+var _ip_mode: bool = false
+var _code_label: Label
+var _code_box: VBoxContainer
+var _ip_box: VBoxContainer
+var _mode_button: Button
+var _guide_button: Button
 var _map_index: int = 0
 
 
@@ -68,14 +86,24 @@ func _ready() -> void:
     row.add_theme_constant_override("separation", 40)
     center.add_child(row)
 
-    # Left side: IP display + number pad
+    # Left side: room code pad (default) or IP number pad (backup)
     var left := VBoxContainer.new()
     left.add_theme_constant_override("separation", 10)
     row.add_child(left)
 
+    _code_box = VBoxContainer.new()
+    _code_box.add_theme_constant_override("separation", 10)
+    left.add_child(_code_box)
+    _build_code_box(_code_box)
+
+    _ip_box = VBoxContainer.new()
+    _ip_box.add_theme_constant_override("separation", 10)
+    _ip_box.visible = false
+    left.add_child(_ip_box)
+
     var ip_card := PanelContainer.new()
     ip_card.theme_type_variation = &"CardPanel"
-    left.add_child(ip_card)
+    _ip_box.add_child(ip_card)
     _ip_label = Label.new()
     _ip_label.theme_type_variation = &"GoldLabel"
     _ip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -86,7 +114,7 @@ func _ready() -> void:
     grid.columns = 3
     grid.add_theme_constant_override("h_separation", 8)
     grid.add_theme_constant_override("v_separation", 8)
-    left.add_child(grid)
+    _ip_box.add_child(grid)
     for key in ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "DEL"]:
         var b := Button.new()
         b.text = key
@@ -95,7 +123,7 @@ func _ready() -> void:
         b.pressed.connect(_on_key.bind(key))
         grid.add_child(b)
 
-    _add_quick_ip_buttons(left)
+    _add_quick_ip_buttons(_ip_box)
 
     # Right side: status + name / host / join / map / start / back
     var right := VBoxContainer.new()
@@ -105,7 +133,7 @@ func _ready() -> void:
     var status_card := PanelContainer.new()
     right.add_child(status_card)
     _status = Label.new()
-    _status.text = "CO-OP (SAME WI-FI)"
+    _status.text = "CO-OP (ROOM CODE)"
     _status.custom_minimum_size = Vector2(440, 70)
     _status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -134,7 +162,14 @@ func _ready() -> void:
     _start_button.visible = false
     right.add_child(_start_button)
 
-    right.add_child(_make_button("TAILSCALE GUIDE", _on_guide, 60))
+    # The browser can't use the IP backup, so the mode button is for Android only.
+    _mode_button = _make_button("", _on_mode, 56)
+    _mode_button.visible = not OS.has_feature("web")
+    right.add_child(_mode_button)
+
+    _guide_button = _make_button("TAILSCALE GUIDE", _on_guide, 60)
+    _guide_button.visible = false
+    right.add_child(_guide_button)
     right.add_child(_make_button("BACK", _on_back, 64))
 
     # Pre-fill the first three numbers from this phone's own Wi-Fi address.
@@ -142,12 +177,15 @@ func _ready() -> void:
     if mine != "unknown":
         _ip = mine.substr(0, mine.rfind(".") + 1)
     _refresh_ip()
+    _refresh_code()
     _refresh_map()
     _refresh_name_button()
+    _apply_mode()
 
     _build_name_pad()
 
     NetManager.status_changed.connect(_on_status)
+    NetManager.room_code_ready.connect(_on_room_code)
 
 
 ## Charcoal background with a vignette (plain dark fill if the script is missing).
@@ -162,8 +200,6 @@ func _add_backdrop(parent: Control) -> void:
     var backdrop := Control.new()
     backdrop.set_script(script)
     parent.add_child(backdrop)
-
-
 func _add_divider(parent: Control) -> void:
     var script = load(DIVIDER_PATH)
     if script == null:
@@ -192,6 +228,92 @@ func _on_key(key: String) -> void:
     elif _ip.length() < 15:
         _ip += key
     _refresh_ip()
+
+
+# ---------- room code pad ----------
+
+func _build_code_box(parent: Control) -> void:
+    var card := PanelContainer.new()
+    card.theme_type_variation = &"CardPanel"
+    parent.add_child(card)
+    _code_label = Label.new()
+    _code_label.theme_type_variation = &"GoldLabel"
+    _code_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _code_label.add_theme_font_size_override("font_size", 30)
+    card.add_child(_code_label)
+
+    var grid := GridContainer.new()
+    grid.columns = 6
+    grid.add_theme_constant_override("h_separation", 6)
+    grid.add_theme_constant_override("v_separation", 6)
+    parent.add_child(grid)
+    for key in CODE_KEYS:
+        var b := Button.new()
+        b.text = str(key)
+        b.custom_minimum_size = Vector2(72, 62)
+        b.add_theme_font_size_override("font_size", 28)
+        b.pressed.connect(_on_code_key.bind(str(key)))
+        grid.add_child(b)
+
+    var row := HBoxContainer.new()
+    row.add_theme_constant_override("separation", 8)
+    parent.add_child(row)
+    for item in [["CLEAR", &"DangerButton"], ["DEL", &""]]:
+        var b := Button.new()
+        b.text = str(item[0])
+        b.custom_minimum_size = Vector2(225, 60)
+        b.add_theme_font_size_override("font_size", 24)
+        if item[1] != &"":
+            b.theme_type_variation = item[1]
+        b.pressed.connect(_on_code_key.bind(str(item[0])))
+        row.add_child(b)
+
+
+func _on_code_key(key: String) -> void:
+    _hosted_code = ""
+    if key == "CLEAR":
+        _code = ""
+    elif key == "DEL":
+        if _code.length() > 0:
+            _code = _code.substr(0, _code.length() - 1)
+    elif _code.length() < CODE_LENGTH:
+        _code += key
+    _refresh_code()
+
+
+func _refresh_code() -> void:
+    if _hosted_code != "":
+        _code_label.text = "YOUR CODE: " + _hosted_code
+    else:
+        _code_label.text = "ROOM CODE: " + (_code if _code != "" else "_")
+
+
+func _on_room_code(code: String) -> void:
+    _hosted_code = code
+    _refresh_code()
+
+
+## Switches between the room code pad and the IP backup pad.
+func _on_mode() -> void:
+    _ip_mode = not _ip_mode
+    NetManager.leave()
+    _map_button.visible = false
+    _start_button.visible = false
+    _hosted_code = ""
+    _refresh_code()
+    _apply_mode()
+
+
+func _apply_mode() -> void:
+    _code_box.visible = not _ip_mode
+    _ip_box.visible = _ip_mode
+    _guide_button.visible = _ip_mode
+    if _ip_mode:
+        _mode_button.text = "MODE: IP (BACKUP)"
+        _status.text = "CO-OP (SAME WI-FI OR TAILSCALE)"
+    else:
+        _mode_button.text = "MODE: ROOM CODE"
+        _status.text = "CO-OP (ROOM CODE)"
 
 
 func _refresh_ip() -> void:
@@ -290,7 +412,10 @@ func _refresh_name_display() -> void:
 # ---------- host / join ----------
 
 func _on_host() -> void:
-    if NetManager.host_game():
+    _hosted_code = ""
+    _refresh_code()
+    var ok: bool = NetManager.host_game_ip() if _ip_mode else NetManager.host_game()
+    if ok:
         _map_button.visible = true
         _start_button.visible = true
 
@@ -298,7 +423,12 @@ func _on_host() -> void:
 func _on_join() -> void:
     _map_button.visible = false
     _start_button.visible = false
-    NetManager.join_game(_ip)
+    if _ip_mode:
+        NetManager.join_game_ip(_ip)
+    elif _code.length() < CODE_LENGTH:
+        _status.text = "TYPE THE %d-LETTER ROOM CODE" % CODE_LENGTH
+    else:
+        NetManager.join_game(_code)
 
 
 func _on_map() -> void:
