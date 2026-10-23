@@ -40,6 +40,28 @@ jobs:
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Download WebRTC add-on
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl -L --fail --retry 3 \
+            "https://github.com/godotengine/webrtc-native/releases/download/1.2.2-stable/godot-extension-webrtc_native.zip" \
+            -o /tmp/webrtc.zip
+
+          echo "---- zip contents ----"
+          unzip -l /tmp/webrtc.zip
+
+          if ! unzip -l /tmp/webrtc.zip | grep -i 'android' | grep -qi 'arm64'; then
+            echo "ERROR: no Android arm64 library in the WebRTC zip"
+            exit 1
+          fi
+
+          unzip -q -o /tmp/webrtc.zip -d .
+
+          echo "---- extracted ----"
+          find . -path ./.git -prune -o -ipath '*webrtc*' -print
+
       - name: Export Android APK
         id: export
         uses: firebelley/godot-export@v8.0.0
