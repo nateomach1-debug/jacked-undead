@@ -1,6 +1,7 @@
 extends "res://scripts/managers/compound_props.gd"
 # Building map visual upgrade (needs compound_props.gd from the Gym Compound upgrade).
 # Lights, doors and blockers are made at once; wall decor is placed after a raycast scan.
+# After the scan, 3 zombie spawn points are made behind each buyable door (zone spawns).
 
 const AMBIENT_COLOR := Color(0.55, 0.58, 0.72)
 const AMBIENT_ENERGY := 1.0
@@ -15,12 +16,14 @@ const MAX_PROPS := 22
 const MAX_POSTERS := 26
 const MAX_MIRRORS := 6
 const MAX_GLOW := 14
+const SPAWNS_PER_ZONE := 3
 
 const FACE_NODES: Array = ["PRRack", "LootLocker2"]
+# name, floor y, sign text, zone unlocked when the door is bought
 const DOORS: Array = [
-    ["DoorMainRoom", -17.2, "MAIN ROOM\nCLOSED"],
-    ["DoorStaircase", -17.2, "STAIRS\nCLOSED"],
-    ["DoorPRRack", -14.0, "PR RACK\nCLOSED"],
+    ["DoorMainRoom", -17.2, "MAIN ROOM\nCLOSED", "main_room"],
+    ["DoorStaircase", -17.2, "STAIRS\nCLOSED", "stairs"],
+    ["DoorPRRack", -14.0, "PR RACK\nCLOSED", "pr_rack"],
 ]
 const BLOCKERS: Array = [
     ["BlockerSouth", Vector3(25.75, -17.2, 51.05), true, 6.2],
@@ -104,10 +107,18 @@ func _build_lines() -> void:
             var ax: bool = sz.x > sz.z
             var ln_len: float = sz.x if ax else sz.z
             var base := Vector3(door.global_position.x, float(d[1]), door.global_position.z)
-            _lines.append({"c": base, "ax": ax, "len": ln_len, "fy": float(d[1]), "text": str(d[2]), "door": door, "name": str(d[0])})
+            # the door unlocks its zone (spawn points tagged with that zone start spawning)
+            var zone_name: String = str(d[3])
+            var uz: Variant = door.get("unlocks_zones")
+            var has_zone: bool = typeof(uz) == TYPE_PACKED_STRING_ARRAY and not (uz as PackedStringArray).is_empty()
+            if has_zone:
+                zone_name = (uz as PackedStringArray)[0]
+            else:
+                door.set("unlocks_zones", PackedStringArray([zone_name]))
+            _lines.append({"c": base, "ax": ax, "len": ln_len, "fy": float(d[1]), "text": str(d[2]), "door": door, "name": str(d[0]), "zone": zone_name})
     for b in BLOCKERS:
         var bp: Vector3 = b[1]
-        _lines.append({"c": bp, "ax": bool(b[2]), "len": float(b[3]), "fy": bp.y, "text": "BOARDED UP", "door": null, "name": str(b[0])})
+        _lines.append({"c": bp, "ax": bool(b[2]), "len": float(b[3]), "fy": bp.y, "text": "BOARDED UP", "door": null, "name": str(b[0]), "zone": ""})
 
 
 func _deco_door(ln: Dictionary) -> void:
@@ -139,6 +150,8 @@ func _blocker(ln: Dictionary) -> void:
     var body := StaticBody3D.new()
     body.name = str(ln["name"])
     add_child(body)
+    # the nav bake treats the boarded opening as a wall, like a closed door
+    body.add_to_group("navmesh_source")
     body.position = Vector3(c.x, c.y - 0.3 + h * 0.5, c.z)
     var cs := CollisionShape3D.new()
     var sh := BoxShape3D.new()
@@ -189,8 +202,6 @@ func _collect_bottoms(n: Node, out: Array) -> void:
             if bx != null:
                 out.append(cs.global_position.y - bx.size.y * 0.5 * cs.global_transform.basis.y.length())
         _collect_bottoms(c, out)
-
-
 # ----------------------------------------------------------- scan sequence
 
 func _space() -> PhysicsDirectSpaceState3D:
@@ -231,6 +242,7 @@ func _run_scan() -> void:
     await _place_bands()
     await _place_blood()
     _place_glow()
+    _make_zone_spawns()
 
 
 func _collect_reserved() -> void:
@@ -289,6 +301,16 @@ func _blocked(p: Vector3, own_r: float) -> bool:
     return false
 
 
+# true when p is within r of any door or blocker line (same floor level)
+func _near_line(p: Vector3, r: float) -> bool:
+    for sg in _segs:
+        var a: Vector3 = sg[0]
+        var b: Vector3 = sg[1]
+        if absf(p.y - a.y) < 1.6 and _seg_dist(p, a, b) < r:
+            return true
+    return false
+
+
 func _near_station(p: Vector3, r: float) -> bool:
     for s in _stations:
         var sp: Vector3 = s
@@ -325,7 +347,8 @@ func _fy(space: PhysicsDirectSpaceState3D, x: float, y: float, z: float, ex: Arr
     return r
 
 
-# rings under stations and hazard stripes along every door / blocker line
+# rings under stations and hazard stripes along every blocker line
+# (door lines get no floor stripes: they would stay in the opening after the door is bought)
 func _marks(space: PhysicsDirectSpaceState3D) -> void:
     var st: Node = get_parent().get_node_or_null("Stations")
     if st != null:
@@ -346,6 +369,8 @@ func _marks(space: PhysicsDirectSpaceState3D) -> void:
             var r0: float = 1.05 if is_sup else 1.7
             _ring(Vector3(p.x, fy + 0.05, p.z), r0, r0 + 0.18, col.darkened(0.2), 24, true)
     for ln in _lines:
+        if ln["door"] != null:
+            continue
         var c: Vector3 = ln["c"]
         var ax: bool = ln["ax"]
         var length: float = ln["len"]
@@ -382,6 +407,77 @@ func _face_stations() -> void:
         s3.rotation = Vector3(0.0, yaw, 0.0)
 
 
+# 3 zombie spawn points on the far side of each buyable door (the side away from the
+# player start). They are tagged with the door's zone, so they only spawn zombies once
+# that door is bought. RoundManager copied its spawn list in _ready, so add to it here.
+func _make_zone_spawns() -> void:
+    var root: Node = get_parent()
+    var rm: Node = root.get_node_or_null("RoundManager")
+    if rm == null:
+        return
+    var pts: Variant = rm.get("_spawn_points")
+    if typeof(pts) != TYPE_ARRAY:
+        push_warning("RoundManager has no _spawn_points list, zone spawns skipped")
+        return
+    var spawn_list: Array = pts
+    var pl := root.get_node_or_null("Player") as Node3D
+    var start: Vector3 = Vector3.ZERO
+    if pl != null:
+        start = pl.global_position
+    var holder := Node3D.new()
+    holder.name = "ZoneSpawns"
+    root.add_child(holder)
+    for ln in _lines:
+        if ln["door"] == null:
+            continue
+        var zone: String = str(ln["zone"])
+        if zone == "":
+            continue
+        var c: Vector3 = ln["c"]
+        var fy: float = ln["fy"]
+        var nrm: Vector3 = AZ if bool(ln["ax"]) else AX
+        if (start - c).dot(nrm) > 0.0:
+            nrm = -nrm
+        var cands: Array = []
+        for f in _scan.floors:
+            var fp: Vector3 = f
+            var rel: Vector3 = fp - c
+            if rel.dot(nrm) < 3.0:
+                continue
+            if Vector2(rel.x, rel.z).length() > 18.0:
+                continue
+            if fp.y < fy - 1.0 or fp.y > fy + 4.0:
+                continue
+            if _blocked(fp, 2.5):
+                continue
+            cands.append(fp)
+        var picked: Array = []
+        for f in _shuffled(cands):
+            var fp2: Vector3 = f
+            var far_enough: bool = true
+            for q in picked:
+                var qp: Vector3 = q
+                if Vector2(fp2.x - qp.x, fp2.z - qp.z).length() < 6.0:
+                    far_enough = false
+                    break
+            if far_enough:
+                picked.append(fp2)
+                if picked.size() >= SPAWNS_PER_ZONE:
+                    break
+        if picked.is_empty():
+            push_warning("No spawn spots found behind %s (zone %s)" % [str(ln["name"]), zone])
+            continue
+        var idx: int = 0
+        for q in picked:
+            var qp2: Vector3 = q
+            var m := Marker3D.new()
+            m.name = "Spawn_%s_%d" % [zone, idx]
+            m.add_to_group("spawn_points")
+            m.set_meta("zone", zone)
+            holder.add_child(m)
+            m.global_position = Vector3(qp2.x, qp2.y + 0.8, qp2.z)
+            spawn_list.append(m)
+            idx += 1
 # ---------------------------------------------------------------- placement
 
 func _dims(kind: String) -> Vector2:
@@ -493,6 +589,9 @@ func _place_bands() -> void:
                 return
         var p: Vector3 = w["p"]
         var n: Vector3 = w["n"]
+        # no wall bands on or next to a buyable door / blocker (they would stay after the door is bought)
+        if _near_line(p, 1.6):
+            continue
         if not _scan.wall_flat(_space(), p, n, 1.2, [0.3, 1.0]):
             continue
         var upper: bool = p.y > -15.5
