@@ -1,7 +1,8 @@
 extends "res://scripts/managers/compound_props.gd"
 # Building map visual upgrade (needs compound_props.gd from the Gym Compound upgrade).
 # Lights, doors and blockers are made at once; wall decor is placed after a raycast scan.
-# After the scan, 3 zombie spawn points are made behind each buyable door (zone spawns).
+# Zombie spawns: fixed upstairs spots (UPSTAIRS_SPAWNS) plus auto spawn points behind each
+# buyable door (made after the scan). All of them only spawn once their door is bought.
 
 const AMBIENT_COLOR := Color(0.55, 0.58, 0.72)
 const AMBIENT_ENERGY := 1.0
@@ -16,14 +17,24 @@ const MAX_PROPS := 22
 const MAX_POSTERS := 26
 const MAX_MIRRORS := 6
 const MAX_GLOW := 14
-const SPAWNS_PER_ZONE := 3
+const SPAWNS_PER_ZONE := 6
 
 const FACE_NODES: Array = ["PRRack", "LootLocker2"]
+# nodes that face the wrong way after auto-facing get turned around 180 degrees
+const FLIP_NODES: Array = ["LootLocker2"]
 # name, floor y, sign text, zone unlocked when the door is bought
 const DOORS: Array = [
     ["DoorMainRoom", -17.2, "MAIN ROOM\nCLOSED", "main_room"],
     ["DoorStaircase", -17.2, "STAIRS\nCLOSED", "stairs"],
     ["DoorPRRack", -14.0, "PR RACK\nCLOSED", "pr_rack"],
+]
+# upstairs spawn spots (player-position Y, i.e. floor + 0.8); unlocked by this door
+const UPSTAIRS_DOOR := "DoorStaircase"
+const UPSTAIRS_SPAWNS: Array = [
+    Vector3(-7.4, -13.2, 31.4),
+    Vector3(-16.2, -13.2, 50.0),
+    Vector3(12.8, -13.2, 42.0),
+    Vector3(43.5, -13.2, 43.0),
 ]
 const BLOCKERS: Array = [
     ["BlockerSouth", Vector3(25.75, -17.2, 51.05), true, 6.2],
@@ -58,8 +69,42 @@ func _ready() -> void:
     for l in LAMPS:
         _lamp(l[0], l[1], LAMP_ENERGY, 16.0)
     _flush()
+    _make_upstairs_spawns()
     _snap_doors.call_deferred()
     _run_scan.call_deferred()
+
+
+# fixed upstairs spawn points, tagged with the staircase door's zone
+func _make_upstairs_spawns() -> void:
+    var rm: Node = get_parent().get_node_or_null("RoundManager")
+    if rm == null:
+        return
+    var pts: Variant = rm.get("_spawn_points")
+    if typeof(pts) != TYPE_ARRAY:
+        push_warning("RoundManager has no _spawn_points list, upstairs spawns skipped")
+        return
+    var spawn_list: Array = pts
+    var zone: String = ""
+    for ln in _lines:
+        if str(ln["name"]) == UPSTAIRS_DOOR:
+            zone = str(ln["zone"])
+    if zone == "":
+        push_warning("%s not found, upstairs spawns skipped" % UPSTAIRS_DOOR)
+        return
+    var holder := Node3D.new()
+    holder.name = "UpstairsSpawns"
+    add_child(holder)
+    var idx: int = 0
+    for v in UPSTAIRS_SPAWNS:
+        var sp: Vector3 = v
+        var m := Marker3D.new()
+        m.name = "Upstairs_%d" % idx
+        m.add_to_group("spawn_points")
+        m.set_meta("zone", zone)
+        holder.add_child(m)
+        m.global_position = sp
+        spawn_list.append(m)
+        idx += 1
 
 
 func _setup_env() -> void:
@@ -263,6 +308,12 @@ func _collect_reserved() -> void:
             var m := s as Node3D
             if m != null:
                 _reserved.append([m.global_position, 4.0])
+    var up: Node = get_node_or_null("UpstairsSpawns")
+    if up != null:
+        for s in up.get_children():
+            var m2 := s as Node3D
+            if m2 != null:
+                _reserved.append([m2.global_position, 4.0])
     var pl := root.get_node_or_null("Player") as Node3D
     if pl != null:
         _reserved.append([pl.global_position, 4.0])
@@ -404,10 +455,12 @@ func _face_stations() -> void:
         var yaw: float = atan2(dir.x, dir.z)
         if FRONT_IS_MINUS_Z:
             yaw = atan2(-dir.x, -dir.z)
+        if FLIP_NODES.has(str(nm)):
+            yaw += PI
         s3.rotation = Vector3(0.0, yaw, 0.0)
 
 
-# 3 zombie spawn points on the far side of each buyable door (the side away from the
+# 6 auto zombie spawn points on the far side of each buyable door (the side away from the
 # player start). They are tagged with the door's zone, so they only spawn zombies once
 # that door is bought. RoundManager copied its spawn list in _ready, so add to it here.
 func _make_zone_spawns() -> void:
@@ -444,7 +497,7 @@ func _make_zone_spawns() -> void:
             var rel: Vector3 = fp - c
             if rel.dot(nrm) < 3.0:
                 continue
-            if Vector2(rel.x, rel.z).length() > 18.0:
+            if Vector2(rel.x, rel.z).length() > 20.0:
                 continue
             if fp.y < fy - 1.0 or fp.y > fy + 4.0:
                 continue
@@ -457,7 +510,7 @@ func _make_zone_spawns() -> void:
             var far_enough: bool = true
             for q in picked:
                 var qp: Vector3 = q
-                if Vector2(fp2.x - qp.x, fp2.z - qp.z).length() < 6.0:
+                if Vector2(fp2.x - qp.x, fp2.z - qp.z).length() < 4.5:
                     far_enough = false
                     break
             if far_enough:
