@@ -109,13 +109,13 @@ display_name = "Main Room Wall"
 
 [node name="DoorStaircase" parent="BuyableDoors" instance=ExtResource("34")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.7, -17.2, 38.075)
-size = Vector3(0.4, 3.2, 4.55)
+size = Vector3(0.4, 3.2, 3.8)
 cost = 1500
 display_name = "Staircase Wall"
 
 [node name="DoorPRRack" parent="BuyableDoors" instance=ExtResource("34")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.175, -14, 40.7)
-size = Vector3(7.35, 3.4, 0.4)
+size = Vector3(8.4, 3.4, 0.4)
 cost = 2500
 display_name = "PR Rack Door"
 
