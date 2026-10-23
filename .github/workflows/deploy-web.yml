@@ -15,6 +15,9 @@ concurrency:
   group: github-pages
   cancel-in-progress: true
 
+env:
+  GODOT_VERSION: "4.7.2"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,21 +26,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install Godot 4.3
+      - name: Install Godot
         shell: bash
         run: |
           set -euo pipefail
 
-          GODOT_VERSION="4.3-stable"
-
           curl -L --fail --retry 3 \
-            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v4.3-stable_linux.x86_64.zip" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" \
             -o /tmp/godot.zip
 
           unzip -q /tmp/godot.zip -d /tmp/godot
 
           sudo install -m 0755 \
-            /tmp/godot/Godot_v4.3-stable_linux.x86_64 \
+            /tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 \
             /usr/local/bin/godot
 
       - name: Install Web export templates
@@ -46,10 +47,10 @@ jobs:
           set -euo pipefail
 
           curl -L --fail --retry 3 \
-            "https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
             -o /tmp/templates.tpz
 
-          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/4.3.stable"
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
 
           mkdir -p "$TEMPLATE_DIR"
 
@@ -57,7 +58,7 @@ jobs:
             'templates/*' \
             -d "$TEMPLATE_DIR"
 
-      - name: Configure Compatibility renderer
+                  - name: Configure Compatibility renderer
         shell: bash
         run: |
           python3 - <<'PY'
@@ -66,16 +67,12 @@ jobs:
           path = Path("project.godot")
           text = path.read_text()
 
-          text = text.replace(
-              'config/features=PackedStringArray("4.3", "Forward Plus")',
-              'config/features=PackedStringArray("4.3", "GL Compatibility")'
-          )
+          text = text.replace('"Forward Plus"', '"GL Compatibility"')
 
           marker = "[rendering]\n"
 
           if marker not in text:
               text += "\n[rendering]\n"
-              marker = "[rendering]\n"
 
           if 'renderer/rendering_method=' not in text:
               text = text.replace(
