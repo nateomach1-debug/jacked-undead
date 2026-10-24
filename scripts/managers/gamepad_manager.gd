@@ -155,6 +155,8 @@ func _process(delta: float) -> void:
             n.set("visible", not gamepad_active)
 
     if not _in_game():
+    _process_menu_scroll(delta)
+    return
         return
     var look: Vector2 = _shaped_look()
     if look.length() < 0.01:
@@ -163,6 +165,79 @@ func _process(delta: float) -> void:
     if player != null and player.has_method("apply_look_delta"):
         player.apply_look_delta(look, deg_to_rad(_pad_look_speed()) * delta)
 
+
+func _process_menu_scroll(delta: float) -> void:
+    var x: float = Input.get_axis("look_left", "look_right")
+    var y: float = Input.get_axis("look_up", "look_down")
+
+    if absf(x) < 0.25 and absf(y) < 0.25:
+        return
+
+    var scroll := _find_menu_scroll_container()
+    if scroll == null:
+        return
+
+    var vbar := scroll.get_v_scroll_bar()
+    var hbar := scroll.get_h_scroll_bar()
+
+    if absf(y) >= 0.25 and vbar.max_value > vbar.page:
+        scroll.scroll_vertical = clampi(
+            scroll.scroll_vertical + int(y * 700.0 * delta),
+            0,
+            maxi(0, int(vbar.max_value - vbar.page))
+        )
+
+    if absf(x) >= 0.25 and hbar.max_value > hbar.page:
+        scroll.scroll_horizontal = clampi(
+            scroll.scroll_horizontal + int(x * 700.0 * delta),
+            0,
+            maxi(0, int(hbar.max_value - hbar.page))
+        )
+
+
+func _find_menu_scroll_container() -> ScrollContainer:
+    # Prefer the scroll area containing the focused control.
+    var focused := get_viewport().gui_get_focus_owner()
+    var node: Node = focused
+
+    while node != null:
+        if node is ScrollContainer:
+            var sc := node as ScrollContainer
+            if sc.is_visible_in_tree() and sc.get_global_rect().has_area():
+                return sc
+        node = node.get_parent()
+
+    # Otherwise, search visible menu content from the topmost scene children.
+    var scene := get_tree().current_scene
+    if scene == null:
+        return null
+
+    var stack: Array[Node] = [scene]
+    var candidates: Array[ScrollContainer] = []
+
+    while not stack.is_empty():
+        var current: Node = stack.pop_back()
+
+        if current is Control and not (current as Control).is_visible_in_tree():
+            continue
+
+        if current is ScrollContainer:
+            var sc := current as ScrollContainer
+            if sc.get_global_rect().has_area():
+                candidates.append(sc)
+
+        for child in current.get_children():
+            stack.append(child)
+
+    for i in range(candidates.size() - 1, -1, -1):
+        var sc := candidates[i]
+        var vb := sc.get_v_scroll_bar()
+        var hb := sc.get_h_scroll_bar()
+        if vb.max_value > vb.page or hb.max_value > hb.page:
+            return sc
+
+
+    return null
 
 ## Right stick after the deadzone (set on the look_* actions), the look curve and invert Y.
 func _shaped_look() -> Vector2:
