@@ -15,6 +15,11 @@ const TRACK_PATHS: Array[String] = [
 
 const SETTINGS_PATH := "res://scripts/managers/game_settings.gd"
 
+const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
+
+var _music_layer: CanvasLayer
+var _music_panel: PanelContainer
+var _hud_layout = null
 var _player: AudioStreamPlayer
 var _tracks: Array[AudioStream] = []
 var _track_paths: Array[String] = []
@@ -27,22 +32,28 @@ var _volume_slider: HSlider
 
 
 func _ready() -> void:
-	_rng.randomize()
+    _rng.randomize()
 
-	_player = AudioStreamPlayer.new()
-	_player.name = "MusicStream"
-	add_child(_player)
-	_player.finished.connect(_on_track_finished)
+    _player = AudioStreamPlayer.new()
+    _player.name = "MusicStream"
+    add_child(_player)
+    _player.finished.connect(_on_track_finished)
 
-	_load_tracks()
-	_create_player_ui()
-	_load_saved_volume()
+    var layout_script = load(HUD_LAYOUT_PATH)
+    if layout_script != null:
+        _hud_layout = layout_script.new()
 
-	if not _tracks.is_empty():
-		_play_random_track()
-	else:
-		push_warning("MusicManager could not find any music tracks.")
+    _load_tracks()
+    _create_player_ui()
+    _load_saved_volume()
 
+    get_viewport().size_changed.connect(_apply_music_layout)
+    call_deferred("_apply_music_layout")
+
+    if not _tracks.is_empty():
+        _play_random_track()
+    else:
+        push_warning("MusicManager could not find any music tracks.")
 
 func _load_tracks() -> void:
 	for path in TRACK_PATHS:
@@ -127,68 +138,100 @@ func _load_saved_volume() -> void:
 
 
 func _create_player_ui() -> void:
-	var layer := CanvasLayer.new()
-	layer.name = "MusicPlayerUI"
-	layer.layer = 20
-	add_child(layer)
+    _music_layer = CanvasLayer.new()
+    _music_layer.name = "MusicPlayerUI"
+    _music_layer.layer = 20
+    add_child(_music_layer)
 
-	var panel := PanelContainer.new()
-	panel.name = "MusicPanel"
-	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	panel.offset_left = -300.0
-	panel.offset_top = 12.0
-	panel.offset_right = -12.0
-	panel.offset_bottom = 148.0
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	layer.add_child(panel)
+    _music_panel = PanelContainer.new()
+    _music_panel.name = "MusicPanel"
+    _music_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    _music_layer.add_child(_music_panel)
 
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 3)
-	panel.add_child(column)
+    var column := VBoxContainer.new()
+    column.add_theme_constant_override("separation", 3)
+    _music_panel.add_child(column)
 
-	var heading := Label.new()
-	heading.text = "NOW PLAYING"
-	heading.add_theme_font_size_override("font_size", 12)
-	column.add_child(heading)
+    var heading := Label.new()
+    heading.text = "NOW PLAYING"
+    heading.add_theme_font_size_override("font_size", 12)
+    column.add_child(heading)
 
-	_title_label = Label.new()
-	_title_label.text = "Loading soundtrack..."
-	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_title_label.add_theme_font_size_override("font_size", 16)
-	column.add_child(_title_label)
+    _title_label = Label.new()
+    _title_label.text = "Loading soundtrack..."
+    _title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    _title_label.add_theme_font_size_override("font_size", 16)
+    column.add_child(_title_label)
 
-	var controls := HBoxContainer.new()
-	column.add_child(controls)
+    var controls := HBoxContainer.new()
+    column.add_child(controls)
 
-	_play_button = Button.new()
-	_play_button.text = "PAUSE"
-	_play_button.custom_minimum_size = Vector2(76, 36)
-	_play_button.pressed.connect(toggle_playback)
-	controls.add_child(_play_button)
+    _play_button = Button.new()
+    _play_button.text = "PAUSE"
+    _play_button.custom_minimum_size = Vector2(76, 36)
+    _play_button.pressed.connect(toggle_playback)
+    controls.add_child(_play_button)
 
-	var skip_button := Button.new()
-	skip_button.text = "NEXT ▶|"
-	skip_button.custom_minimum_size = Vector2(88, 36)
-	skip_button.pressed.connect(next_track)
-	controls.add_child(skip_button)
+    var skip_button := Button.new()
+    skip_button.text = "NEXT ▶|"
+    skip_button.custom_minimum_size = Vector2(88, 36)
+    skip_button.pressed.connect(next_track)
+    controls.add_child(skip_button)
 
-	var volume_label := Label.new()
-	volume_label.text = "VOL"
-	volume_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	controls.add_child(volume_label)
+    var volume_label := Label.new()
+    volume_label.text = "VOL"
+    volume_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    controls.add_child(volume_label)
 
-	_volume_slider = HSlider.new()
-	_volume_slider.min_value = 0.0
-	_volume_slider.max_value = 1.0
-	_volume_slider.step = 0.05
-	_volume_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_volume_slider.custom_minimum_size = Vector2(55, 28)
-	_volume_slider.value = 0.7
-	_volume_slider.value_changed.connect(set_music_volume)
-	controls.add_child(_volume_slider)
+    _volume_slider = HSlider.new()
+    _volume_slider.min_value = 0.0
+    _volume_slider.max_value = 1.0
+    _volume_slider.step = 0.05
+    _volume_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _volume_slider.custom_minimum_size = Vector2(45, 28)
+    _volume_slider.value = 0.7
+    _volume_slider.value_changed.connect(set_music_volume)
+    controls.add_child(_volume_slider)
 
-	_refresh_ui()
+    _refresh_ui()
+    _apply_music_layout()
 
+func _apply_music_layout() -> void:
+    if _music_panel == null:
+        return
+
+    var vp: Vector2 = get_viewport().get_visible_rect().size
+    if vp.x <= 0.0 or vp.y <= 0.0:
+        return
+
+    var base_size := Vector2(290.0, 140.0)
+    var center := Vector2(vp.x - 160.0, 90.0)
+    var scale_value := 1.0
+
+    if _hud_layout != null:
+        base_size = _hud_layout.size_of("hud_music", vp)
+        center = _hud_layout.center("hud_music", vp)
+        scale_value = _hud_layout.scale_of("hud_music")
+
+    scale_value = clampf(scale_value, 0.5, 2.0)
+
+    # Reserve a small margin so the panel never extends beyond the screen.
+    var max_width := maxf(120.0, vp.x - 24.0)
+    var max_height := maxf(80.0, vp.y - 24.0)
+
+    base_size.x = minf(base_size.x, max_width / scale_value)
+    base_size.y = minf(base_size.y, max_height / scale_value)
+
+    _music_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+    _music_panel.size = base_size
+    _music_panel.scale = Vector2.ONE * scale_value
+    _music_panel.pivot_offset = base_size / 2.0
+
+    var displayed_size := base_size * scale_value
+    center.x = clampf(center.x, displayed_size.x / 2.0 + 12.0, vp.x - displayed_size.x / 2.0 - 12.0)
+    center.y = clampf(center.y, displayed_size.y / 2.0 + 12.0, vp.y - displayed_size.y / 2.0 - 12.0)
+
+    _music_panel.position = center - base_size / 2.0
 
 func _refresh_ui() -> void:
 	if _title_label == null:
