@@ -12,6 +12,7 @@ extends Node
 ##   kept, holding the pistol. A kill revives you, and ALL supplements are removed
 ##   when you come back. If the timer runs out the run is over.
 ## GLUTAMINE: longer downed time, faster revive, removed once you are revived or die.
+## SPOTTER power-up: while it is active, a downed co-op player stands up at once.
 
 const BLEED_TIME: float = 15.0
 const GLUTAMINE_BLEED_TIME: float = 25.0
@@ -85,6 +86,11 @@ func _physics_process(delta: float) -> void:
     _refresh_label()
 
 
+func _spotter_active() -> bool:
+    var m = get_tree().get_first_node_in_group("powerup_manager")
+    return m != null and m.has_effect("spotter")
+
+
 func _revive_need() -> float:
     if _player != null and _player.glutamine_active:
         return GLUTAMINE_REVIVE_TIME
@@ -97,6 +103,9 @@ func _tick_downed(delta: float) -> void:
         if _player.downed_bleed_left <= 0.0:
             _player.downed_bleed_left = 0.0
             GameManager.report_player_death()
+        return
+    if _spotter_active():
+        _revive()   # SPOTTER power-up: downed teammates stand up right away
         return
     var reviver: int = _find_reviver()
     if reviver != 0:
