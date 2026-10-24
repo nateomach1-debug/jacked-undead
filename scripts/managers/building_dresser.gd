@@ -13,6 +13,8 @@ const FOG_DENSITY := 0.003
 const SHOW_BANDS := true
 const FRONT_IS_MINUS_Z := true
 const STEP_W := 2.5
+const BAND_STEP := 0.125
+const BAND_HEIGHTS: Array = [0.25, 0.7, 1.12]
 const MAX_PROPS := 22
 const MAX_POSTERS := 26
 const MAX_MIRRORS := 6
@@ -55,6 +57,7 @@ var _reserved: Array = []
 var _segs: Array = []
 var _used: Array = []
 var _scan = null
+var _bq := PhysicsRayQueryParameters3D.new()
 
 
 func _ready() -> void:
@@ -247,10 +250,35 @@ func _collect_bottoms(n: Node, out: Array) -> void:
             if bx != null:
                 out.append(cs.global_position.y - bx.size.y * 0.5 * cs.global_transform.basis.y.length())
         _collect_bottoms(c, out)
+
+
 # ----------------------------------------------------------- scan sequence
 
 func _space() -> PhysicsDirectSpaceState3D:
     return get_world_3d().direct_space_state
+
+
+# collision bodies that must not count as wall: doors, blockers, stations, decor, player
+func _band_excludes() -> Array[RID]:
+    var ex: Array[RID] = []
+    if _col_body != null:
+        _rids(_col_body, ex)
+    for ln in _lines:
+        var door := ln["door"] as Node3D
+        if door != null:
+            _rids(door, ex)
+        else:
+            var b: Node = get_node_or_null(str(ln["name"]))
+            if b != null:
+                _rids(b, ex)
+    var root: Node = get_parent()
+    var st: Node = root.get_node_or_null("Stations")
+    if st != null:
+        _rids(st, ex)
+    var pl: Node = root.get_node_or_null("Player")
+    if pl != null:
+        _rids(pl, ex)
+    return ex
 
 
 func _run_scan() -> void:
@@ -277,10 +305,13 @@ func _run_scan() -> void:
         return
     _marks(_space())
     _flush()
+    _scan.set_exclude(_band_excludes())
     while not _scan.step(_space(), 50):
         await get_tree().physics_frame
         if not is_inside_tree():
             return
+    var none: Array[RID] = []
+    _scan.set_exclude(none)
     _face_stations()
     await _place_props()
     await _place_posters()
@@ -630,28 +661,97 @@ func _place_posters() -> void:
     _flush()
 
 
+# one ray test: is the wall plane flat at this offset along the wall (all band heights)?
+func _band_ok(space: PhysicsDirectSpaceState3D, p: Vector3, n: Vector3, t: Vector3, plane: float, off: float, ex: Array[RID]) -> bool:
+    _bq.exclude = ex
+    for hy: float in BAND_HEIGHTS:
+        var o: Vector3 = p + n * 0.5 + t * off + AY * hy
+        _bq.from = o
+        _bq.to = o - n * 1.0
+        var h: Dictionary = space.intersect_ray(_bq)
+        if h.is_empty():
+            return false
+        var hp: Vector3 = h["position"]
+        if absf(hp.dot(-n) - plane) > 0.12:
+            return false
+    return true
+
+
+# at the end of a flat run: if a side wall (inner corner) is right there, reach it exactly
+func _band_edge(space: PhysicsDirectSpaceState3D, p: Vector3, n: Vector3, t: Vector3, off: float, dir: float, ex: Array[RID]) -> float:
+    _bq.exclude = ex
+    var o: Vector3 = p + n * 0.06 + t * off + AY * 0.5
+    _bq.from = o
+    _bq.to = o + t * dir * (BAND_STEP + 0.02)
+    var h: Dictionary = space.intersect_ray(_bq)
+    if h.is_empty():
+        return off
+    var hp: Vector3 = h["position"]
+    return off + dir * o.distance_to(hp)
+
+
+# longest flat stretch of wall around p (offsets along the wall, -1.25 .. +1.25)
+func _band_span(space: PhysicsDirectSpaceState3D, p: Vector3, n: Vector3, ex: Array[RID]) -> Vector2:
+    var t: Vector3 = AY.cross(n)
+    var plane: float = p.dot(-n)
+    var steps: int = int(round(STEP_W * 0.5 / BAND_STEP))
+    var best_a: int = 0
+    var best_len: int = 0
+    var cur_a: int = 0
+    var cur_len: int = 0
+    for i in range(-steps, steps + 1):
+        if _band_ok(space, p, n, t, plane, float(i) * BAND_STEP, ex):
+            if cur_len == 0:
+                cur_a = i
+            cur_len += 1
+            if cur_len > best_len:
+                best_len = cur_len
+                best_a = cur_a
+        else:
+            cur_len = 0
+    if best_len == 0:
+        return Vector2.ZERO
+    var last: int = best_a + best_len - 1
+    var lo: float = float(best_a) * BAND_STEP
+    var hi: float = float(last) * BAND_STEP
+    if best_a <= -steps:
+        lo -= 0.02
+    else:
+        lo = _band_edge(space, p, n, t, lo, -1.0, ex)
+    if last >= steps:
+        hi += 0.02
+    else:
+        hi = _band_edge(space, p, n, t, hi, 1.0, ex)
+    return Vector2(lo, hi)
+
+
+# Wall bands: every wall piece is trimmed to its real flat stretch, so the bands run
+# unbroken along the walls and stop exactly at corners and door openings. Doors, blockers,
+# stations, decor and the player are ignored by the checks (they used to cut bands off).
 func _place_bands() -> void:
     if not SHOW_BANDS:
         return
+    var ex: Array[RID] = _band_excludes()
     var count: int = 0
     for w in _scan.walls:
         count += 1
-        if count % 8 == 0:
+        if count % 6 == 0:
             await get_tree().physics_frame
             if not is_inside_tree():
                 return
         var p: Vector3 = w["p"]
         var n: Vector3 = w["n"]
-        # no wall bands on or next to a buyable door / blocker (they would stay after the door is bought)
-        if _near_line(p, 1.6):
+        var span: Vector2 = _band_span(_space(), p, n, ex)
+        var width: float = span.y - span.x
+        if width < 0.3:
             continue
-        if not _scan.wall_flat(_space(), p, n, 1.2, [0.3, 1.0]):
-            continue
+        var t: Vector3 = AY.cross(n)
+        var mid: Vector3 = p + t * ((span.x + span.y) * 0.5)
         var upper: bool = p.y > -15.5
         var wain: Color = Color(0.17, 0.13, 0.12) if upper else Color(0.13, 0.15, 0.17)
         var trim: Color = ORANGE if upper else TEAL
-        _wq(p + AY * 0.55, n, STEP_W, 1.1, wain, false, 0.015)
-        _wq(p + AY * 1.13, n, STEP_W, 0.07, trim, false, 0.02)
+        _wq(mid + AY * 0.55, n, width, 1.1, wain, false, 0.015)
+        _wq(mid + AY * 1.13, n, width, 0.07, trim, false, 0.02)
     _flush()
 
 
