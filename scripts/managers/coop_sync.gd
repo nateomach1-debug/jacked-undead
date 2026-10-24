@@ -201,6 +201,30 @@ func _send_zombies() -> void:
         total = _round_manager.get_zombies_total()
     _receive_zombies.rpc(ids, kinds, positions, yaws, GameManager.round_number, remaining, total)
 
+## Host: broadcast a confirmed zombie death to joined devices.
+func broadcast_zombie_death(net_id: int, was_headshot: bool) -> void:
+    if not NetManager.is_host:
+        return
+
+    _receive_zombie_death.rpc(net_id, was_headshot)
+
+
+## Joined devices: play death visuals on the matching zombie.
+@rpc("authority", "call_remote", "reliable")
+func _receive_zombie_death(net_id: int, was_headshot: bool) -> void:
+    var z = _puppets.get(net_id)
+
+    # Remove it from live tracking so snapshots cannot move it again.
+    _puppets.erase(net_id)
+    _puppet_targets.erase(net_id)
+
+    if z == null or not is_instance_valid(z):
+        return
+
+    if z.has_method("play_network_death"):
+        z.play_network_death(was_headshot)
+    else:
+        z.queue_free()
 
 ## Other phones: create / move / remove puppet zombies, update round + counter.
 @rpc("authority", "call_remote", "unreliable")
