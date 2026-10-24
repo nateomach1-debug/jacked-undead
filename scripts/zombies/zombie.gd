@@ -734,21 +734,55 @@ func _forward_hit_to_host(amount: float, was_headshot: bool) -> void:
 
 
 func _die(was_headshot: bool = false) -> void:
+    if _is_dead:
+        return
+
     _is_dead = true
+
+    # Tell joined devices to play the death visuals.
+    if NetManager.is_online and NetManager.is_host and has_meta("net_id"):
+        var coop = get_tree().current_scene.get_node_or_null("CoopSync")
+        if coop != null and coop.has_method("broadcast_zombie_death"):
+            coop.broadcast_zombie_death(
+                int(get_meta("net_id")),
+                was_headshot
+            )
+
     var reward: int = HEADSHOT_KILL_GAINS if was_headshot else gains_on_death
-    # A kill by a co-op player pays that player's phone; otherwise it pays the host.
+
+    # A co-op kill pays the player who made the kill.
     if _last_source != null and is_instance_valid(_last_source) and _last_source.has_meta("peer_id"):
-        NetManager.reward_kill(int(_last_source.get_meta("peer_id")), reward, was_headshot)
+        NetManager.reward_kill(
+            int(_last_source.get_meta("peer_id")),
+            reward,
+            was_headshot
+        )
     else:
         GameManager.add_gains(reward)
         GameManager.add_kill(was_headshot)
+
     var look: Script = _look()
     if look != null:
         look.death_gore(self, was_headshot)
+
     _spawn_corpse()
     died.emit(self)
     queue_free()
 
+## Plays death visuals on joined devices without awarding rewards again.
+func play_network_death(was_headshot: bool) -> void:
+    if _is_dead:
+        return
+
+    _is_dead = true
+
+    var look: Script = _look()
+    if look != null:
+        look.death_gore(self, was_headshot)
+
+    _spawn_corpse()
+    died.emit(self)
+    queue_free()
 
 ## True for a co-op player who is downed or dead: zombies ignore them.
 func _is_out(p: Node) -> bool:
