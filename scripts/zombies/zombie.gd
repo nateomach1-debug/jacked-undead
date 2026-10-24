@@ -728,6 +728,12 @@ func is_headshot(world_hit_position: Vector3) -> bool:
     return (world_hit_position.y - global_position.y) >= head_height_threshold
 
 
+# HOT YOGA: any hit sets the zombie on fire (uses burn_effect.gd).
+const BURN_PATH: String = "res://scripts/effects/burn_effect.gd"
+const HOT_YOGA_DPS: float = 10.0
+const HOT_YOGA_TIME: float = 3.0
+
+
 func take_damage(amount: float, source: Node = null, was_headshot: bool = false) -> void:
     if _is_dead:
         return
@@ -737,8 +743,10 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
         _forward_hit_to_host(amount, was_headshot)
         return
     _last_source = source
+    # Fire damage ticks are not "hits": they don't trigger the power-up effects below.
+    var is_tick: bool = bool(get_meta("burn_tick", false))
     # MAX LIFT: every hit kills (or takes max_lift_fraction of max health for tougher zombies).
-    if _pu("max_lift"):
+    if not is_tick and _pu("max_lift"):
         if max_lift_fraction >= 1.0:
             amount = maxf(amount, current_health)
         else:
@@ -747,11 +755,30 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
     if current_health <= 0.0:
         _die(was_headshot)
     else:
-        # ICE BATH: a hit zombie is slowed for a few seconds.
-        if _pu("ice_bath"):
-            _slow_left = ICE_SLOW_TIME
+        if not is_tick:
+            # ICE BATH: a hit zombie is slowed for a few seconds.
+            if _pu("ice_bath"):
+                _slow_left = ICE_SLOW_TIME
+            # HOT YOGA: a hit zombie catches fire.
+            if _pu("hot_yoga"):
+                _ignite()
         _flash_hit()
         _gore_hit(was_headshot)
+
+
+## Sets this zombie on fire (or refreshes the burn it already has).
+func _ignite() -> void:
+    var burn: Node = get_node_or_null("BurnEffect")
+    if burn != null and burn.has_method("refresh"):
+        burn.refresh(HOT_YOGA_DPS, HOT_YOGA_TIME)
+        return
+    var burn_script: Script = load(BURN_PATH) as Script
+    if burn_script == null:
+        return
+    var fx: Node = burn_script.new()
+    fx.name = "BurnEffect"
+    add_child(fx)
+    fx.setup(_last_source, HOT_YOGA_DPS, HOT_YOGA_TIME)
 
 
 ## Blood and stagger on a hit that doesn't kill (new look only).
