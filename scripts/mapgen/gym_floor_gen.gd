@@ -263,7 +263,7 @@ func _spawn_door(c: Vector3, vert: bool, off: float, g: int, depth: int) -> void
     var cost: int = int(round((700.0 + depth * 450.0 + rng.randf() * 200.0) / 50.0)) * 50
     d.set("cost", cost)
     d.set("display_name", _names[g])
-        d.set("unlocks_zones", PackedStringArray(["z%d" % g]))
+    d.set("unlocks_zones", PackedStringArray(["z%d" % g]))
     d.name = "Door_%03d" % _door_index
     _door_index += 1
     _doors_node.add_child(d)
