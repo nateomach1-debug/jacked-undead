@@ -42,10 +42,12 @@ var _http_post: HTTPRequest = null
 
 func _ready() -> void:
     _http_poll = HTTPRequest.new()
+    _http_poll.accept_gzip = false
     _http_poll.timeout = 8.0
     add_child(_http_poll)
     _http_poll.request_completed.connect(_on_poll_done)
     _http_post = HTTPRequest.new()
+    _http_post.accept_gzip = false
     _http_post.timeout = 8.0
     add_child(_http_post)
     _http_post.request_completed.connect(_on_post_done)
