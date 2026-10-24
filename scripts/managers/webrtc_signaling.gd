@@ -382,35 +382,25 @@ func _pump_posts() -> void:
         _post_failed(item)
 
 
-
 func _on_post_done(result: int, code: int, _headers_in: PackedStringArray, body: PackedByteArray) -> void:
-	_post_busy = false
-	if not active or _post_queue.is_empty():
-		return
-
-	var item: Dictionary = _post_queue[0]
-	if result == HTTPRequest.RESULT_SUCCESS and code >= 200 and code < 300:
-		_post_queue.pop_front()
-	else:
-		var error_text: String = body.get_string_from_utf8()
-		status.emit("POST ERROR: HTTP %d | %s" % [
-			code,
-			error_text.left(180)
-		])
-		push_warning("Signaling post failed: %d, HTTP: %d, Body: %s" % [
-			result,
-			code,
-			error_text
-		])
-		_post_failed(item)
-
     _post_busy = false
     if not active or _post_queue.is_empty():
         return
+
     var item: Dictionary = _post_queue[0]
     if result == HTTPRequest.RESULT_SUCCESS and code >= 200 and code < 300:
         _post_queue.pop_front()
     else:
+        var error_text: String = body.get_string_from_utf8()
+        status.emit("POST ERROR: HTTP %d | %s" % [
+            code,
+            error_text.left(180)
+        ])
+        push_warning("Signaling post failed: %d, HTTP: %d, Body: %s" % [
+            result,
+            code,
+            error_text
+        ])
         _post_failed(item)
 
 
