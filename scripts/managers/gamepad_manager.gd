@@ -196,21 +196,33 @@ func _apply_deadzones() -> void:
 # ---------- menus ----------
 
 ## If nothing is focused, focuses a button so the d-pad / A button work.
+
 func _ensure_menu_focus() -> void:
     var focused: Control = get_viewport().gui_get_focus_owner()
     if focused != null and focused.is_visible_in_tree() and focused.can_process():
         return
+
     var scene := get_tree().current_scene
     if scene == null:
         return
-    # Newest top-level child first (overlays are added last), buttons in order inside it.
+
+    # Search the newest visible top-level menu first.
     var kids: Array = scene.get_children()
     kids.reverse()
+
     for c in kids:
+        if c is CanvasLayer:
+            continue
+
+        var visible_value = c.get("visible")
+        if visible_value != null and not bool(visible_value):
+            continue
+
         var b := _find_button(c)
         if b != null:
             b.grab_focus()
             return
+
 
 
 func _find_button(node: Node) -> Button:
