@@ -17,12 +17,14 @@ extends CanvasLayer
 
 const EXTRA_PERKS_PATH: String = "res://scripts/ui/hud_extra_perks.gd"
 const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
+const POWERUPS_PATH: String = "res://scripts/ui/hud_powerups.gd"
 var _player: Node
 var _perk_icons: Dictionary = {}
 var _blood_counter = null   # blood_counter.gd instance (untyped on purpose)
 var _fallback_zombie_label: Label = null
 var _top_box: Control = null
 var _layout = null
+var _powerup_hud: Control = null
 
 
 func _ready() -> void:
@@ -49,8 +51,31 @@ func _ready() -> void:
         "fish_oil": perk_fish_oil,
         "bcaas": perk_bcaas, "glutamine": load(EXTRA_PERKS_PATH).make_icon($PerkBar, perk_whey, "glutamine") if load(EXTRA_PERKS_PATH) != null else TextureRect.new(), "collagen": load(EXTRA_PERKS_PATH).make_icon($PerkBar, perk_whey, "collagen") if load(EXTRA_PERKS_PATH) != null else TextureRect.new(),
     }
+    _build_powerups()
     call_deferred("_apply_layout")
     get_viewport().size_changed.connect(_on_viewport_resized)
+
+
+## Power-up timers (top right, under the music player) and the pickup banner.
+func _build_powerups() -> void:
+    var script = load(POWERUPS_PATH)
+    if script == null:
+        return
+    var panel := Control.new()
+    panel.name = "PowerupHud"
+    panel.set_script(script)
+    panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(panel)
+    panel.anchor_left = 1.0
+    panel.anchor_right = 1.0
+    panel.anchor_top = 0.0
+    panel.anchor_bottom = 0.0
+    panel.offset_left = -306.0
+    panel.offset_right = -16.0
+    panel.offset_top = 180.0
+    panel.offset_bottom = 400.0
+    panel.call("attach", self)
+    _powerup_hud = panel
 
 
 func _on_viewport_resized() -> void:
@@ -72,6 +97,7 @@ func _apply_layout() -> void:
     _hud_place($PerkBar, "hud_perks", vp)
     _hud_place(prompt_label, "hud_prompt", vp)
     _hud_place(coords_label, "hud_coords", vp)
+    _hud_place(_powerup_hud, "hud_powerups", vp)
 
 
 func _hud_place(node: Control, id: String, vp: Vector2) -> void:
@@ -185,8 +211,6 @@ func _enlarge_world_labels() -> void:
         var label3d := node as Label3D
         if label3d:
             label3d.pixel_size *= grow
-
-
 func _on_health_changed(current: float, max_hp: float) -> void:
     health_label.text = "HP: %d / %d" % [int(current), int(max_hp)]
 
