@@ -17,6 +17,7 @@ func _ready() -> void:
     attack_damage = 35.0
     gains_on_death = 100
     head_height_threshold = 0.9
+    max_lift_fraction = 0.25  # MAX LIFT takes 25% of max health per hit instead of killing
     super._ready()
 
 
