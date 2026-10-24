@@ -120,6 +120,19 @@ func _unlock() -> void:
     _lock_box.visible = false
     _settings_box.visible = true
     _refresh()
+    call_deferred("_focus_settings_button")
+
+
+func _focus_settings_button() -> void:
+    if not is_instance_valid(_settings_box) or not _settings_box.is_visible_in_tree():
+        return
+
+    var buttons := _settings_box.find_children("*", "Button", true, false)
+    for item in buttons:
+        var b := item as Button
+        if b != null and not b.disabled and b.focus_mode != Control.FOCUS_NONE:
+            b.grab_focus()
+            return
 
 
 # ---------- settings screen ----------
