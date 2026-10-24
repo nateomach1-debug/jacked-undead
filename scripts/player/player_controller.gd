@@ -1451,10 +1451,9 @@ func _track_fall(delta: float) -> void:
         _fall_peak_speed = maxf(_fall_peak_speed, -velocity.y)
 
 
-## Solo Glutamine: while downed you hold the starter pistol with full ammo.
-## If your slot 1 still has it, that gun is used. If you traded it away, you get a
-## temporary exact copy of the pistol you started the round with (never added to
-## your loadout). Your real guns and their ammo are kept for the revive.
+## Solo Glutamine: while downed you always hold a temporary exact copy of the
+## pistol you started the round with, at full ammo. It is never added to your
+## loadout. Your real guns and their ammo are kept for the revive.
 func enter_solo_downed_weapon() -> void:
     if _solo_temp_active:
         return
@@ -1465,21 +1464,17 @@ func enter_solo_downed_weapon() -> void:
         _saved_mag_ammo[current_weapon_index] = current_mag_ammo
         _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
     _solo_prev_weapon_index = current_weapon_index
-    var slot0: WeaponData = weapon_loadout[0]
-    var has_start: bool = _start_pistol == null or (slot0 != null and slot0.get_base_name() == _start_pistol.get_base_name())
-    if has_start:
-        current_weapon_index = 0
-        current_weapon = slot0
-        current_mag_ammo = current_weapon.mag_size
-        current_reserve_ammo = current_weapon.max_reserve_ammo
-        if _saved_mag_ammo.size() > 0:
-            _saved_mag_ammo[0] = current_mag_ammo
-            _saved_reserve_ammo[0] = current_reserve_ammo
-    else:
+    if _start_pistol != null:
         _solo_temp_active = true
         current_weapon = _start_pistol
-        current_mag_ammo = current_weapon.mag_size
-        current_reserve_ammo = current_weapon.max_reserve_ammo
+    else:
+        current_weapon_index = 0
+        current_weapon = weapon_loadout[0]
+        if _saved_mag_ammo.size() > 0:
+            _saved_mag_ammo[0] = current_weapon.mag_size
+            _saved_reserve_ammo[0] = current_weapon.max_reserve_ammo
+    current_mag_ammo = current_weapon.mag_size
+    current_reserve_ammo = current_weapon.max_reserve_ammo
     ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
     _update_weapon_model()
 
