@@ -203,6 +203,12 @@ func _on_poll_done(result: int, code: int, _headers_in: PackedStringArray, body:
         return
     var good: bool = result == HTTPRequest.RESULT_SUCCESS and code >= 200 and code < 300
     if not good:
+        push_warning("Signaling poll failed. Result: %d, HTTP: %d, Body: %s" % [
+            result,
+            code,
+            body.get_string_from_utf8()
+        ])
+    if not good:
         if not _ready_to_poll:
             _mark_tries += 1
             if _mark_tries >= MAX_RETRIES:
