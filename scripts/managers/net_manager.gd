@@ -355,20 +355,6 @@ func _load_map_coop(path: String, shared_seed: int) -> void:
 
     await get_tree().process_frame
     _setup_coop_in_scene()
-    _stop_signaling()
-    get_tree().paused = false
-    _round_manager_ref = null
-    if not get_tree().node_added.is_connected(_on_node_added):
-        get_tree().node_added.connect(_on_node_added)
-    get_tree().change_scene_to_file(path)
-    # Wait until the new map is loaded and running.
-    for i in range(180):
-        await get_tree().process_frame
-        var cs: Node = get_tree().current_scene
-        if cs != null and cs.scene_file_path == path:
-            break
-    await get_tree().process_frame
-    _setup_coop_in_scene()
 
 
 ## Runs for every node added while online. Finds the round manager before it
