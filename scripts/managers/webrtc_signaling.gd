@@ -202,20 +202,15 @@ func _on_poll_done(result: int, code: int, _headers_in: PackedStringArray, body:
     if not active:
         return
     var good: bool = result == HTTPRequest.RESULT_SUCCESS and code >= 200 and code < 300
-    
+
     if not good:
-    var error_text: String = body.get_string_from_utf8()
-    status.emit("POLL ERROR: result=%d HTTP=%d | %s" % [
-        result,
-        code,
-        error_text.left(180)
-    ])
-    push_warning("Poll failed: result=%d, HTTP=%d, Body=%s" % [
-        result,
-        code,
-        error_text
-    ])
-        push_warning("Signaling poll failed: %d, HTTP: %d, Body: %s" % [
+        var error_text: String = body.get_string_from_utf8()
+        status.emit("POLL ERROR: result=%d HTTP=%d | %s" % [
+            result,
+            code,
+            error_text.left(180)
+        ])
+        push_warning("Poll failed: result=%d, HTTP=%d, Body=%s" % [
             result,
             code,
             error_text
@@ -227,6 +222,7 @@ func _on_poll_done(result: int, code: int, _headers_in: PackedStringArray, body:
             if _mark_tries >= MAX_RETRIES:
                 _fail("Cannot reach the room server (%d)" % code)
         return
+
     var data = JSON.parse_string(body.get_string_from_utf8())
     if not (data is Array):
         return
