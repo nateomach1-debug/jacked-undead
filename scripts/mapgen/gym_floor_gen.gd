@@ -48,6 +48,7 @@ const GUNS: Array = [
 var _n: int = 0
 var _grp: PackedInt32Array = PackedInt32Array()
 var _g_count: int = 0
+var _door_index: int = 0
 var _start_g: int = 0
 var _depth: Array = []
 var _names: Array = []
@@ -263,7 +264,9 @@ func _spawn_door(c: Vector3, vert: bool, off: float, g: int, depth: int) -> void
     d.set("cost", cost)
     d.set("display_name", _names[g])
     d.set("unlocks_zones", PackedStringArray(["z%d" % g]))
-    _doors_node.add_child(d)
+	d.name = "Door_%03d" % _door_index
+	_door_index += 1
+	_doors_node.add_child(d)
 
 
 # ---------- player, spawns ----------
