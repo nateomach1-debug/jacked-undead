@@ -178,7 +178,7 @@ func _bleed_out() -> void:
     _player.collision_mask = 0
 
 
-## Dead: float above a living teammate so you can watch them play.
+## Dead: follow a living teammate's position and viewing direction.
 func _tick_dead() -> void:
     for n in get_tree().get_nodes_in_group("remote_players"):
         var p := n as Node3D
@@ -186,7 +186,14 @@ func _tick_dead() -> void:
             continue
         if bool(p.get_meta("downed", false)) or bool(p.get_meta("dead", false)):
             continue
+
         _player.global_position = p.global_position + Vector3(0.0, SPECTATE_HEIGHT, 0.0)
+        _player.global_rotation.y = p.global_rotation.y
+
+        var remote_camera: Camera3D = p.get_node_or_null("Camera3D") as Camera3D
+        if remote_camera != null:
+            _player.camera.global_rotation.x = remote_camera.global_rotation.x
+
         return
 
 
