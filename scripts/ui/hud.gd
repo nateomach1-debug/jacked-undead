@@ -1,4 +1,3 @@
-
 extends CanvasLayer
 
 @onready var health_label: Label = $Margin/VBox/HealthLabel
