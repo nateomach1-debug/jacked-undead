@@ -167,57 +167,103 @@ func _btn(bg: Color, edge: Color, bar: Color) -> PosterBox:
 
 
 
+
 class BloodFocusBox extends StyleBox:
     var blood: Color = Color("#e5484d")
     var dark: Color = Color("#24090b")
     var edge_size: float = 2.0
 
     func _draw(to_canvas_item: RID, rect: Rect2) -> void:
-        # Dark outline underneath the blood-red border.
-        RenderingServer.canvas_item_add_rect(to_canvas_item, rect, dark)
+        var e := edge_size
 
-        var inner := rect.grow(-edge_size)
-        if inner.size.x <= 0.0 or inner.size.y <= 0.0:
-            return
-        RenderingServer.canvas_item_add_rect(to_canvas_item, inner, blood)
+        # Dark outer border: four separate strips.
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(rect.position, Vector2(rect.size.x, e)),
+            dark
+        )
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(Vector2(rect.position.x, rect.end.y - e), Vector2(rect.size.x, e)),
+            dark
+        )
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(rect.position, Vector2(e, rect.size.y)),
+            dark
+        )
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(Vector2(rect.end.x - e, rect.position.y), Vector2(e, rect.size.y)),
+            dark
+        )
 
-        # Dark inset keeps the red edge crisp.
-        var center := inner.grow(-1.0)
-        if center.size.x > 0.0 and center.size.y > 0.0:
-            RenderingServer.canvas_item_add_rect(
-                to_canvas_item,
-                center,
-                Color("#1b0d10")
-            )
+        # Red inner border: four thin strips.
+        var red := Color("#e5484d")
+        var b := 1.0
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(Vector2(rect.position.x + e, rect.position.y + e),
+                Vector2(maxf(0.0, rect.size.x - 2.0 * e), b)),
+            red
+        )
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(Vector2(rect.position.x + e, rect.end.y - e - b),
+                Vector2(maxf(0.0, rect.size.x - 2.0 * e), b)),
+            red
+        )
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(Vector2(rect.position.x + e, rect.position.y + e),
+                Vector2(b, maxf(0.0, rect.size.y - 2.0 * e))),
+            red
+        )
+        RenderingServer.canvas_item_add_rect(
+            to_canvas_item,
+            Rect2(Vector2(rect.end.x - e - b, rect.position.y + e),
+                Vector2(b, maxf(0.0, rect.size.y - 2.0 * e))),
+            red
+        )
 
-        # Uneven blood drips along the lower edge.
-        var x := rect.position.x + 5.0
+        # Blood drips hang below the bottom border.
+        var x := rect.position.x + 7.0
         var drip_index := 0
-        while x < rect.end.x - 5.0:
-            var drip_height := 3.0
+
+        while x < rect.end.x - 7.0:
+            var drip_height := 4.0
             if drip_index % 3 == 0:
                 drip_height = 7.0
             elif drip_index % 3 == 1:
-                drip_height = 4.0
+                drip_height = 3.0
 
             var drip_width := 3.0
-            var drip_rect := Rect2(
-                Vector2(x, rect.end.y - 1.0),
+            var drip := Rect2(
+                Vector2(x, rect.end.y - e),
                 Vector2(drip_width, drip_height)
             )
+
+            # Dark outline around each drip.
             RenderingServer.canvas_item_add_rect(
                 to_canvas_item,
-                drip_rect,
+                drip,
                 dark
             )
-            RenderingServer.canvas_item_add_rect(
-                to_canvas_item,
-                drip_rect.grow(-1.0),
-                blood
-            )
 
-            x += 11.0
+            # Red center, inset to keep the dark edge visible.
+            if drip_width > 2.0:
+                RenderingServer.canvas_item_add_rect(
+                    to_canvas_item,
+                    Rect2(
+                        drip.position + Vector2(1.0, 1.0),
+                        Vector2(drip_width - 2.0, maxf(1.0, drip_height - 1.0))
+                    ),
+                    blood
+                )
+
+            x += 13.0
             drip_index += 1
+
 
 
 func _focus_box() -> StyleBox:
