@@ -90,15 +90,25 @@ func _receive_state(pos: Vector3, yaw: float, state: int, bleed: float, progress
 
 ## If this phone's player is downed/dead and so is everyone else, it's game over.
 ## It tells every other phone directly, so nobody misses it.
+
+## Game over only when this player and every connected teammate are out.
 func _check_everyone_out() -> void:
     if GameManager.is_game_over or _remotes.is_empty():
         return
+
     if not (bool(_local_player.get("is_downed")) or bool(_local_player.get("is_dead"))):
         return
+
+    # Every connected teammate must have reported a non-living state.
+    # Missing state is treated as alive to avoid a false game over.
     for id in _remotes.keys():
-        var target: Dictionary = _targets.get(id, {})
+        if not _targets.has(id):
+            return
+
+        var target: Dictionary = _targets[id]
         if int(target.get("state", 0)) == 0:
             return
+
     _everyone_out.rpc()
     GameManager.report_player_death()
 
