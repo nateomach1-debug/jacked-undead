@@ -19,6 +19,7 @@ GamepadManager="*res://scripts/managers/gamepad_manager.gd"
 AwayGuard="*res://scripts/managers/away_guard.gd"
 MembershipHub="*res://scripts/managers/membership_hub.gd"
 UITheme="*res://scripts/managers/ui_theme.gd"
+MusicManager="*res://scripts/managers/music_manager.gd"
 
 [display]
 
