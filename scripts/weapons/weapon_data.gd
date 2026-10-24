@@ -39,6 +39,7 @@ const PR_UPGRADED_NAMES: Dictionary = {
     "Repeater Crossbow": "Pull Day Again",
     "Semi-Auto Sniper": "No Spotter Needed"
 }
+const PR_SUFFIXES: Array = [" - 1RM", " - 2RM", " - 3RM"]
 const PR_DAMAGE: Array = [2.2, 3.2, 4.5]
 const PR_FIRE_RATE: Array = [1.15, 1.3, 1.5]     # shots-per-second multiplier
 const PR_RELOAD_SPEED: Array = [1.2, 1.4, 1.7]   # reload time is divided by this
