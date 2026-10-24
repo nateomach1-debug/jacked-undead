@@ -25,6 +25,7 @@ const ELEMENTS: Array = [
     {"id": "hud_prompt", "group": "hud", "title": "USE PROMPT", "w": 520.0, "h": 52.0, "corner": "bc", "cx": 0.0, "cy": 49.0, "scalable": true},
     {"id": "hud_coords", "group": "hud", "title": "COORDS", "w": 276.0, "h": 36.0, "corner": "tr", "cx": 162.0, "cy": 42.0, "scalable": true},
     {"id": "hud_music", "group": "hud", "title": "MUSIC PLAYER", "w": 290.0, "h": 140.0, "corner": "tr", "cx": 160.0, "cy": 90.0, "scalable": true},
+    {"id": "hud_powerups", "group": "hud", "title": "POWER-UPS", "w": 290.0, "h": 220.0, "corner": "tr", "cx": 161.0, "cy": 290.0, "scalable": true},
 ]
 
 ## id -> {"x": fraction, "y": fraction, "s": scale, "a": opacity, "wf": width fraction, "hf": height fraction}
