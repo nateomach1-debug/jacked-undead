@@ -8,8 +8,13 @@ extends Node
 ## Leash: a zombie that stays far from every living player for a few seconds is
 ## moved to a spawn point near that player (same zombie, same health, and the
 ## round's zombie count is unchanged). Only real zombies are moved, not puppets.
+##
+## Power-ups: creates the power-up manager (scripts/powerups/powerup_manager.gd)
+## and tells it when a round starts and when a zombie dies.
 
 signal zombies_changed(remaining: int, total: int)
+
+const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
 
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
@@ -29,14 +34,25 @@ var _round_active: bool = false
 var _round_total: int = 0
 var _round_killed: int = 0
 var _leash_timer: float = 1.0
+var _powerups = null
 
 
 func _ready() -> void:
     _spawn_points = get_tree().get_nodes_in_group("spawn_points")
     if _spawn_points.is_empty():
         push_warning("RoundManager: no nodes in group 'spawn_points' found.")
+    _make_powerup_manager()
     # Deferred so main.gd has reset the run and hooked up the HUD first.
     _start_round.call_deferred()
+
+
+func _make_powerup_manager() -> void:
+    var script := load(POWERUP_MANAGER_PATH) as GDScript
+    if script == null:
+        push_warning("RoundManager: powerup_manager.gd is missing; no power-ups this run.")
+        return
+    _powerups = script.new()
+    add_child(_powerups)
 
 
 func _physics_process(delta: float) -> void:
@@ -59,6 +75,8 @@ func _start_round() -> void:
     _round_active = true
     _round_killed = 0
     _round_total = base_zombies_per_round + (GameManager.round_number - 1) * zombies_per_round_growth
+    if _powerups != null:
+        _powerups.on_round_start(_round_total)
     _emit_counts()
     _spawn_wave(_round_total)
 
@@ -192,8 +210,10 @@ func _player_is_out(p: Node) -> bool:
 
 # ---------------------------------------------------------------- rounds
 
-func _on_zombie_died(_zombie: Zombie) -> void:
+func _on_zombie_died(zombie: Zombie) -> void:
     _round_killed += 1
+    if _powerups != null and is_instance_valid(zombie):
+        _powerups.on_zombie_killed(zombie, _round_killed, _round_total)
     _emit_counts()
     if _round_killed >= _round_total and _round_active:
         _round_active = false
