@@ -339,6 +339,13 @@ func _refresh_weapon_level() -> void:
     var base: String = w.get_base_name()
     var p: Dictionary = _wl.progress(base)
     weapon_label.text = "%s  LV %d" % [w.weapon_name, int(p["level"])]
+    var rarity_script = load("res://scripts/weapons/weapon_rarity.gd")
+    if rarity_script != null and _player != null and _player.current_weapon != null:
+        var tier: String = str(_player.current_weapon.get_meta("rarity", "common"))
+        weapon_label.add_theme_color_override(
+            "font_color",
+            rarity_script.new().tier_color(tier)
+        )
     _xp_bar.value = float(p["frac"])
     if not _lv_seen.has(base):
         _lv_seen[base] = _wl.get_level(base, false)
