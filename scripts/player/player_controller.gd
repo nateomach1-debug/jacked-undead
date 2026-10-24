@@ -108,6 +108,8 @@ var collagen_active: bool = false
 var solo_revives_used: int = 0
 var invuln_left: float = 0.0
 var _solo_prev_weapon_index: int = 0
+var _start_pistol: WeaponData = null    # the gun you started the round with (slot 1)
+var _solo_temp_active: bool = false     # true while holding the temporary downed pistol
 var _fall_peak_speed: float = 0.0
 
 # --- Weapon / ammo state ---
@@ -132,6 +134,7 @@ var _burst_timer: float = 0.0
 var _damage_indicator: Node = null
 var _flame_marker_cooldown: float = 0.0
 
+
 func _ready() -> void:
     add_to_group("player")
     floor_snap_length = 0.4
@@ -154,6 +157,10 @@ func _ready() -> void:
     muzzle_ray.collision_mask = 1 | 4  # world (layer 1) + zombies (layer 4)
 
     _attach_start_guns()
+    if not weapon_loadout.is_empty():
+        _start_pistol = weapon_loadout[0]
+    elif current_weapon != null:
+        _start_pistol = current_weapon
     if not weapon_loadout.is_empty():
         current_weapon_index = 0
         current_weapon = weapon_loadout[0]
@@ -566,7 +573,6 @@ func _go_down() -> bool:
         _downed_state.setup(self)
     _downed_state.go_down()
     return true
-
 
 ## Co-op downed penalty (called by downed_state.gd): lose all supplements and
 ## every gun except the pistol (slot 1) and your second gun (slot 2), both
@@ -1158,7 +1164,6 @@ func _settings_fov() -> float:
     var s = script.new()
     return clampf(float(s.get_value("fov")), 50.0, 120.0)
 
-
 var _attach_root: Node3D = null
 
 
@@ -1446,8 +1451,13 @@ func _track_fall(delta: float) -> void:
         _fall_peak_speed = maxf(_fall_peak_speed, -velocity.y)
 
 
-## Solo Glutamine: hold the pistol (slot 1, full ammo) while downed. The rest of the loadout stays.
+## Solo Glutamine: while downed you hold the starter pistol with full ammo.
+## If your slot 1 still has it, that gun is used. If you traded it away, you get a
+## temporary exact copy of the pistol you started the round with (never added to
+## your loadout). Your real guns and their ammo are kept for the revive.
 func enter_solo_downed_weapon() -> void:
+    if _solo_temp_active:
+        return
     _cancel_actions()
     if weapon_loadout.is_empty():
         return
@@ -1455,25 +1465,35 @@ func enter_solo_downed_weapon() -> void:
         _saved_mag_ammo[current_weapon_index] = current_mag_ammo
         _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
     _solo_prev_weapon_index = current_weapon_index
-    current_weapon_index = 0
-    current_weapon = weapon_loadout[0]
-    current_mag_ammo = current_weapon.mag_size
-    current_reserve_ammo = current_weapon.max_reserve_ammo
-    if _saved_mag_ammo.size() > 0:
-        _saved_mag_ammo[0] = current_mag_ammo
-        _saved_reserve_ammo[0] = current_reserve_ammo
+    var slot0: WeaponData = weapon_loadout[0]
+    var has_start: bool = _start_pistol == null or (slot0 != null and slot0.get_base_name() == _start_pistol.get_base_name())
+    if has_start:
+        current_weapon_index = 0
+        current_weapon = slot0
+        current_mag_ammo = current_weapon.mag_size
+        current_reserve_ammo = current_weapon.max_reserve_ammo
+        if _saved_mag_ammo.size() > 0:
+            _saved_mag_ammo[0] = current_mag_ammo
+            _saved_reserve_ammo[0] = current_reserve_ammo
+    else:
+        _solo_temp_active = true
+        current_weapon = _start_pistol
+        current_mag_ammo = current_weapon.mag_size
+        current_reserve_ammo = current_weapon.max_reserve_ammo
     ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
     _update_weapon_model()
 
 
-## Back to the gun you were holding before you went down.
+## Back to the gun you were holding before you went down. The temporary
+## pistol (if you had one) disappears and your real guns keep their old ammo.
 func exit_solo_downed_weapon() -> void:
     _cancel_actions()
     if weapon_loadout.is_empty():
         return
-    if current_weapon_index < _saved_mag_ammo.size():
+    if not _solo_temp_active and current_weapon_index < _saved_mag_ammo.size():
         _saved_mag_ammo[current_weapon_index] = current_mag_ammo
         _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
+    _solo_temp_active = false
     current_weapon_index = clampi(_solo_prev_weapon_index, 0, weapon_loadout.size() - 1)
     current_weapon = weapon_loadout[current_weapon_index]
     current_mag_ammo = _saved_mag_ammo[current_weapon_index]
