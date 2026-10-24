@@ -166,14 +166,63 @@ func _btn(bg: Color, edge: Color, bar: Color) -> PosterBox:
     return b
 
 
-func _focus_box() -> StyleBoxFlat:
-    var f := StyleBoxFlat.new()
-    f.draw_center = false
-    f.bg_color = Color(0, 0, 0, 0)
-    f.set_border_width_all(1)
-    f.border_color = Color(1.0, 0.77, 0.0, 0.6)
-    f.set_corner_radius_all(2)
-    return f
+
+class BloodFocusBox extends StyleBox:
+    var blood: Color = Color("#e5484d")
+    var dark: Color = Color("#24090b")
+    var edge_size: float = 2.0
+
+    func _draw(to_canvas_item: RID, rect: Rect2) -> void:
+        # Dark outline underneath the blood-red border.
+        RenderingServer.canvas_item_add_rect(to_canvas_item, rect, dark)
+
+        var inner := rect.grow(-edge_size)
+        if inner.size.x <= 0.0 or inner.size.y <= 0.0:
+            return
+        RenderingServer.canvas_item_add_rect(to_canvas_item, inner, blood)
+
+        # Dark inset keeps the red edge crisp.
+        var center := inner.grow(-1.0)
+        if center.size.x > 0.0 and center.size.y > 0.0:
+            RenderingServer.canvas_item_add_rect(
+                to_canvas_item,
+                center,
+                Color("#1b0d10")
+            )
+
+        # Uneven blood drips along the lower edge.
+        var x := rect.position.x + 5.0
+        var drip_index := 0
+        while x < rect.end.x - 5.0:
+            var drip_height := 3.0
+            if drip_index % 3 == 0:
+                drip_height = 7.0
+            elif drip_index % 3 == 1:
+                drip_height = 4.0
+
+            var drip_width := 3.0
+            var drip_rect := Rect2(
+                Vector2(x, rect.end.y - 1.0),
+                Vector2(drip_width, drip_height)
+            )
+            RenderingServer.canvas_item_add_rect(
+                to_canvas_item,
+                drip_rect,
+                dark
+            )
+            RenderingServer.canvas_item_add_rect(
+                to_canvas_item,
+                drip_rect.grow(-1.0),
+                blood
+            )
+
+            x += 11.0
+            drip_index += 1
+
+
+func _focus_box() -> StyleBox:
+    return BloodFocusBox.new()
+
 
 
 func _button_type(t: Theme, type_name: String, s: Dictionary) -> void:
