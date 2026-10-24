@@ -9,7 +9,36 @@ enum FireMode { HITSCAN, FLAME, EXPLOSIVE }
 # PR Rack upgrade levels. Each list holds the TOTAL bonus at that level
 # (index 0 = level 1), applied to the gun's original stats.
 const PR_MAX_LEVEL: int = 3
-const PR_SUFFIXES: Array = [" - 1RM", " - 2RM", " - 3RM"]
+const PR_UPGRADED_NAMES: Dictionary = {
+    # Standard weapons
+    "Pistol": "Pocket Gains",
+    "Shotgun": "Chest Day",
+    "SMG": "Superset Sprayer",
+    "Rifle": "Gains of Mass Destruction",
+    "Crossbow": "Pull Day",
+    "Sniper": "One Rep Wonder",
+
+    # Loot Locker weapons
+    "Pump Shotgun": "Pump & Dump",
+    "Double-Barrel": "Double Scoop",
+    "Revolver": "Last Rep",
+    "Magnum": "Mass Monster",
+    "LMG": "Leg Day",
+    "Burst Rifle": "Three-Peat",
+    "Flamethrower": "Pre-Workout Rage",
+    "Grenade Launcher": "Bulk Season",
+    "Rocket Launcher": "Nuclear Bulk",
+    "Tactical .45": "Tactical Triceps",
+    "Speed Revolver": "Quick Gains",
+    "Hand Cannon": "Big Guns",
+    "Marksman DMR": "Form Check",
+    "Heavy Burst": "Heavy Sets",
+    "Auto-Shotgun": "Pec Blaster",
+    "Micro SMG": "Tiny Terrors",
+    "Chaingun": "Cardio Is Overrated",
+    "Repeater Crossbow": "Pull Day Again",
+    "Semi-Auto Sniper": "No Spotter Needed"
+}
 const PR_DAMAGE: Array = [2.2, 3.2, 4.5]
 const PR_FIRE_RATE: Array = [1.15, 1.3, 1.5]     # shots-per-second multiplier
 const PR_RELOAD_SPEED: Array = [1.2, 1.4, 1.7]   # reload time is divided by this
@@ -85,7 +114,12 @@ func get_pr_upgraded_copy() -> WeaponData:
     var up: WeaponData = base.duplicate()
     up.pr_base = base
     up.pr_level = level
-    up.weapon_name = base.weapon_name + PR_SUFFIXES[i]
+    up.weapon_name = str(
+        PR_UPGRADED_NAMES.get(
+            base.weapon_name,
+            base.weapon_name + PR_SUFFIXES[i]
+        )
+    )
     up.placeholder_kind = base.placeholder_kind if base.placeholder_kind != "" else base.weapon_name
     up.damage = base.damage * PR_DAMAGE[i]
     up.burn_damage_per_second = base.burn_damage_per_second * PR_DAMAGE[i]
