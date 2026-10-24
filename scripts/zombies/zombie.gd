@@ -20,6 +20,10 @@ class_name Zombie
 ## hit stagger and gore.
 ##
 ## Custom mode: max_health is multiplied by the ZOMBIE HEALTH setting (x1 / x1.5 / x2).
+##
+## Power-ups: MAX LIFT kills in one hit (max_lift_fraction < 1.0 = that share of
+## max health per hit instead, used by the Roid Rager). ICE BATH slows a zombie
+## for ICE_SLOW_TIME seconds after each hit.
 
 signal died(zombie: Zombie)
 
@@ -35,6 +39,10 @@ const SEPARATION_STRENGTH: float = 1.5
 const SEPARATION_INTERVAL: float = 0.12   # separation is recalculated this often (cheaper)
 const LOS_INTERVAL: float = 0.25          # how often to check for a wall between us and the target
 const OUT_CHECK_INTERVAL: float = 0.1     # how often to check whether the target went down or left
+
+# Power-up settings
+const ICE_SLOW_AMOUNT: float = 0.4   # ICE BATH: walking speed lost while slowed (0.4 = 40% slower)
+const ICE_SLOW_TIME: float = 3.0     # ICE BATH: seconds a zombie stays slowed after a hit
 
 # Look settings
 const NEW_LOOK: bool = true          # true = new look + rise/stagger/gore; false = classic look
@@ -84,6 +92,7 @@ const BAND_COLORS: Array = [
 @export var waypoint_reach_distance: float = 0.4
 
 var is_puppet: bool = false  # co-op copy of the host's zombie: no AI, takes no damage
+var max_lift_fraction: float = 1.0  # MAX LIFT: 1.0 = insta-kill; a subclass sets e.g. 0.25 = 25% of max health per hit
 
 var current_health: float
 var _target: Node3D
@@ -106,6 +115,8 @@ var _feet_offset: float = NAN
 var _out_timer: float = 0.0
 var _test_params: PhysicsTestMotionParameters3D = null
 var _test_result: PhysicsTestMotionResult3D = null
+var _slow_left: float = 0.0      # > 0 while slowed by ICE BATH
+var _pu_mgr: Node = null         # the power-up manager (found lazily)
 
 # Look / animation state
 static var _box_cache: Dictionary = {}
@@ -170,9 +181,21 @@ static func _look() -> Script:
     return _look_script
 
 
-## Walking speed while reeling from a hit.
+## Walking speed while reeling from a hit or slowed by ICE BATH.
 func _speed_mult() -> float:
-    return 1.0 - STAGGER_SLOW * clampf(_stagger / STAGGER_TIME, 0.0, 1.0)
+    var m: float = 1.0 - STAGGER_SLOW * clampf(_stagger / STAGGER_TIME, 0.0, 1.0)
+    if _slow_left > 0.0:
+        m *= 1.0 - ICE_SLOW_AMOUNT
+    return m
+
+
+## True while the given power-up is active (false when there is no power-up manager).
+func _pu(id: String) -> bool:
+    if _pu_mgr == null or not is_instance_valid(_pu_mgr):
+        _pu_mgr = get_tree().get_first_node_in_group("powerup_manager")
+    if _pu_mgr == null:
+        return false
+    return bool(_pu_mgr.has_effect(id))
 
 
 # ---------- look (all built in code) ----------
@@ -407,10 +430,13 @@ func _find_target() -> void:
                 best = p
     _target = best
 
-
 func _physics_process(delta: float) -> void:
     if is_puppet:
         return
+
+    # ICE BATH slow wears off.
+    if _slow_left > 0.0:
+        _slow_left -= delta
 
     # Still climbing out of the ground: no walking or attacking yet.
     if _rise_left > 0.0:
@@ -711,10 +737,19 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
         _forward_hit_to_host(amount, was_headshot)
         return
     _last_source = source
+    # MAX LIFT: every hit kills (or takes max_lift_fraction of max health for tougher zombies).
+    if _pu("max_lift"):
+        if max_lift_fraction >= 1.0:
+            amount = maxf(amount, current_health)
+        else:
+            amount = maxf(amount, max_health * max_lift_fraction)
     current_health -= amount
     if current_health <= 0.0:
         _die(was_headshot)
     else:
+        # ICE BATH: a hit zombie is slowed for a few seconds.
+        if _pu("ice_bath"):
+            _slow_left = ICE_SLOW_TIME
         _flash_hit()
         _gore_hit(was_headshot)
 
