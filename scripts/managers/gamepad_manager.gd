@@ -154,10 +154,11 @@ func _process(delta: float) -> void:
         if bool(n.get("visible")) == gamepad_active:
             n.set("visible", not gamepad_active)
 
+    
     if not _in_game():
-    _process_menu_scroll(delta)
-    return
+        _process_menu_scroll(delta)
         return
+
     var look: Vector2 = _shaped_look()
     if look.length() < 0.01:
         return
