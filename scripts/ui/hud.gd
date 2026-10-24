@@ -191,11 +191,13 @@ func _on_health_changed(current: float, max_hp: float) -> void:
     health_label.text = "HP: %d / %d" % [int(current), int(max_hp)]
 
 
+
 func _on_ammo_changed(current_mag: int, reserve: int) -> void:
     ammo_label.text = "Ammo: %d / %d" % [current_mag, reserve]
     if _player and _player.current_weapon:
-            weapon_label.text = _player.current_weapon.weapon_name
+        weapon_label.text = _player.current_weapon.weapon_name
         _refresh_weapon_level()
+
 
 func _on_gains_changed(amount: int) -> void:
     gains_label.text = "Gains: %d" % amount
