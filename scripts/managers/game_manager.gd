@@ -80,12 +80,22 @@ func _install_touch_fix() -> void:
 
 
 ## earned = false for refunds (like the co-op revive bonus): they add Gains
-## but don't count toward the "Gains earned" score.
+## but don't count toward the "Gains earned" score, and power-ups don't touch them.
+## earned = true (kills/damage) is doubled while PRE-WORKOUT SURGE is active.
 func add_gains(amount: int, earned: bool = true) -> void:
-    gains += amount
     if earned and amount > 0:
+        amount = int(round(amount * _gain_multiplier()))
         gains_earned += amount
+    gains += amount
     gains_changed.emit(gains)
+
+
+## 2.0 while the Pre-Workout Surge power-up is running on this phone, else 1.0.
+func _gain_multiplier() -> float:
+    var pm = get_tree().get_first_node_in_group("powerup_manager")
+    if pm != null and pm.has_method("has_effect") and pm.has_effect("pre_workout"):
+        return 2.0
+    return 1.0
 
 
 func try_spend_gains(amount: int) -> bool:
