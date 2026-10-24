@@ -76,12 +76,15 @@ func _in_game() -> bool:
     return not get_tree().paused and get_tree().get_first_node_in_group("player") != null
 
 
+
 func _input(event: InputEvent) -> void:
     if event is InputEventScreenTouch and event.pressed:
         _set_active(false)
         return
+
     var had_focus: bool = get_viewport().gui_get_focus_owner() != null
     var used: bool = false
+
     if event is InputEventJoypadButton and event.pressed:
         used = true
         _set_active(true)
@@ -89,11 +92,11 @@ func _input(event: InputEvent) -> void:
     elif event is InputEventJoypadMotion and absf(event.axis_value) > ACTIVATE_AXIS_THRESHOLD:
         used = true
         _set_active(true)
+
     if used and not _in_game():
-    if event is InputEventJoypadMotion:
-        _scroll_menu_contents(event)
-    _ensure_menu_focus()
-        # A presses the focused menu button directly (the engine's accept wasn't reaching it).
+        _ensure_menu_focus()
+
+        # A presses the focused menu button directly.
         if event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A and had_focus:
             _press_focused_button()
             get_viewport().set_input_as_handled()
