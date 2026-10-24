@@ -90,7 +90,9 @@ func _input(event: InputEvent) -> void:
         used = true
         _set_active(true)
     if used and not _in_game():
-        _ensure_menu_focus()
+    if event is InputEventJoypadMotion:
+        _scroll_menu_contents(event)
+    _ensure_menu_focus()
         # A presses the focused menu button directly (the engine's accept wasn't reaching it).
         if event is InputEventJoypadButton and event.button_index == JOY_BUTTON_A and had_focus:
             _press_focused_button()
@@ -194,6 +196,38 @@ func _apply_deadzones() -> void:
             InputMap.action_set_deadzone(a, look_dz)
 
 # ---------- menus ----------
+
+func _scroll_menu_contents(event: InputEventJoypadMotion) -> void:
+    if absf(event.axis_value) < 0.2:
+        return
+
+    var focused := get_viewport().gui_get_focus_owner()
+    if focused == null:
+        return
+
+    # Find the ScrollContainer containing the focused control.
+    var node: Node = focused
+    while node != null:
+        if node is ScrollContainer:
+            var scroll := node as ScrollContainer
+
+            if event.axis == JOY_AXIS_RIGHT_Y:
+                scroll.scroll_vertical = clampi(
+                    scroll.scroll_vertical + int(event.axis_value * 18.0),
+                    0,
+                    maxi(0, int(scroll.get_v_scroll_bar().max_value
+                        - scroll.get_v_scroll_bar().page))
+                )
+            elif event.axis == JOY_AXIS_RIGHT_X:
+                scroll.scroll_horizontal = clampi(
+                    scroll.scroll_horizontal + int(event.axis_value * 18.0),
+                    0,
+                    maxi(0, int(scroll.get_h_scroll_bar().max_value
+                        - scroll.get_h_scroll_bar().page))
+                )
+            return
+
+        node = node.get_parent()
 
 ## If nothing is focused, focuses a button so the d-pad / A button work.
 
