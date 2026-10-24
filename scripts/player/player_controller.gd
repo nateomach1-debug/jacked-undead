@@ -61,6 +61,9 @@ const BURN_EFFECT_PATH: String = "res://scripts/effects/burn_effect.gd"
 const PROJECTILE_PATH: String = "res://scripts/weapons/projectile.gd"
 const DAMAGE_INDICATOR_PATH: String = "res://scripts/ui/damage_indicator.gd"
 const DOWNED_STATE_PATH: String = "res://scripts/player/downed_state.gd"
+const RARITY_PATH: String = "res://scripts/weapons/weapon_rarity.gd"
+const CARDIO_SPEED_FACTOR: float = 1.3   # CARDIO KICK power-up: walk and sprint speed
+const SPOTTER_DAMAGE_FACTOR: float = 0.5 # SPOTTER power-up: damage taken
 
 @export var base_walk_speed: float = 5.0
 @export var base_sprint_multiplier: float = 1.6
@@ -134,6 +137,11 @@ var _burst_timer: float = 0.0
 var _damage_indicator: Node = null
 var _flame_marker_cooldown: float = 0.0
 
+# Power-up hooks (powerup_manager.gd is created by round_manager.gd, so it is looked up lazily)
+var _pu_mgr = null
+var _pu_tiers: Dictionary = {}
+var _pu_tiers_tried: bool = false
+
 
 func _ready() -> void:
     add_to_group("player")
@@ -195,6 +203,7 @@ func apply_look_delta(delta: Vector2, sensitivity: float = MOUSE_SENSITIVITY) ->
 
 
 func _physics_process(delta: float) -> void:
+    _powerup_mgr()
     _update_ads(delta)
     _update_reticle()
     _handle_movement(delta)
@@ -240,7 +249,7 @@ func _handle_movement(delta: float) -> void:
     if raw_dir.length() > 1.0:
         raw_dir = raw_dir.normalized()
     var direction := transform.basis * raw_dir
-    var speed := base_walk_speed * speed_multiplier * lerpf(1.0, ADS_MOVE_FACTOR, _aim_blend)
+    var speed := base_walk_speed * speed_multiplier * _cardio_factor() * lerpf(1.0, ADS_MOVE_FACTOR, _aim_blend)
     if is_downed:
         speed = base_walk_speed * DOWNED_SPEED_FACTOR
     elif _wants_sprint(delta, direction):
@@ -373,7 +382,7 @@ func _fire_shot() -> void:
 
     # Cast every pellet, then add the damage up per target so each zombie
     # takes ONE take_damage() call per shot (no double-kill / double-pay).
-    var base_damage: float = current_weapon.damage * damage_multiplier
+    var base_damage: float = current_weapon.damage * damage_multiplier * _pr_day_factor()
     var hits: Dictionary = {}
     for i in range(maxi(current_weapon.pellets, 1)):
         var direction: Vector3 = _spread_direction(current_weapon.spread_degrees)
@@ -436,7 +445,7 @@ func _cast_ray(direction: Vector3, max_range: float) -> Dictionary:
 
 
 func _apply_burn(target: Node) -> void:
-    var burn_dps: float = current_weapon.burn_damage_per_second * damage_multiplier
+    var burn_dps: float = current_weapon.burn_damage_per_second * damage_multiplier * _pr_day_factor()
     var existing = target.get_node_or_null("BurnEffect")
     if existing:
         existing.refresh(burn_dps, current_weapon.burn_duration)
@@ -462,7 +471,7 @@ func _launch_projectile() -> void:
         self,
         forward * current_weapon.projectile_speed,
         current_weapon.projectile_gravity,
-        current_weapon.damage * damage_multiplier,
+        current_weapon.damage * damage_multiplier * _pr_day_factor(),
         current_weapon.splash_radius,
         current_weapon.self_damage_multiplier,
         current_weapon.gains_per_hit
@@ -487,7 +496,6 @@ func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
         marker.set_headshot()
     get_tree().current_scene.add_child(marker)
     marker.global_position = at_position
-
 
 ## Starts a reload. Guns with reload_time = 0 refill instantly (the old
 ## behaviour); others take reload_time seconds (faster with Pre-Workout).
@@ -551,6 +559,8 @@ func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
     if invuln_left > 0.0: return
     if is_downed or is_dead:
         return  # a downed or bled-out player can't be hurt further
+    if _pu("spotter"):
+        amount *= SPOTTER_DAMAGE_FACTOR
     _show_damage_indicator(amount, from_position)
     _pad_rumble(0.5, 1.0, 0.25)
     current_health = max(current_health - amount, 0.0)
@@ -978,7 +988,7 @@ func _wants_sprint(delta: float, direction: Vector3) -> bool:
 
 func _compute_sprint(delta: float, direction: Vector3) -> bool:
     var wants: bool = Input.is_action_pressed("sprint") and direction.length() > 0.1
-    if infinite_stamina:
+    if infinite_stamina or _pu("cardio_kick"):
         _set_stamina(max_stamina)
         _stamina_exhausted = false
         return wants
@@ -1060,7 +1070,6 @@ func _is_scope_weapon() -> bool:
 func _look_scale() -> float:
     var ads_sens: float = lerpf(1.0, _setting_value("ads_sens", 100.0) / 100.0, _aim_blend)
     return ads_sens / lerpf(1.0, _look_zoom(), _aim_blend)
-
 
 func _update_ads(delta: float) -> void:
     if not _ads_ready:
@@ -1495,3 +1504,70 @@ func exit_solo_downed_weapon() -> void:
     current_reserve_ammo = _saved_reserve_ammo[current_weapon_index]
     ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
     _update_weapon_model()
+
+
+# ---------------------------------------------------------------- power-ups
+
+## Finds powerup_manager.gd (it may be created after the player) and listens once.
+func _powerup_mgr():
+    if _pu_mgr != null and is_instance_valid(_pu_mgr):
+        return _pu_mgr
+    _pu_mgr = get_tree().get_first_node_in_group("powerup_manager")
+    if _pu_mgr != null and _pu_mgr.has_signal("powerup_started"):
+        _pu_mgr.powerup_started.connect(_on_powerup_started)
+    return _pu_mgr
+
+
+func _pu(id: String) -> bool:
+    var m = _powerup_mgr()
+    return m != null and m.has_effect(id)
+
+
+func _on_powerup_started(id: String, _duration: float) -> void:
+    if id == "full_rack":
+        refill_all_ammo()
+
+
+## FULL RACK: every gun you carry gets a full magazine and full reserve.
+func refill_all_ammo() -> void:
+    for i in range(weapon_loadout.size()):
+        var w: WeaponData = weapon_loadout[i]
+        if w == null or i >= _saved_mag_ammo.size() or i >= _saved_reserve_ammo.size():
+            continue
+        _saved_mag_ammo[i] = w.mag_size
+        _saved_reserve_ammo[i] = w.max_reserve_ammo
+    if current_weapon != null:
+        current_mag_ammo = current_weapon.mag_size
+        current_reserve_ammo = current_weapon.max_reserve_ammo
+        ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
+
+func _cardio_factor() -> float:
+    if _pu("cardio_kick"):
+        return CARDIO_SPEED_FACTOR
+    return 1.0
+
+
+## PR DAY: the held gun deals damage as if it were one rarity tier higher
+## (damage only, no extra attachments). 1.0 when off or already legendary.
+func _pr_day_factor() -> float:
+    if current_weapon == null or not _pu("pr_day"):
+        return 1.0
+    if not _pu_tiers_tried:
+        _pu_tiers_tried = true
+        var rarity_script = load(RARITY_PATH)
+        if rarity_script != null:
+            var consts: Dictionary = rarity_script.get_script_constant_map()
+            _pu_tiers = consts.get("TIERS", {})
+    if _pu_tiers.is_empty():
+        return 1.0
+    var rank: int = _rarity_rank(current_weapon)
+    var next_rank: int = mini(rank + 1, RARITY_ORDER.size() - 1)
+    if next_rank == rank:
+        return 1.0
+    var cur_key: String = str(RARITY_ORDER[rank])
+    var next_key: String = str(RARITY_ORDER[next_rank])
+    if not _pu_tiers.has(cur_key) or not _pu_tiers.has(next_key):
+        return 1.0
+    var cur_dmg: float = maxf(float(_pu_tiers[cur_key]["damage"]), 0.01)
+    return float(_pu_tiers[next_key]["damage"]) / cur_dmg
