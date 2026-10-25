@@ -27,6 +27,9 @@ const TEST_GUN_NAME: String = ""
 const TEST_TIERS: Array = ["common", "uncommon", "rare", "rare", "common", "legendary"]
 
 const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to this length (meters)
+const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
+const WONDER_CHANCE: float = 0.02        # chance per pull to roll the wonder weapon
+const WONDER_GUARANTEE_USE: int = 30     # the 30th pull of a run always gives it (once)
 
 enum State { IDLE, ROLLING, READY, LOCKED }
 
@@ -48,6 +51,7 @@ var _tier: String = "common"
 var _rarity = null
 var _timer: float = 0.0
 var _cycle_timer: float = 0.0
+var _is_wonder: bool = false
 
 var _visual_root: Node3D
 var _door_pivot: Node3D
@@ -349,7 +353,7 @@ func interact(player: Node) -> void:
         return
     if _state == State.IDLE:
         if GameManager.try_spend_gains(GameManager.loot_locker_cost(cost)):
-            _start_roll()
+            _start_roll(player)
     elif _state == State.READY:
         if _rolled and player.has_method("grant_weapon"):
             player.grant_weapon(_rolled)
@@ -368,9 +372,16 @@ func get_prompt_text() -> String:
     return ""
 
 
-func _start_roll() -> void:
+func _start_roll(player: Node = null) -> void:
     _tier = "common"
-    if TEST_RARITY_SWAP:
+    _is_wonder = false
+    var wonder: WeaponData = _roll_wonder(player)
+    if wonder != null:
+        # Wonder weapon: never locks up, no rarity.
+        _is_wonder = true
+        _will_lock = false
+        _rolled = wonder
+    elif TEST_RARITY_SWAP:
         # Test mode: same gun every pull, rarity steps through TEST_TIERS, no lock-up.
         _will_lock = false
         _rolled = _test_weapon()
@@ -389,6 +400,21 @@ func _start_roll() -> void:
     _cycle_timer = 0.0
     _label.modulate = Color.WHITE
     _label.text = "..."
+
+
+## Wonder weapon roll. Counts this player's pulls (resets every run): a low chance
+## each pull, and the 30th pull always gives it. Returns null for a normal roll.
+func _roll_wonder(player: Node) -> WeaponData:
+    if player == null or TEST_RARITY_SWAP:
+        return null
+    var script = load(WONDER_PATH)
+    if script == null:
+        return null
+    var uses: int = int(player.get_meta("locker_uses", 0)) + 1
+    player.set_meta("locker_uses", uses)
+    if uses == WONDER_GUARANTEE_USE or randf() < WONDER_CHANCE:
+        return script.build_brnh()
+    return null
 
 
 ## Test mode gun: TEST_GUN_NAME if set and found, otherwise one random gun that
@@ -426,7 +452,10 @@ func _finish_roll() -> void:
     _timer = take_window
     if _rolled:
         _label.text = "%s%s" % [_rarity_prefix(), _rolled.weapon_name]
-        if _rarity != null:
+        if _is_wonder:
+            _label.text = "WONDER WEAPON\n%s" % _rolled.weapon_name
+            _label.modulate = Color(0.75, 0.45, 1.0)
+        elif _rarity != null:
             _label.modulate = _rarity.tier_color(_tier)
     else:
         _label.text = "Empty"
@@ -449,6 +478,7 @@ func _close_locker() -> void:
     _state = State.IDLE
     _rolled = null
     _tier = "common"
+    _is_wonder = false
     _visual_root.position = Vector3.ZERO
     _clear_model()
     _set_door_open(false)
