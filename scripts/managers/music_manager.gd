@@ -16,6 +16,7 @@ const TRACK_PATHS: Array[String] = [
 const SETTINGS_PATH := "res://scripts/managers/game_settings.gd"
 const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
 const LAYOUT_EDITOR_FILE := "hud_layout_editor.gd"
+const ICON_COLOR := Color(0.93, 0.93, 0.88, 1.0)
 
 var _music_layer: CanvasLayer
 var _music_panel: PanelContainer
@@ -27,7 +28,8 @@ var _last_index := -1
 var _rng := RandomNumberGenerator.new()
 
 var _title_label: Label
-var _play_button: Button
+var _play_icon: Control
+var _show_pause := true
 
 
 func _ready() -> void:
@@ -160,7 +162,7 @@ func _load_saved_volume() -> void:
         _player.volume_db = linear_to_db(volume)
 
 
-## One thin row: track title, PAUSE/PLAY, NEXT.
+## One thin row: full song name, play/pause icon, next icon.
 func _create_player_ui() -> void:
     _music_layer = CanvasLayer.new()
     _music_layer.name = "MusicPlayerUI"
@@ -179,32 +181,64 @@ func _create_player_ui() -> void:
 
     _title_label = Label.new()
     _title_label.text = "Loading soundtrack..."
-    _title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    _title_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
     _title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     _title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    _title_label.custom_minimum_size = Vector2(60, 0)
-    _title_label.add_theme_font_size_override("font_size", 16)
+    _title_label.add_theme_font_size_override("font_size", 12)
     row.add_child(_title_label)
 
-    _play_button = Button.new()
-    _play_button.text = "PAUSE"
-    _play_button.custom_minimum_size = Vector2(74, 30)
-    _play_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    _play_button.add_theme_font_size_override("font_size", 14)
-    _play_button.pressed.connect(toggle_playback)
-    row.add_child(_play_button)
+    var play_button := Button.new()
+    play_button.custom_minimum_size = Vector2(36, 28)
+    play_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    play_button.pressed.connect(toggle_playback)
+    row.add_child(play_button)
+    _play_icon = _add_icon(play_button, "play")
 
     var skip_button := Button.new()
-    skip_button.text = "NEXT ▶|"
-    skip_button.custom_minimum_size = Vector2(76, 30)
+    skip_button.custom_minimum_size = Vector2(36, 28)
     skip_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    skip_button.add_theme_font_size_override("font_size", 14)
     skip_button.pressed.connect(next_track)
     row.add_child(skip_button)
+    _add_icon(skip_button, "next")
 
     _refresh_ui()
     _apply_music_layout()
+
+
+## Adds a small Control on top of a button that draws the icon as shapes
+## (no font needed, so it looks the same on every phone).
+func _add_icon(button: Button, kind: String) -> Control:
+    var icon := Control.new()
+    icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    icon.draw.connect(_draw_icon.bind(icon, kind))
+    button.add_child(icon)
+    icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    return icon
+
+
+func _draw_icon(icon: Control, kind: String) -> void:
+    var c: Vector2 = icon.size / 2.0
+    var shape := kind
+    if kind == "play" and _show_pause:
+        shape = "pause"
+
+    if shape == "play":
+        icon.draw_colored_polygon(PackedVector2Array([
+            c + Vector2(-5.0, -7.0),
+            c + Vector2(-5.0, 7.0),
+            c + Vector2(7.0, 0.0),
+        ]), ICON_COLOR)
+    elif shape == "pause":
+        icon.draw_rect(Rect2(c + Vector2(-6.0, -7.0), Vector2(4.0, 14.0)), ICON_COLOR)
+        icon.draw_rect(Rect2(c + Vector2(2.0, -7.0), Vector2(4.0, 14.0)), ICON_COLOR)
+    else:
+        icon.draw_colored_polygon(PackedVector2Array([
+            c + Vector2(-7.0, -7.0),
+            c + Vector2(-7.0, 7.0),
+            c + Vector2(4.0, 0.0),
+        ]), ICON_COLOR)
+        icon.draw_rect(Rect2(c + Vector2(5.0, -7.0), Vector2(3.0, 14.0)), ICON_COLOR)
 
 
 ## Position, size, scale and opacity come from the saved HUD layout
@@ -265,12 +299,9 @@ func _refresh_ui() -> void:
         var filename := _track_paths[_last_index].get_file().get_basename()
         _title_label.text = filename.replace("_", " ").capitalize()
 
-    if _play_button != null:
-        if _player.stream_paused:
-            _play_button.text = "PLAY"
-        elif _player.playing:
-            _play_button.text = "PAUSE"
-        else:
-            _play_button.text = "PLAY"
+    # Pause icon while music plays, play icon while paused or stopped.
+    _show_pause = _player.playing and not _player.stream_paused
+    if _play_icon != null:
+        _play_icon.queue_redraw()
 
 # END OF FILE
