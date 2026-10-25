@@ -22,6 +22,7 @@ const DEFAULTS: Dictionary = {
     "pad_invert_y": 0.0,    # 1 = invert gamepad look Y
     "pad_vibration": 1.0,   # 1 = gamepad vibration on, 0 = off
     "music_volume": 0.7,  # Music volume from 0.0 (muted) to 1.0 (full)
+    "damage_numbers": 1.0,  # 1 = show damage numbers, 0 = hide them
 }
 
 const RETICLE_COLORS: Array = [
