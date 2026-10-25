@@ -2,12 +2,15 @@ extends Node3D
 ## A floating gym power-up on the floor: colored ring, light beam, spinning
 ## weight plate and a name label. Walk over it to collect (no USE tap).
 ## Blinks for the last seconds, then disappears.
+## Co-op: a joiner's pickup waits for the host's answer after being touched.
 
 const PICKUP_RADIUS: float = 1.6
 const MAX_HEIGHT_GAP: float = 2.2
 const SPIN_SPEED: float = 2.2
+const HOST_WAIT: float = 2.0   # seconds a joiner waits for the host before trying again
 
 var type_id: String = ""
+var drop_id: int = 0
 var label_text: String = ""
 var color: Color = Color.WHITE
 var life: float = 30.0
@@ -16,6 +19,7 @@ var manager: Node = null
 
 var _t: float = 0.0
 var _taken: bool = false
+var _wait_left: float = 0.0
 var _pivot: Node3D = null
 var _text: Label3D = null
 
@@ -27,6 +31,11 @@ func setup(m: Node, id: String, text: String, col: Color, despawn: float, blink:
     color = col
     life = despawn
     blink_time = blink
+
+
+## Joiner: asked the host to collect this; keep the pickup until the host answers.
+func wait_for_host() -> void:
+    _wait_left = HOST_WAIT
 
 
 func _ready() -> void:
@@ -124,11 +133,20 @@ func _build() -> void:
 
 
 func _process(delta: float) -> void:
-    if _taken or _pivot == null:
+    if _pivot == null:
+        return
+    if _taken:
+        # Joiner waiting for the host: if no answer comes, allow another try.
+        if _wait_left > 0.0:
+            _wait_left -= delta
+            if _wait_left <= 0.0:
+                _taken = false
         return
     _t += delta
     life -= delta
     if life <= 0.0:
+        if manager != null and is_instance_valid(manager) and manager.has_method("on_pickup_expired"):
+            manager.call("on_pickup_expired", self)
         queue_free()
         return
     _pivot.rotation.y += delta * SPIN_SPEED
@@ -155,5 +173,7 @@ func _check_pickup() -> void:
             _taken = true
             if manager != null and is_instance_valid(manager):
                 manager.call("collect", self)
-            queue_free()
+            # A joiner keeps the pickup until the host answers.
+            if _wait_left <= 0.0:
+                queue_free()
             return
