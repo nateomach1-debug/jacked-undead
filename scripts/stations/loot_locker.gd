@@ -28,8 +28,8 @@ const TEST_TIERS: Array = ["common", "uncommon", "rare", "rare", "common", "lege
 
 const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to this length (meters)
 const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
-const WONDER_CHANCE: float = 0.02        # chance per pull to roll the wonder weapon
-const WONDER_GUARANTEE_USE: int = 30     # the 30th pull of a run always gives it (once)
+const WONDER_CHANCE: float = 0.02        # chance per pull to roll a wonder weapon
+const WONDER_GUARANTEE_USE: int = 30     # the 30th pull of a run always gives one (once)
 
 enum State { IDLE, ROLLING, READY, LOCKED }
 
@@ -403,7 +403,8 @@ func _start_roll(player: Node = null) -> void:
 
 
 ## Wonder weapon roll. Counts this player's pulls (resets every run): a low chance
-## each pull, and the 30th pull always gives it. Returns null for a normal roll.
+## each pull, and the 30th pull always gives one. Which wonder weapon it is gets
+## picked at random (wonder_weapons.random_wonder). Returns null for a normal roll.
 func _roll_wonder(player: Node) -> WeaponData:
     if player == null or TEST_RARITY_SWAP:
         return null
@@ -413,7 +414,7 @@ func _roll_wonder(player: Node) -> WeaponData:
     var uses: int = int(player.get_meta("locker_uses", 0)) + 1
     player.set_meta("locker_uses", uses)
     if uses == WONDER_GUARANTEE_USE or randf() < WONDER_CHANCE:
-        return script.build_brnh()
+        return script.random_wonder()
     return null
 
 
