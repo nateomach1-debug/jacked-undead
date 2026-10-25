@@ -760,6 +760,8 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
             amount = maxf(amount, current_health)
         else:
             amount = maxf(amount, max_health * max_lift_fraction)
+    var damage_shown: float = minf(amount, current_health)
+    _show_damage_popup(damage_shown, was_headshot)
     current_health -= amount
     if current_health <= 0.0:
         _die(was_headshot)
@@ -773,6 +775,34 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
                 _ignite()
         _flash_hit()
         _gore_hit(was_headshot)
+
+
+func _show_damage_popup(damage: float, headshot: bool) -> void:
+    var settings_script: Script = load("res://scripts/managers/game_settings.gd")
+    if settings_script == null:
+        return
+
+    var settings = settings_script.new()
+    if settings.get_value("damage_numbers") < 0.5:
+        return
+
+    var popup_script: Script = load("res://scripts/effects/damage_popup.gd")
+    if popup_script == null:
+        return
+
+    var popup = popup_script.new()
+    var scene := get_tree().current_scene
+    if scene == null:
+        return
+
+    scene.add_child(popup)
+    popup.global_position = global_position + Vector3(
+        randf_range(-0.25, 0.25),
+        1.2 + randf_range(-0.1, 0.25),
+        randf_range(-0.15, 0.15)
+    )
+    popup.setup(damage, head
+shot)
 
 
 ## Sets this zombie on fire (or refreshes the burn it already has).
