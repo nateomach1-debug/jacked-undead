@@ -18,6 +18,7 @@ const OPTIONS: Array = [
     {"key": "attachments", "label": "ATTACHMENTS"},
     {"key": "supplements", "label": "SUPPLEMENTS"},
     {"key": "wall_buys", "label": "GUN WALL BUYS"},
+    {"key": "powerups", "label": "POWER-UPS"},
     {"key": "zombie_hp", "label": "ZOMBIE HEALTH", "steps": [1.0, 1.5, 2.0]},
 ]
 
@@ -68,7 +69,7 @@ func _build_ui() -> void:
         outer.add_child(divider)
 
     var info := Label.new()
-    info.text = "SWITCH FEATURES OFF OR MAKE ZOMBIES TOUGHER FOR YOUR NEXT RUN. WEAPON LEVELS AND JUICE STILL COUNT."
+    info.text = "SWITCH FEATURES (INCLUDING POWER-UPS) OFF OR MAKE ZOMBIES TOUGHER FOR YOUR NEXT RUN. WEAPON LEVELS AND JUICE STILL COUNT."
     info.theme_type_variation = &"SmallLabel"
     info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
