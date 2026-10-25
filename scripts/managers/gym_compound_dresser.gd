@@ -2,13 +2,13 @@ extends "res://scripts/managers/compound_props.gd"
 # Gym Compound visual upgrade: dusk compound look, floors, walls, catwalk, ramps.
 # Tuning knobs are the consts below (raise AMBIENT_ENERGY / MOON_ENERGY if too dark).
 
-const AMBIENT_COLOR := Color(0.5, 0.55, 0.68)
-const AMBIENT_ENERGY := 1.2
-const MOON_COLOR := Color(0.65, 0.72, 1.0)
-const MOON_ENERGY := 1.0
+const AMBIENT_COLOR := Color(0.62, 0.65, 0.76)
+const AMBIENT_ENERGY := 1.45
+const MOON_COLOR := Color(0.72, 0.78, 1.0)
+const MOON_ENERGY := 1.1
 const MOON_SHADOWS := true
-const LAMP_ENERGY := 2.0
-const FOG_DENSITY := 0.0035
+const LAMP_ENERGY := 2.2
+const FOG_DENSITY := 0.0025
 
 
 func _ready() -> void:
