@@ -306,9 +306,13 @@ func interact(player: Node) -> void:
         return
     if _player_owns(player):
         return
+
     if GameManager.try_spend_gains(GameManager.supplement_cost(cost)):
         player.apply_supplement(supplement_id)
         _play_dispense()
+
+        if player.has_method("play_supplement_drink"):
+            player.play_supplement_drink(supplement_id, body_color)
 
 
 func get_prompt_color() -> Color:
