@@ -159,6 +159,33 @@ func _floor_outline(k: String, cx: float, cz: float, w: float, d: float, y: floa
     _floor_rect(k, cx + w * 0.5, cz, t, d, y)
 
 
+# ---------------------------------------------------------------- shared floor graphics
+
+func _ring(ko: String, ki: String, x: float, y: float, z: float, r: float) -> void:
+    _floor_disc(ko, x, z, r, y, 1.0, 14)
+    _floor_disc(ki, x, z, maxf(r - 0.18, 0.01), y + 0.01, 1.0, 14)
+
+
+func _pad(kp: String, kg: String, x: float, z: float, w: float, d: float, y: float) -> void:
+    _floor_rect(kp, x, z, w, d, y + 0.07)
+    _floor_outline(kg, x, z, w, d, y + 0.08, 0.1)
+
+
+func _floor_label(text: String, x: float, y: float, z: float, ps: float, col: Color) -> void:
+    var l := Label3D.new()
+    l.text = text
+    l.font_size = 64
+    l.pixel_size = ps
+    l.modulate = col
+    l.outline_modulate = C_BLACK
+    l.outline_size = 6
+    l.shaded = false
+    l.double_sided = true
+    l.position = Vector3(x, y, z)
+    l.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+    add_child(l)
+
+
 # ---------------------------------------------------------------- wall frames
 # A frame = [origin on the wall plane, inward normal, tangent]. u runs along
 # the tangent (the viewer's right when facing the wall).
