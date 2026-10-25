@@ -678,6 +678,10 @@ func _launch_projectile() -> void:
     )
 
 func _launch_wonder() -> void:
+    var wonder_script = load("res://scripts/weapons/wonder_weapons.gd")
+    if wonder_script != null and wonder_script.kind_of(current_weapon) == "Frenemy":
+        _launch_bombie_bolt()
+        return
     var rocket_script = load(WONDER_ROCKET_PATH)
     if rocket_script == null:
         return
@@ -690,6 +694,26 @@ func _launch_wonder() -> void:
         forward,
         current_weapon.damage * damage_multiplier * _pr_day_factor(),
         current_weapon.gains_per_hit
+    )
+
+
+## Frenemy / Bombie: a bolt that turns the zombie it hits into a bombie.
+func _launch_bombie_bolt() -> void:
+    var bolt_script = load("res://scripts/weapons/wonder_bombie.gd")
+    if bolt_script == null:
+        return
+    var forward: Vector3 = _spread_direction(0.0)
+    var bolt = bolt_script.new()
+    get_tree().current_scene.add_child(bolt)
+    bolt.global_position = camera.global_position + forward * 0.4
+    bolt.launch(
+        self,
+        forward,
+        current_weapon.damage * damage_multiplier * _pr_day_factor(),
+        current_weapon.gains_per_hit,
+        current_weapon.splash_radius,
+        current_weapon.pr_level,
+        current_weapon.range
     )
 
 
@@ -907,13 +931,15 @@ func switch_weapon(direction: int = 1) -> void:
 
 ## Called by the PR Rack (Pack-a-Punch) station.
 func apply_pr_upgrade() -> void:
-    if current_weapon and current_weapon.is_wonder:
-        return   # wonder weapons can't be PR upgraded
-    if current_weapon and current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
+    if current_weapon == null:
+        return
+    if current_weapon.is_wonder and not current_weapon.wonder_pr_upgradable:
+        return   # this wonder weapon can't be PR upgraded
+    if current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
         var upgraded: WeaponData = current_weapon.get_pr_upgraded_copy()
-        _apply_attachments(upgraded)
+        if not upgraded.is_wonder:
+            _apply_attachments(upgraded)   # wonder weapons never get attachments
         equip_weapon(upgraded)
-
 ## True once this weapon (by base name, so PR-upgraded copies still
 ## count) has ever been bought. Used by wall-buy stations to decide
 ## between "buy" and "refill ammo".
