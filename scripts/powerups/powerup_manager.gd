@@ -3,8 +3,8 @@ extends Node
 ## Other scripts find it with get_tree().get_first_node_in_group("powerup_manager")
 ## and ask has_effect("max_lift") / time_left("max_lift").
 ##
-## Step 1: drops, pickups, banner and a temporary text list of active timers.
-## The effects themselves come in later steps.
+## Handles drops, pickups and the active timers. The on-screen display
+## lives in scripts/ui/hud_powerups.gd (it listens to powerup_started).
 
 signal powerup_started(id: String, duration: float)
 signal powerup_ended(id: String)
@@ -38,10 +38,6 @@ var _last_type: String = ""
 var _guar_kill: int = 1
 var _guar_done: bool = false
 var _pickup_script: GDScript = null
-var _banner: Label = null
-var _list: Label = null
-var _banner_tween: Tween = null
-var _ui_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -49,7 +45,6 @@ func _ready() -> void:
     _pickup_script = load(PICKUP_PATH) as GDScript
     if _pickup_script == null:
         push_warning("powerup_pickup.gd is missing; power-ups will not drop.")
-    _build_ui()
 
 
 func _process(delta: float) -> void:
@@ -59,10 +54,6 @@ func _process(delta: float) -> void:
         if float(_active[sid]) <= 0.0:
             _active.erase(sid)
             powerup_ended.emit(sid)
-    _ui_timer -= delta
-    if _ui_timer <= 0.0:
-        _ui_timer = 0.1
-        _refresh_list()
 
 
 # ---------------------------------------------------------------- queries
@@ -141,7 +132,6 @@ func activate(id: String) -> void:
     var dur: float = float(info["duration"])
     if dur > 0.0:
         _active[id] = dur  # picking up the same type again refreshes it
-    _show_banner(info)
     powerup_started.emit(id, dur)
 
 
@@ -179,61 +169,3 @@ func _floor_pos(z: Node3D) -> Vector3:
     if hit.is_empty():
         return from_pos - Vector3(0.0, 0.9, 0.0)
     return hit["position"]
-
-
-# ---------------------------------------------------------------- temporary UI
-
-func _build_ui() -> void:
-    var layer := CanvasLayer.new()
-    layer.layer = 20
-    add_child(layer)
-
-    _banner = _make_label(46)
-    layer.add_child(_banner)
-    _banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-    _banner.offset_top = 90.0
-    _banner.offset_bottom = 160.0
-    _banner.modulate.a = 0.0
-
-    _list = _make_label(26)
-    _list.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-    layer.add_child(_list)
-    _list.anchor_left = 1.0
-    _list.anchor_right = 1.0
-    _list.offset_left = -360.0
-    _list.offset_right = -24.0
-    _list.offset_top = 190.0
-    _list.offset_bottom = 420.0
-
-
-func _make_label(font_size: int) -> Label:
-    var l := Label.new()
-    l.add_theme_font_size_override("font_size", font_size)
-    l.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 1.0))
-    l.add_theme_constant_override("outline_size", 8)
-    l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    return l
-
-
-func _show_banner(info: Dictionary) -> void:
-    if _banner == null:
-        return
-    _banner.text = str(info["name"]) + "!"
-    _banner.add_theme_color_override("font_color", info["color"])
-    _banner.modulate.a = 1.0
-    if _banner_tween != null and _banner_tween.is_valid():
-        _banner_tween.kill()
-    _banner_tween = create_tween()
-    _banner_tween.tween_interval(1.3)
-    _banner_tween.tween_property(_banner, "modulate:a", 0.0, 0.6)
-
-
-func _refresh_list() -> void:
-    if _list == null:
-        return
-    var lines: PackedStringArray = PackedStringArray()
-    for id in ORDER:
-        if _active.has(id):
-            lines.append("%s  %d" % [str(TYPES[id]["name"]), int(ceil(float(_active[id])))])
-    _list.text = "\n".join(lines)
