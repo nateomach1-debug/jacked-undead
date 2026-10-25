@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const MAP_CONFIG_PATH: String = "res://scripts/main_menu/map_config.gd"
+
 @onready var kills_label: Label = $Dim/CenterContainer/VBox/KillsLabel
 @onready var gains_label: Label = $Dim/CenterContainer/VBox/GainsLabel
 @onready var round_label: Label = $Dim/CenterContainer/VBox/RoundLabel
@@ -200,6 +202,25 @@ var _credited: bool = false
 var _juice_label: Label = null
 
 
+## Juice multiplier for the map being played (2.0 on the limited-time Halloween map,
+## 1.0 everywhere else). Comes from map_config.gd.
+func _juice_multiplier() -> float:
+    var scene: Node = get_tree().current_scene
+    if scene == null:
+        return 1.0
+    var cfg_script = load(MAP_CONFIG_PATH)
+    if cfg_script == null:
+        return 1.0
+    var cfg = cfg_script.new()
+    if not cfg.has_method("get_juice_multiplier"):
+        return 1.0
+    var maps = cfg_script.get_script_constant_map().get("MAPS", [])
+    for m in maps:
+        if str(m["path"]) == scene.scene_file_path:
+            return float(cfg.get_juice_multiplier(str(m["id"])))
+    return 1.0
+
+
 ## Adds this run's Juice to the saved profile (once) and shows it under the dev settings block.
 func _credit_juice() -> void:
     if _credited:
@@ -220,8 +241,12 @@ func _credit_juice() -> void:
     if _dev_settings_changed():
         _juice_label.text = "NO JUICE EARNED (DEV SETTINGS CHANGED)"
         return
-    var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number)
-    _juice_label.text = "+%d JUICE EARNED  (TOTAL %d)" % [earned, profile.get_juice()]
+    var mult: float = _juice_multiplier()
+    var earned: int = profile.record_run(GameManager.kills, GameManager.headshot_kills, GameManager.round_number, mult)
+    var bonus: String = ""
+    if mult > 1.0:
+        bonus = " (%dX)" % int(round(mult))
+    _juice_label.text = "+%d JUICE EARNED%s  (TOTAL %d)" % [earned, bonus, profile.get_juice()]
     _credit_achievements()
     _credit_weapon_xp()
 
