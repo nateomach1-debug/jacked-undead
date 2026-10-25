@@ -377,7 +377,11 @@ func _grant_dev_wonder() -> void:
     var script = load("res://scripts/weapons/wonder_weapons.gd")
     if script == null:
         return
-    grant_weapon(script.build_brnh())
+    var all: Array = script.build_all()
+    if all.is_empty():
+        return
+    var idx: int = clampi(int(GameManager.dev_get("wonder_index")), 0, all.size() - 1)
+    grant_weapon(all[idx])
 
 
 func _unhandled_input(event: InputEvent) -> void:
