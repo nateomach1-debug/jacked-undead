@@ -4,12 +4,12 @@ extends "res://scripts/managers/compound_props.gd"
 # Zombie spawns: fixed upstairs spots (UPSTAIRS_SPAWNS) plus auto spawn points behind each
 # buyable door (made after the scan). All of them only spawn once their door is bought.
 
-const AMBIENT_COLOR := Color(0.55, 0.58, 0.72)
-const AMBIENT_ENERGY := 1.0
-const MOON_COLOR := Color(0.65, 0.72, 1.0)
-const MOON_ENERGY := 0.7
-const LAMP_ENERGY := 1.6
-const FOG_DENSITY := 0.003
+const AMBIENT_COLOR := Color(0.62, 0.65, 0.76)
+const AMBIENT_ENERGY := 1.2
+const MOON_COLOR := Color(0.72, 0.78, 1.0)
+const MOON_ENERGY := 0.9
+const LAMP_ENERGY := 1.9
+const FOG_DENSITY := 0.002
 const SHOW_BANDS := true
 const FRONT_IS_MINUS_Z := true
 const STEP_W := 2.5
