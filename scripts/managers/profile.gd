@@ -15,88 +15,89 @@ var loadouts: Dictionary = {}   # base gun name -> {slot: attachment id}
 
 
 func _init() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(FILE) != OK:
-		return
-	juice = int(cfg.get_value("profile", "juice", 0))
-	total_kills = int(cfg.get_value("profile", "total_kills", 0))
-	total_headshots = int(cfg.get_value("profile", "total_headshots", 0))
-	best_round = int(cfg.get_value("profile", "best_round", 0))
-	runs = int(cfg.get_value("profile", "runs", 0))
-	var saved = cfg.get_value("profile", "owned", [])
-	if saved is Array:
-		owned = saved
-	var saved_loadouts = cfg.get_value("profile", "loadouts", {})
-	if saved_loadouts is Dictionary:
-		loadouts = saved_loadouts
+    var cfg := ConfigFile.new()
+    if cfg.load(FILE) != OK:
+        return
+    juice = int(cfg.get_value("profile", "juice", 0))
+    total_kills = int(cfg.get_value("profile", "total_kills", 0))
+    total_headshots = int(cfg.get_value("profile", "total_headshots", 0))
+    best_round = int(cfg.get_value("profile", "best_round", 0))
+    runs = int(cfg.get_value("profile", "runs", 0))
+    var saved = cfg.get_value("profile", "owned", [])
+    if saved is Array:
+        owned = saved
+    var saved_loadouts = cfg.get_value("profile", "loadouts", {})
+    if saved_loadouts is Dictionary:
+        loadouts = saved_loadouts
 
 
 func get_juice() -> int:
-	return juice
+    return juice
 
 
 func add_juice(amount: int) -> void:
-	juice = maxi(0, juice + amount)
-	save()
+    juice = maxi(0, juice + amount)
+    save()
 
 
 ## Returns false (and spends nothing) if you can't afford it.
 func spend_juice(amount: int) -> bool:
-	if juice < amount:
-		return false
-	juice -= amount
-	save()
-	return true
+    if juice < amount:
+        return false
+    juice -= amount
+    save()
+    return true
 
 
 ## Called once at the end of a run. Returns the Juice earned.
-func record_run(kills: int, headshots: int, round_reached: int) -> int:
-	var earned: int = maxi(0, kills) * JUICE_PER_KILL
-	juice += earned
-	total_kills += kills
-	total_headshots += headshots
-	best_round = maxi(best_round, round_reached)
-	runs += 1
-	save()
-	return earned
+## juice_mult multiplies the Juice from kills (limited-time maps use 2.0).
+func record_run(kills: int, headshots: int, round_reached: int, juice_mult: float = 1.0) -> int:
+    var earned: int = int(round(float(maxi(0, kills) * JUICE_PER_KILL) * maxf(juice_mult, 0.0)))
+    juice += earned
+    total_kills += kills
+    total_headshots += headshots
+    best_round = maxi(best_round, round_reached)
+    runs += 1
+    save()
+    return earned
 
 
 func has_item(id: String) -> bool:
-	return owned.has(id)
+    return owned.has(id)
 
 
 func add_item(id: String) -> void:
-	if not owned.has(id):
-		owned.append(id)
-		save()
+    if not owned.has(id):
+        owned.append(id)
+        save()
 
 
 ## The attachments equipped on a gun: {slot: id} (empty if none).
 func get_loadout(gun: String) -> Dictionary:
-	var l = loadouts.get(gun, {})
-	if l is Dictionary:
-		return l.duplicate()
-	return {}
+    var l = loadouts.get(gun, {})
+    if l is Dictionary:
+        return l.duplicate()
+    return {}
 
 
 ## Equips an attachment in a slot (pass id = "" to empty the slot).
 func set_attachment(gun: String, slot: String, id: String) -> void:
-	var l: Dictionary = get_loadout(gun)
-	if id == "":
-		l.erase(slot)
-	else:
-		l[slot] = id
-	loadouts[gun] = l
-	save()
+    var l: Dictionary = get_loadout(gun)
+    if id == "":
+        l.erase(slot)
+    else:
+        l[slot] = id
+    loadouts[gun] = l
+    save()
 
 
 func save() -> void:
-	var cfg := ConfigFile.new()
-	cfg.set_value("profile", "juice", juice)
-	cfg.set_value("profile", "total_kills", total_kills)
-	cfg.set_value("profile", "total_headshots", total_headshots)
-	cfg.set_value("profile", "best_round", best_round)
-	cfg.set_value("profile", "runs", runs)
-	cfg.set_value("profile", "owned", owned)
-	cfg.set_value("profile", "loadouts", loadouts)
-	cfg.save(FILE)
+    var cfg := ConfigFile.new()
+    cfg.set_value("profile", "juice", juice)
+    cfg.set_value("profile", "total_kills", total_kills)
+    cfg.set_value("profile", "total_headshots", total_headshots)
+    cfg.set_value("profile", "best_round", best_round)
+    cfg.set_value("profile", "runs", runs)
+    cfg.set_value("profile", "owned", owned)
+    cfg.set_value("profile", "loadouts", loadouts)
+    cfg.save(FILE)
