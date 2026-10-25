@@ -12,7 +12,7 @@ func setup(damage: float, headshot: bool = false) -> void:
     billboard = BaseMaterial3D.BILLBOARD_ENABLED
     no_depth_test = true
     fixed_size = true
-    outline_size = 1
+    outline_size = 2
     outline_modulate = Color(0.05, 0.02, 0.02, 1.0)
 
     if headshot:
