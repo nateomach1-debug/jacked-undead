@@ -4,6 +4,7 @@ extends Area3D
 ## hands: more damage, faster fire rate, faster reloads, bigger mags.
 ## The Developer menu's PR Rack cost overrides all three prices.
 ## Custom game mode: when PR Rack is switched off the rack is hidden and unusable.
+## Wonder weapons that can't be upgraded (Br-Nh) are never charged for.
 
 @export var cost: int = 5000           # level 1
 @export var cost_tier_2: int = 15000   # level 2
@@ -42,7 +43,7 @@ func interact(player: Node) -> void:
     if _disabled:
         return
     var weapon: WeaponData = player.current_weapon
-    if weapon == null or weapon.pr_level >= WeaponData.PR_MAX_LEVEL:
+    if weapon == null or not weapon.can_pr_upgrade():
         return
     if GameManager.try_spend_gains(_next_cost(weapon)):
         player.apply_pr_upgrade()
@@ -55,6 +56,8 @@ func get_prompt_text() -> String:
     if player == null or player.current_weapon == null:
         return ""
     var weapon: WeaponData = player.current_weapon
+    if weapon.is_wonder and not weapon.wonder_pr_upgradable:
+        return "%s can't be PR upgraded" % weapon.weapon_name
     if weapon.pr_level >= WeaponData.PR_MAX_LEVEL:
         return "%s is at max PR" % weapon.weapon_name
     return "Tap USE to rack PR %d/%d - %d Gains" % [weapon.pr_level + 1, WeaponData.PR_MAX_LEVEL, _next_cost(weapon)]
