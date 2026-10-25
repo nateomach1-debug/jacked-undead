@@ -59,6 +59,7 @@ const DOWNED_SPEED_FACTOR: float = 0.3  # crawl speed while downed (co-op)
 # Loaded only when needed, so a problem in these can never break the player itself.
 const BURN_EFFECT_PATH: String = "res://scripts/effects/burn_effect.gd"
 const PROJECTILE_PATH: String = "res://scripts/weapons/projectile.gd"
+const WONDER_ROCKET_PATH: String = "res://scripts/weapons/wonder_rocket.gd"
 const DAMAGE_INDICATOR_PATH: String = "res://scripts/ui/damage_indicator.gd"
 const DOWNED_STATE_PATH: String = "res://scripts/player/downed_state.gd"
 const RARITY_PATH: String = "res://scripts/weapons/weapon_rarity.gd"
@@ -366,6 +367,17 @@ func _ready() -> void:
         current_reserve_ammo = current_weapon.max_reserve_ammo
         ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
         _update_weapon_model()
+    _grant_dev_wonder()
+
+
+## Developer menu: start the run with the wonder weapon next to the starting pistol.
+func _grant_dev_wonder() -> void:
+    if GameManager.dev_get("start_wonder") < 0.5:
+        return
+    var script = load("res://scripts/weapons/wonder_weapons.gd")
+    if script == null:
+        return
+    grant_weapon(script.build_brnh())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -560,6 +572,10 @@ func _fire_shot() -> void:
         _launch_projectile()
         return
 
+    if current_weapon.fire_mode == WeaponData.FireMode.WONDER:
+        _launch_wonder()
+        return
+
     # Cast every pellet, then add the damage up per target so each zombie
     # takes ONE take_damage() call per shot (no double-kill / double-pay).
     var base_damage: float = current_weapon.damage * damage_multiplier * _pr_day_factor()
@@ -654,6 +670,21 @@ func _launch_projectile() -> void:
         current_weapon.damage * damage_multiplier * _pr_day_factor(),
         current_weapon.splash_radius,
         current_weapon.self_damage_multiplier,
+        current_weapon.gains_per_hit
+    )
+
+func _launch_wonder() -> void:
+    var rocket_script = load(WONDER_ROCKET_PATH)
+    if rocket_script == null:
+        return
+    var forward: Vector3 = _spread_direction(0.0)
+    var rocket = rocket_script.new()
+    get_tree().current_scene.add_child(rocket)
+    rocket.global_position = camera.global_position + forward * 0.4
+    rocket.launch(
+        self,
+        forward,
+        current_weapon.damage * damage_multiplier * _pr_day_factor(),
         current_weapon.gains_per_hit
     )
 
@@ -872,6 +903,8 @@ func switch_weapon(direction: int = 1) -> void:
 
 ## Called by the PR Rack (Pack-a-Punch) station.
 func apply_pr_upgrade() -> void:
+    if current_weapon and current_weapon.is_wonder:
+        return   # wonder weapons can't be PR upgraded
     if current_weapon and current_weapon.pr_level < WeaponData.PR_MAX_LEVEL:
         var upgraded: WeaponData = current_weapon.get_pr_upgraded_copy()
         _apply_attachments(upgraded)
@@ -1358,13 +1391,12 @@ var _attach_root: Node3D = null
 
 ## A copy of w with the player's chosen attachments applied (w itself if none/PR).
 func _with_attachments(w: WeaponData) -> WeaponData:
-    if w == null or w.pr_level > 0 or w.pr_base != null or w.has_meta("attach_base"):
+    if w == null or w.is_wonder or w.pr_level > 0 or w.pr_base != null or w.has_meta("attach_base"):
         return w
     var script = load("res://scripts/weapons/attachments.gd")
     if script == null:
         return w
     return script.new().attached_copy(w)
-
 
 ## Starting guns get their chosen attachments too.
 func _attach_start_guns() -> void:
