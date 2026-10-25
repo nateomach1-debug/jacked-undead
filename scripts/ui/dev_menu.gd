@@ -7,6 +7,7 @@ const CODE: String = "11051993"
 const PROFILE_PATH: String = "res://scripts/managers/profile.gd"
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
+const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
 
 # Each row steps through these values with the - / + buttons.
 # "flat": a negative value means "use the game's own value".
@@ -27,6 +28,8 @@ var _settings_box: Control
 var _value_labels: Dictionary = {}
 var _nav_button: Button
 var _juice_label: Label
+var _wonder_toggle_button: Button
+var _wonder_pick_button: Button
 
 
 func _ready() -> void:
@@ -155,6 +158,8 @@ func _build_settings_screen() -> Control:
     for row in ROWS:
         rows.add_child(_card(_build_stepper_row(row)))
     rows.add_child(_card(_build_nav_row()))
+    rows.add_child(_card(_build_wonder_toggle_row()))
+    rows.add_child(_card(_build_wonder_pick_row()))
     rows.add_child(_card(_build_juice_row()))
 
     var bottom := HBoxContainer.new()
@@ -208,6 +213,30 @@ func _build_nav_row() -> Control:
     return h
 
 
+func _build_wonder_toggle_row() -> Control:
+    var h := HBoxContainer.new()
+    h.add_theme_constant_override("separation", 10)
+    var title := _make_label("Start with wonder gun", "", HORIZONTAL_ALIGNMENT_LEFT, 24)
+    title.custom_minimum_size = Vector2(430, 0)
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    h.add_child(title)
+    _wonder_toggle_button = _make_button("OFF", Vector2(370, 64), _on_wonder_toggle_pressed)
+    h.add_child(_wonder_toggle_button)
+    return h
+
+
+func _build_wonder_pick_row() -> Control:
+    var h := HBoxContainer.new()
+    h.add_theme_constant_override("separation", 10)
+    var title := _make_label("Wonder gun (tap to change)", "", HORIZONTAL_ALIGNMENT_LEFT, 24)
+    title.custom_minimum_size = Vector2(430, 0)
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    h.add_child(title)
+    _wonder_pick_button = _make_button("", Vector2(370, 64), _on_wonder_pick_pressed)
+    h.add_child(_wonder_pick_button)
+    return h
+
+
 func _build_juice_row() -> Control:
     var v := VBoxContainer.new()
     v.add_theme_constant_override("separation", 6)
@@ -236,6 +265,32 @@ func _step(key: String, direction: int) -> void:
 func _on_nav_pressed() -> void:
     GameManager.dev_set("show_nav", 0.0 if GameManager.dev_show_nav() else 1.0)
     _refresh()
+
+
+func _on_wonder_toggle_pressed() -> void:
+    GameManager.dev_set("start_wonder", 0.0 if GameManager.dev_get("start_wonder") > 0.5 else 1.0)
+    _refresh()
+
+
+## Rotates to the next wonder gun (wraps around).
+func _on_wonder_pick_pressed() -> void:
+    var names: Array = _wonder_names()
+    if names.is_empty():
+        return
+    var idx: int = (int(GameManager.dev_get("wonder_index")) + 1) % names.size()
+    GameManager.dev_set("wonder_index", float(idx))
+    _refresh()
+
+
+## Names of every wonder gun, in the same order the player picks from.
+func _wonder_names() -> Array:
+    var out: Array = []
+    var script = load(WONDER_PATH)
+    if script == null:
+        return out
+    for w in script.build_all():
+        out.append(str((w as WeaponData).weapon_name))
+    return out
 
 
 func _on_reset_pressed() -> void:
@@ -276,6 +331,13 @@ func _refresh() -> void:
         var label: Label = _value_labels[key]
         label.text = _format(row["kind"], GameManager.dev_get(key))
     _nav_button.text = "NAV DATA: ON" if GameManager.dev_show_nav() else "NAV DATA: OFF"
+    _wonder_toggle_button.text = "WONDER START: ON" if GameManager.dev_get("start_wonder") > 0.5 else "WONDER START: OFF"
+    var names: Array = _wonder_names()
+    if names.is_empty():
+        _wonder_pick_button.text = "NO WONDER GUNS"
+    else:
+        var idx: int = clampi(int(GameManager.dev_get("wonder_index")), 0, names.size() - 1)
+        _wonder_pick_button.text = "GUN: %s" % names[idx]
     _juice_label.text = "Juice balance: %d" % _current_juice()
 
 
