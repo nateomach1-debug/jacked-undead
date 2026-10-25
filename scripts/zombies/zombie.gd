@@ -165,8 +165,7 @@ func _ready() -> void:
 ## Zombies gain 25% base health per round after Round 1.
 func _round_health_multiplier() -> float:
     var round_number: int = maxi(GameManager.round_number, 1)
-    return 1.0 + float(round_number - 1) * 0.25
-
+    return 1.0 + float(round_number - 1) * 0.15
 
 
 ## Custom mode ZOMBIE HEALTH setting (1.0 normally).
