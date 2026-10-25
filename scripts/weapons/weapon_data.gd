@@ -4,7 +4,7 @@ class_name WeaponData
 ## (Right click in FileSystem -> New Resource -> WeaponData) for each gun,
 ## or build them in code (see locker_weapons.gd).
 
-enum FireMode { HITSCAN, FLAME, EXPLOSIVE }
+enum FireMode { HITSCAN, FLAME, EXPLOSIVE, WONDER }
 
 # PR Rack upgrade levels. Each list holds the TOTAL bonus at that level
 # (index 0 = level 1), applied to the gun's original stats.
@@ -46,6 +46,8 @@ const PR_RELOAD_SPEED: Array = [1.2, 1.4, 1.7]   # reload time is divided by thi
 const PR_MAG: Array = [1.5, 1.75, 2.0]
 const PR_RESERVE: Array = [2.0, 2.5, 3.0]
 
+const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
+
 @export var weapon_name: String = "Pistol"
 @export var damage: float = 20.0
 @export var fire_rate: float = 0.25
@@ -70,6 +72,9 @@ const PR_RESERVE: Array = [2.0, 2.5, 3.0]
 @export var projectile_gravity: float = 0.0
 @export var self_damage_multiplier: float = 0.0
 
+# Wonder weapons: no attachments, no rarity, no PR upgrades.
+@export var is_wonder: bool = false
+
 @export var placeholder_kind: String = ""
 @export var placeholder_size: Vector3 = Vector3.ZERO
 @export var placeholder_color: Color = Color(0.3, 0.3, 0.3)
@@ -80,6 +85,11 @@ var pr_base: WeaponData = null
 
 
 func create_model() -> Node3D:
+    if is_wonder:
+        var wonder_script = load(WONDER_PATH)
+        if wonder_script:
+            return wonder_script.build_model()
+        return null
     if model_scene:
         return model_scene.instantiate() as Node3D
     if placeholder_kind == "":
@@ -108,7 +118,10 @@ func get_base_name() -> String:
 
 ## Returns the next PR level of this gun, built from its ORIGINAL stats so
 ## the bonuses never compound. Capped at PR_MAX_LEVEL.
+## Wonder weapons can't be upgraded: they come back unchanged.
 func get_pr_upgraded_copy() -> WeaponData:
+    if is_wonder:
+        return self
     var base: WeaponData = pr_base if pr_base != null else (get_meta("attach_base") if has_meta("attach_base") else self)
     var level: int = mini(pr_level + 1, PR_MAX_LEVEL)
     var i: int = level - 1
