@@ -1,9 +1,11 @@
 extends Node3D
-## Br-Nh wonder rocket. Flies (homing) to a zombie, freezes it, draws a ring
-## around it, shoots spikes in from the ring, kills it, then the zombie bursts
-## into more rockets that each go after a different zombie and do the same.
-## Every zombie is only hit once per chain (shared _book dictionary).
+## Br-Nh wonder rocket. Flies (homing) to a zombie, freezes it, draws an upright
+## ring around it (head to toe), shoots spikes in from the ring, kills it, then
+## the zombie bursts into more rockets that each go after a different zombie and
+## do the same. Every zombie is only hit once per chain (shared _book dictionary).
 ## Built entirely in code. Spawned by player_controller.gd (_launch_wonder).
+## Note: a zombie's origin is the MIDDLE of its capsule, so its position is
+## already about waist height.
 
 const HIT_MASK: int = 1 | 4   # world + zombies
 const SPEED: float = 24.0
@@ -15,8 +17,10 @@ const CHAIN_ROCKETS: int = 3      # rockets released when a zombie bursts
 const CHAIN_RANGE: float = 16.0
 const RING_TIME: float = 0.6
 const SPIKE_TIME: float = 0.3
-const SPIKE_COUNT: int = 8
-const RING_RADIUS: float = 1.2
+const SPIKE_COUNT: int = 10
+const RING_RADIUS: float = 1.15   # used when the zombie has no capsule to measure
+const RING_MARGIN: float = 0.2    # ring radius = half the capsule height + this
+const RING_OFFSET_Y: float = 0.0  # ring height relative to the zombie's origin (raise or lower to tune)
 const RETARGET_INTERVAL: float = 0.15
 const HIT_MARKER_PATH: String = "res://scenes/effects/hit_marker.tscn"
 const COLOR: Color = Color(0.65, 0.3, 1.0)
@@ -31,6 +35,7 @@ var _shooter: Node = null
 var _target = null            # untyped on purpose: it can be freed while we hold it
 var _victim = null
 var _victim_pos: Vector3 = Vector3.ZERO
+var _ring_radius: float = RING_RADIUS
 var _book: Dictionary = {}   # shared by the whole chain: zombie id -> "claimed" or "done"
 var _can_retarget: bool = false
 var _retarget_timer: float = 0.0
@@ -142,8 +147,9 @@ func _is_done(z) -> bool:
     return _book.get(z.get_instance_id(), "") == "done"
 
 
+## The zombie's middle (its origin is the middle of its capsule).
 func _center(z) -> Vector3:
-    return z.global_position + Vector3(0, 1.0, 0)
+    return z.global_position
 
 
 func _set_target(t) -> void:
@@ -207,6 +213,7 @@ func _engage(z) -> void:
     _phase = Phase.RING
     _victim = z
     _victim_pos = z.global_position
+    _ring_radius = _radius_for(z)
     _book[z.get_instance_id()] = "done"
     if not bool(z.get("is_puppet")):
         z.set_physics_process(false)   # the zombie holds still inside the ring
@@ -216,18 +223,37 @@ func _engage(z) -> void:
     _build_fx()
 
 
+## Ring radius that covers the zombie from head to toe (from its collision capsule).
+func _radius_for(z) -> float:
+    var shape_node := z.get_node_or_null("CollisionShape3D") as CollisionShape3D
+    if shape_node != null and shape_node.shape is CapsuleShape3D:
+        return (shape_node.shape as CapsuleShape3D).height * 0.5 + RING_MARGIN
+    return RING_RADIUS
+
+
 func _build_fx() -> void:
     var scene := get_tree().current_scene
     if scene == null:
         return
     _fx = Node3D.new()
     scene.add_child(_fx)
-    _fx.global_position = _victim_pos + Vector3(0, 1.0, 0)
+    _fx.global_position = _victim_pos + Vector3(0, RING_OFFSET_Y, 0)
+
+    # Stand the ring upright, facing the way the rocket was travelling:
+    # the fx node's local Y axis points along that (horizontal) direction, so its
+    # local X/Z plane (where the ring and spikes live) is a vertical circle.
+    var face := Vector3(_velocity.x, 0.0, _velocity.z)
+    if face.length() < 0.01:
+        face = Vector3(0, 0, 1)
+    face = face.normalized()
+    var side: Vector3 = Vector3.UP.cross(face).normalized()
+    var up: Vector3 = side.cross(face).normalized()
+    _fx.global_transform = Transform3D(Basis(side, face, up), _fx.global_position)
 
     _ring = MeshInstance3D.new()
     var torus := TorusMesh.new()
-    torus.inner_radius = RING_RADIUS - 0.06
-    torus.outer_radius = RING_RADIUS + 0.06
+    torus.inner_radius = _ring_radius - 0.06
+    torus.outer_radius = _ring_radius + 0.06
     _ring.mesh = torus
     _ring.material_override = _glow_mat(0.85, 3.0)
     _fx.add_child(_ring)
@@ -235,7 +261,7 @@ func _build_fx() -> void:
 
     for i in range(SPIKE_COUNT):
         var ang: float = TAU * float(i) / float(SPIKE_COUNT)
-        var dir := Vector3(cos(ang), 0.0, sin(ang))
+        var dir := Vector3(cos(ang), 0.0, sin(ang))   # in the ring's own plane
         var pivot := Node3D.new()
         var cone_mi := MeshInstance3D.new()
         var cone := CylinderMesh.new()
@@ -248,7 +274,7 @@ func _build_fx() -> void:
         pivot.add_child(cone_mi)
         pivot.visible = false
         _fx.add_child(pivot)
-        pivot.transform = Transform3D(Basis.looking_at(-dir, Vector3.UP), dir * RING_RADIUS)
+        pivot.transform = Transform3D(Basis.looking_at(-dir, Vector3.UP), dir * _ring_radius)
         _spikes.append({"node": pivot, "dir": dir})
 
 
@@ -267,7 +293,7 @@ func _ring_step(delta: float) -> void:
 func _spike_step(delta: float) -> void:
     _timer += delta
     var t: float = clampf(_timer / SPIKE_TIME, 0.0, 1.0)
-    var radius: float = lerpf(RING_RADIUS, 0.2, t * t)
+    var radius: float = lerpf(_ring_radius, 0.2, t * t)
     for s in _spikes:
         (s["node"] as Node3D).position = (s["dir"] as Vector3) * radius
     if t >= 1.0:
@@ -281,11 +307,11 @@ func _finish_hit() -> void:
         if marker_scene:
             var marker: Node3D = marker_scene.instantiate()
             get_tree().current_scene.add_child(marker)
-            marker.global_position = _victim_pos + Vector3(0, 1.4, 0)
+            marker.global_position = _victim_pos + Vector3(0, 0.9, 0)
         var hp: float = float(z.get("current_health"))
         z.take_damage(maxf(_damage, hp + 1.0), _shooter, false)   # the spikes always kill
         GameManager.add_gains(_gains)
-    _flash(_victim_pos + Vector3(0, 1.0, 0), 1.8)
+    _flash(_victim_pos + Vector3(0, RING_OFFSET_Y, 0), 1.8)
     _spawn_chain(_victim_pos)
     queue_free()
 
@@ -302,7 +328,7 @@ func _spawn_chain(pos: Vector3) -> void:
         found.append({"d": d, "z": n})
     found.sort_custom(func(a, b): return a["d"] < b["d"])
     var count: int = mini(CHAIN_ROCKETS, found.size())
-    var origin: Vector3 = pos + Vector3(0, 1.2, 0)
+    var origin: Vector3 = pos + Vector3(0, 0.3, 0)
     for i in range(count):
         var z = found[i]["z"]
         var rocket = get_script().new()
@@ -346,7 +372,7 @@ func _flash(at: Vector3, radius: float) -> void:
     fx.material_override = mat
     scene.add_child(fx)
     fx.global_position = at
-    fx.scale = Vector3.ONE * 0.3
+    fx.scale = Vector3.ONE * radius * 0.2
     var tween := fx.create_tween()
     tween.set_parallel(true)
     tween.tween_property(fx, "scale", Vector3.ONE * radius, 0.25)
