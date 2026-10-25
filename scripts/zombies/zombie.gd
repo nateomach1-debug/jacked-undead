@@ -761,8 +761,8 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
         else:
             amount = maxf(amount, max_health * max_lift_fraction)
     if not is_tick:
-    var damage_shown: float = minf(amount, current_health)
-    _show_damage_popup(damage_shown, was_headshot)
+        var damage_shown: float = minf(amount, current_health)
+        _show_damage_popup(damage_shown, was_headshot)
     current_health -= amount
     if current_health <= 0.0:
         _die(was_headshot)
