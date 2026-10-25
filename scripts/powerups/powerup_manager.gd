@@ -1,10 +1,14 @@
 extends Node
-## Gym power-up manager. Created by round_manager.gd (host only).
-## Other scripts find it with get_tree().get_first_node_in_group("powerup_manager")
+## Gym power-up manager. Created by round_manager.gd (host / solo) or by
+## NetManager (joiners). Other scripts find it with
+## get_tree().get_first_node_in_group("powerup_manager")
 ## and ask has_effect("max_lift") / time_left("max_lift").
 ##
 ## Handles drops, pickups and the active timers. The on-screen display
 ## lives in scripts/ui/hud_powerups.gd (it listens to powerup_started).
+##
+## Co-op: the host decides drops and pickups, and NetManager relays them.
+## Every phone runs its own countdown for the active effects.
 
 signal powerup_started(id: String, duration: float)
 signal powerup_ended(id: String)
@@ -38,6 +42,7 @@ var _last_type: String = ""
 var _guar_kill: int = 1
 var _guar_done: bool = false
 var _pickup_script: GDScript = null
+var _next_drop_id: int = 1
 
 
 func _ready() -> void:
@@ -66,6 +71,10 @@ func time_left(id: String) -> float:
     return float(_active.get(id, 0.0))
 
 
+func _is_joiner() -> bool:
+    return NetManager.is_online and not NetManager.is_host
+
+
 # ---------------------------------------------------------------- drops
 
 ## Called by round_manager at the start of each round.
@@ -77,8 +86,9 @@ func on_round_start(total: int) -> void:
 
 
 ## Called by round_manager after every zombie death (killed = kills so far this round).
+## Only the host (or a solo player) rolls drops.
 func on_zombie_killed(z: Node3D, killed: int, _total: int) -> void:
-    if not ENABLED or _pickup_script == null:
+    if not ENABLED or _pickup_script == null or _is_joiner():
         return
     var forced: bool = false
     var drop: bool = false
@@ -99,12 +109,26 @@ func on_zombie_killed(z: Node3D, killed: int, _total: int) -> void:
             return
         var oldest = _drops[0]
         if is_instance_valid(oldest):
+            NetManager.powerup_despawn(int(oldest.get("drop_id")))
             oldest.queue_free()
         _drops.remove_at(0)
     spawn_drop(_roll_type(), _floor_pos(z))
 
 
+## Host / solo: creates a drop and tells the joiners.
 func spawn_drop(id: String, pos: Vector3) -> Node3D:
+    if _pickup_script == null or not TYPES.has(id):
+        return null
+    var did: int = _next_drop_id
+    _next_drop_id += 1
+    var p: Node3D = _make_pickup(did, id, pos)
+    if p == null:
+        return null
+    NetManager.powerup_spawn(did, id, pos)
+    return p
+
+
+func _make_pickup(did: int, id: String, pos: Vector3) -> Node3D:
     if _pickup_script == null or not TYPES.has(id):
         return null
     var info: Dictionary = TYPES[id]
@@ -112,17 +136,48 @@ func spawn_drop(id: String, pos: Vector3) -> Node3D:
     if p == null:
         return null
     p.call("setup", self, id, str(info["name"]), info["color"], DESPAWN_TIME, BLINK_TIME)
+    p.set("drop_id", did)
     get_tree().current_scene.add_child(p)
     p.global_position = pos + Vector3(0.0, 0.05, 0.0)
     _drops.append(p)
     return p
 
 
-## Called by a pickup when a player walks over it.
+func _find_drop(did: int) -> Node3D:
+    for d in _drops:
+        if is_instance_valid(d) and int(d.get("drop_id")) == did:
+            return d as Node3D
+    return null
+
+
+## Called by a pickup when a player walks over it on this phone.
 func collect(p: Node) -> void:
+    var did: int = int(p.get("drop_id"))
+    if _is_joiner():
+        # The host decides. The pickup waits for its answer.
+        NetManager.powerup_request_pickup(did)
+        if p.has_method("wait_for_host"):
+            p.call("wait_for_host")
+        return
+    _take(did)
+
+
+## Host / solo: removes the drop, starts the effect here and tells the joiners.
+func _take(did: int) -> void:
+    var p: Node3D = _find_drop(did)
+    if p == null:
+        return
     var id: String = str(p.get("type_id"))
     _drops.erase(p)
+    p.queue_free()
     activate(id)
+    NetManager.powerup_activate(did, id)
+
+
+## Called by a pickup whose despawn timer ran out.
+func on_pickup_expired(p: Node) -> void:
+    _drops.erase(p)
+    NetManager.powerup_despawn(int(p.get("drop_id")))
 
 
 func activate(id: String) -> void:
@@ -134,6 +189,42 @@ func activate(id: String) -> void:
         _active[id] = dur  # picking up the same type again refreshes it
     powerup_started.emit(id, dur)
 
+
+# ---------------------------------------------------------------- co-op (called by NetManager)
+
+## Joiner: the host dropped a power-up.
+func net_spawn(did: int, id: String, pos: Vector3) -> void:
+    if _find_drop(did) != null:
+        return
+    _make_pickup(did, id, pos)
+
+
+## Joiner: the host says this drop is gone (despawned or replaced).
+func net_remove(did: int) -> void:
+    var p: Node3D = _find_drop(did)
+    if p == null:
+        return
+    _drops.erase(p)
+    p.queue_free()
+
+
+## Joiner: the host says this drop was taken. Start the effect here too.
+func net_activate(did: int, id: String) -> void:
+    var p: Node3D = _find_drop(did)
+    if p != null:
+        _drops.erase(p)
+        p.queue_free()
+    activate(id)
+
+
+## Host: a joiner asked to pick up a drop. Ignored if it is already gone.
+func host_collect_remote(did: int) -> void:
+    if not NetManager.is_online or not NetManager.is_host:
+        return
+    _take(did)
+
+
+# ---------------------------------------------------------------- helpers
 
 func _is_rager(z: Node) -> bool:
     var s: Script = z.get_script() as Script
