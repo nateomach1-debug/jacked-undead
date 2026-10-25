@@ -37,7 +37,10 @@ const PR_UPGRADED_NAMES: Dictionary = {
     "Micro SMG": "Tiny Terrors",
     "Chaingun": "Cardio Is Overrated",
     "Repeater Crossbow": "Pull Day Again",
-    "Semi-Auto Sniper": "No Spotter Needed"
+    "Semi-Auto Sniper": "No Spotter Needed",
+
+    # Wonder weapons that can be PR upgraded
+    "Frenemy": "Bombie"
 }
 const PR_SUFFIXES: Array = [" - 1RM", " - 2RM", " - 3RM"]
 const PR_DAMAGE: Array = [2.2, 3.2, 4.5]
@@ -72,8 +75,10 @@ const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
 @export var projectile_gravity: float = 0.0
 @export var self_damage_multiplier: float = 0.0
 
-# Wonder weapons: no attachments, no rarity, no PR upgrades.
+# Wonder weapons: no attachments and no rarity. PR upgrades are blocked
+# unless wonder_pr_upgradable is true.
 @export var is_wonder: bool = false
+@export var wonder_pr_upgradable: bool = false
 
 @export var placeholder_kind: String = ""
 @export var placeholder_size: Vector3 = Vector3.ZERO
@@ -88,7 +93,7 @@ func create_model() -> Node3D:
     if is_wonder:
         var wonder_script = load(WONDER_PATH)
         if wonder_script:
-            return wonder_script.build_model()
+            return wonder_script.build_model(get_base_name())
         return null
     if model_scene:
         return model_scene.instantiate() as Node3D
@@ -116,11 +121,21 @@ func get_base_name() -> String:
     return pr_base.weapon_name if pr_base != null else weapon_name
 
 
+## True when the PR Rack can upgrade this gun right now (not a blocked wonder
+## gun, and not already at the max level). The PR Rack should check this
+## BEFORE taking the player's Gains.
+func can_pr_upgrade() -> bool:
+    if is_wonder and not wonder_pr_upgradable:
+        return false
+    return pr_level < PR_MAX_LEVEL
+
+
 ## Returns the next PR level of this gun, built from its ORIGINAL stats so
 ## the bonuses never compound. Capped at PR_MAX_LEVEL.
-## Wonder weapons can't be upgraded: they come back unchanged.
+## Wonder weapons can't be upgraded unless wonder_pr_upgradable is set:
+## otherwise they come back unchanged.
 func get_pr_upgraded_copy() -> WeaponData:
-    if is_wonder:
+    if is_wonder and not wonder_pr_upgradable:
         return self
     var base: WeaponData = pr_base if pr_base != null else (get_meta("attach_base") if has_meta("attach_base") else self)
     var level: int = mini(pr_level + 1, PR_MAX_LEVEL)
