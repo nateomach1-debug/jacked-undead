@@ -760,6 +760,7 @@ func take_damage(amount: float, source: Node = null, was_headshot: bool = false)
             amount = maxf(amount, current_health)
         else:
             amount = maxf(amount, max_health * max_lift_fraction)
+    if not is_tick:
     var damage_shown: float = minf(amount, current_health)
     _show_damage_popup(damage_shown, was_headshot)
     current_health -= amount
@@ -801,8 +802,7 @@ func _show_damage_popup(damage: float, headshot: bool) -> void:
         1.2 + randf_range(-0.1, 0.25),
         randf_range(-0.15, 0.15)
     )
-    popup.setup(damage, head
-shot)
+    popup.setup(damage, headshot)
 
 
 ## Sets this zombie on fire (or refreshes the burn it already has).
