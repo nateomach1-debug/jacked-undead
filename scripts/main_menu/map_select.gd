@@ -2,6 +2,7 @@ extends Control
 ## Map selection, reached from the main menu's Start button.
 ## MAPS tab: Arena, Building and the other normal maps (from map_config.gd).
 ## DLC tab: the buyable maps; locked ones point to the Market.
+## LIMITED TIME tab: limited-time maps (only shown while one is running).
 ## Cards resize to fit however many maps the current tab shows.
 ## CUSTOM MODE button (next to BACK) opens the custom game mode toggles.
 
@@ -12,6 +13,10 @@ const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
 const CUSTOM_MENU_PATH: String = "res://scripts/ui/custom_mode_menu.gd"
 const MAIN_MENU_PATH: String = "res://scenes/main_menu/main_menu.tscn"
+
+const TAB_MAPS: int = 0
+const TAB_DLC: int = 1
+const TAB_LIMITED: int = 2
 
 const GRID_GAP: int = 14
 const MIN_CARD_H: float = 150.0
@@ -31,10 +36,12 @@ var _grid: GridContainer
 var _message: Label
 var _maps_tab: Button
 var _dlc_tab: Button
+var _limited_tab: Button
 var _custom_btn: Button
 var _normal_cards: Array = []
 var _dlc_cards: Array = []
-var _dlc_mode: bool = false
+var _limited_cards: Array = []
+var _tab: int = TAB_MAPS
 
 
 func _ready() -> void:
@@ -51,7 +58,9 @@ func _ready() -> void:
     _build_ui()
     _add_normal_cards()
     _add_dlc_cards()
-    _show_tab(false)
+    _add_limited_cards()
+    _limited_tab.visible = not _limited_cards.is_empty()
+    _show_tab(TAB_MAPS)
 
 
 func _map_enabled(id: String) -> bool:
@@ -68,6 +77,12 @@ func _dlc_maps() -> Array:
     if _config == null:
         return []
     return _config.get_dlc_maps()
+
+
+func _limited_maps() -> Array:
+    if _config == null or not _config.has_method("get_limited_maps"):
+        return []
+    return _config.get_limited_maps()
 
 
 func _owns(id: String) -> bool:
@@ -126,10 +141,12 @@ func _build_ui() -> void:
     var tabs := HBoxContainer.new()
     tabs.alignment = BoxContainer.ALIGNMENT_CENTER
     tabs.add_theme_constant_override("separation", 12)
-    _maps_tab = _make_tab("MAPS", false)
-    _dlc_tab = _make_tab("DLC", true)
+    _maps_tab = _make_tab("MAPS", TAB_MAPS)
+    _dlc_tab = _make_tab("DLC", TAB_DLC)
+    _limited_tab = _make_tab("LIMITED TIME", TAB_LIMITED)
     tabs.add_child(_maps_tab)
     tabs.add_child(_dlc_tab)
+    tabs.add_child(_limited_tab)
     outer.add_child(tabs)
 
     _scroll = ScrollContainer.new()
@@ -173,26 +190,37 @@ func _build_ui() -> void:
     _refresh_custom_label()
 
 
-func _make_tab(label: String, dlc: bool) -> Button:
+func _make_tab(label: String, tab: int) -> Button:
     var b := Button.new()
     b.text = label
     b.toggle_mode = true
     b.custom_minimum_size = Vector2(200, 64)
     b.add_theme_font_size_override("font_size", 24)
-    b.pressed.connect(_show_tab.bind(dlc))
+    b.pressed.connect(_show_tab.bind(tab))
     return b
 
 
-func _show_tab(dlc: bool) -> void:
-    _dlc_mode = dlc
+func _show_tab(tab: int) -> void:
+    _tab = tab
     for c in _normal_cards:
-        c.visible = not dlc
+        c.visible = tab == TAB_MAPS
     for c in _dlc_cards:
-        c.visible = dlc
+        c.visible = tab == TAB_DLC
+    for c in _limited_cards:
+        c.visible = tab == TAB_LIMITED
     _message.visible = false
-    _maps_tab.button_pressed = not dlc
-    _dlc_tab.button_pressed = dlc
+    _maps_tab.button_pressed = tab == TAB_MAPS
+    _dlc_tab.button_pressed = tab == TAB_DLC
+    _limited_tab.button_pressed = tab == TAB_LIMITED
     _layout_cards()
+
+
+func _current_cards() -> Array:
+    if _tab == TAB_DLC:
+        return _dlc_cards
+    if _tab == TAB_LIMITED:
+        return _limited_cards
+    return _normal_cards
 
 
 ## Picks columns and card height from how many maps the current tab shows, so
@@ -200,7 +228,7 @@ func _show_tab(dlc: bool) -> void:
 func _layout_cards() -> void:
     if _scroll == null or _grid == null:
         return
-    var cards: Array = _dlc_cards if _dlc_mode else _normal_cards
+    var cards: Array = _current_cards()
     var n: int = cards.size()
     if n == 0:
         return
@@ -325,6 +353,33 @@ func _add_dlc_cards() -> void:
                 price = _market.map_cost(id)
             _dlc_cards.append(_add_card(str(m["title"]).to_upper(), desc, &"CardPanelLocked",
                     "%d JUICE" % price, &"LockedTag", "LOCKED", &"DangerButton", _on_locked_pressed))
+
+
+func _add_limited_cards() -> void:
+    for m in _limited_maps():
+        var mult: float = float(m.get("juice_mult", 1.0))
+        var chip: String = ""
+        var desc: String = ""
+        if mult > 1.0:
+            chip = "%dX JUICE" % int(round(mult))
+            desc = "Double Juice from kills." if int(round(mult)) == 2 else "Bonus Juice from kills."
+        desc = (desc + " " + _days_text(m)).strip_edges()
+        _limited_cards.append(_add_card(str(m["title"]).to_upper(), desc, &"CardPanelOwned",
+                chip, &"OwnedTag", "PLAY", &"MainButton", _on_map_pressed.bind(str(m["path"]))))
+
+
+## "Ends in 12 days." / "Last day!" / "" when the map has no end date.
+func _days_text(m: Dictionary) -> String:
+    if _config == null or not _config.has_method("days_left"):
+        return ""
+    var d: int = int(_config.days_left(m))
+    if d < 0:
+        return ""
+    if d == 0:
+        return "Last day!"
+    if d == 1:
+        return "Ends in 1 day."
+    return "Ends in %d days." % d
 
 
 # ---------- custom game mode ----------
