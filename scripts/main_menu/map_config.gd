@@ -20,7 +20,7 @@ const ENABLED: Dictionary = {
     "cheese_cube": true,
     "random_gym": true,
     "swarm_underground": true,
-    "halloween": false,   # set to true once scenes/main/halloween_map.tscn exists
+    "halloween": true,   # set to true once scenes/main/halloween_map.tscn exists
 }
 
 # coop = also offered on the Co-op host screen.
@@ -35,7 +35,7 @@ const MAPS: Array = [
     {"id": "cheese_cube", "title": "CHEESE CUBE", "path": "res://scenes/main/cheese_cube_map.tscn", "coop": true, "dlc": true},
     {"id": "random_gym", "title": "RANDOM GYM", "path": "res://scenes/main/generated_gym_map.tscn", "coop": true},
     {"id": "swarm_underground", "title": "SWARM: UNDERGROUND", "path": "res://scenes/main/swarm_underground_map.tscn", "coop": true},
-    {"id": "halloween", "title": "HALLOWEEN", "path": "res://scenes/main/halloween_map.tscn", "coop": false, "limited": true, "ends": "2026-11-30", "juice_mult": 2.0},
+    {"id": "halloween", "title": "HALLOWEEN", "path": "res://scenes/main/halloween_map.tscn", "coop": true, "limited": true, "ends": "2026-11-30", "juice_mult": 2.0},
 ]
 
 
