@@ -99,10 +99,10 @@ size = Vector3(60, 1, 10)
 
 [sub_resource type="BoxMesh" id="Mesh_Ramp"]
 material = SubResource("Mat_Concrete")
-size = Vector3(8, 1, 18)
+size = Vector3(8, 1, 16.16)
 
 [sub_resource type="BoxShape3D" id="Shape_Ramp"]
-size = Vector3(8, 1, 18)
+size = Vector3(8, 1, 16.16)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
@@ -203,7 +203,7 @@ mesh = SubResource("Mesh_Catwalk")
 shape = SubResource("Shape_Catwalk")
 
 [node name="Ramp" type="StaticBody3D" parent="Geometry/UpperLevel"]
-transform = Transform3D(1, 0, 0, 0, 0.866025, -0.5, 0, 0.5, 0.866025, 0, 2.5, -14)
+transform = Transform3D(1, 0, 0, 0, 0.866025, -0.5, 0, 0.5, 0.866025, 0, 2.5, -13)
 
 [node name="Mesh" type="MeshInstance3D" parent="Geometry/UpperLevel/Ramp"]
 mesh = SubResource("Mesh_Ramp")
