@@ -21,6 +21,8 @@ const DEV_DEFAULTS: Dictionary = {
     "wall_scale": 1.0,      # multiplier on wall buy + ammo prices
     "supp_scale": 1.0,      # multiplier on supplement prices
     "show_nav": 0.0,        # 1.0 = nav polygons + NAV label visible
+    "start_wonder": 0.0,    # 1.0 = start the run with a wonder gun next to the pistol
+    "wonder_index": 0.0,    # which wonder gun (position in wonder_weapons.build_all())
 }
 
 ## Custom game mode: true = the feature is in the run (normal game), zombie_hp is a multiplier.
