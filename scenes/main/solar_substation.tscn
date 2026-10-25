@@ -203,7 +203,7 @@ mesh = SubResource("Mesh_Catwalk")
 shape = SubResource("Shape_Catwalk")
 
 [node name="Ramp" type="StaticBody3D" parent="Geometry/UpperLevel"]
-transform = Transform3D(1, 0, 0, 0, 0.866025, -0.5, 0, 0.5, 0.866025, 0, 2.5, -13)
+transform = Transform3D(1, 0, 0, 0, 0.866025, -0.5, 0, 0.5, 0.866025, 0, 1.4, -13)
 
 [node name="Mesh" type="MeshInstance3D" parent="Geometry/UpperLevel/Ramp"]
 mesh = SubResource("Mesh_Ramp")
