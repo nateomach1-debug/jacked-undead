@@ -146,24 +146,27 @@ var _rise_left: float = 0.0       # > 0 while climbing out of the ground
 var _stagger: float = 0.0         # > 0 while reeling from a hit
 
 
+
 func _ready() -> void:
     max_health *= _round_health_multiplier()
     max_health *= _custom_hp_multiplier()
     current_health = max_health
-## Zombies gain 25% base health per round after Round 1.
-## Round 1 = 1.0x, Round 5 = 2.0x, Round 10 = 3.25x.
-func _round_health_multiplier() -> float:
-    var round_number: int = maxi(GameManager.round_number, 1)
-    return 1.0 + float(round_number - 1) * 0.25
     add_to_group("zombies")
     floor_snap_length = 0.4
-    _repath_timer = randf() * repath_interval  # stagger so zombies don't all repath on the same frame
+    _repath_timer = randf() * repath_interval
     _sep_timer = randf() * SEPARATION_INTERVAL
     _los_timer = randf() * LOS_INTERVAL
     _find_target()
     _build_visuals()
     if _visual != null and _look() != null:
         _rise_left = RISE_TIME
+
+
+## Zombies gain 25% base health per round after Round 1.
+func _round_health_multiplier() -> float:
+    var round_number: int = maxi(GameManager.round_number, 1)
+    return 1.0 + float(round_number - 1) * 0.25
+
 
 
 ## Custom mode ZOMBIE HEALTH setting (1.0 normally).
