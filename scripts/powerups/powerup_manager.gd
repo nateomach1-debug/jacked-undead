@@ -16,8 +16,8 @@ signal powerup_ended(id: String)
 
 const ENABLED: bool = true
 const TEST_ALWAYS_DROP: bool = false   # true = every kill drops one (testing only)
-const KILL_DROP_CHANCE: float = 0.04
-const RAGER_DROP_CHANCE: float = 0.25
+const KILL_DROP_CHANCE: float = 0.02
+const RAGER_DROP_CHANCE: float = 0.15
 const GUARANTEE_MIN: float = 0.30      # guaranteed drop lands between 30% and 80% of the round's kills
 const GUARANTEE_MAX: float = 0.80
 const MAX_ON_FLOOR: int = 2
@@ -80,7 +80,7 @@ func _is_joiner() -> bool:
 
 ## Called by round_manager at the start of each round.
 func on_round_start(total: int) -> void:
-    _guar_done = false
+    _guar_done = true
     var lo: int = maxi(1, int(ceil(total * GUARANTEE_MIN)))
     var hi: int = maxi(lo, int(floor(total * GUARANTEE_MAX)))
     _guar_kill = randi_range(lo, hi)
