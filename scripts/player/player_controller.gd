@@ -78,6 +78,11 @@ const SPOTTER_DAMAGE_FACTOR: float = 0.5 # SPOTTER power-up: damage taken
 
 var _current_model: Node3D
 
+# First-person supplement pickup and drinking animation.
+var _supplement_drinking: bool = false
+var _drink_rig: Node3D = null
+var _drink_weapon_was_visible: bool = true
+
 var max_health: float = base_max_health
 var current_health: float = base_max_health
 
@@ -90,6 +95,179 @@ var touch_move_vector: Vector2 = Vector2.ZERO
 var stick_look_vector: Vector2 = Vector2.ZERO
 
 var touch_shooting: bool = false
+
+
+# --- First-person supplement drinking animation ---
+
+const DRINK_PRODUCT_SHAPES: Dictionary = {
+    "trt": "vial",
+    "creatine": "tub",
+    "whey": "tub",
+    "glutamine": "tub",
+    "pre_workout": "can",
+    "fish_oil": "bottle",
+    "bcaas": "bottle",
+    "collagen": "bottle",
+}
+
+func _drink_material(color: Color) -> StandardMaterial3D:
+    var mat := StandardMaterial3D.new()
+    mat.albedo_color = color
+    mat.roughness = 0.6
+    return mat
+
+
+func _drink_cylinder(
+    parent: Node3D,
+    radius: float,
+    height: float,
+    y: float,
+    material: Material
+) -> void:
+    var item := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = height
+    mesh.radial_segments = 16
+    mesh.rings = 1
+    item.mesh = mesh
+    item.material_override = material
+    item.position.y = y
+    item.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(item)
+
+
+func _build_drink_product(
+    root: Node3D,
+    shape: String,
+    product_mat: Material,
+    white_mat: Material,
+    dark_mat: Material
+) -> void:
+    # These shapes and dimensions match supplement_station.gd.
+    match shape:
+        "tub":
+            _drink_cylinder(root, 0.095, 0.2, 0.1, product_mat)
+            _drink_cylinder(root, 0.098, 0.07, 0.1, white_mat)
+            _drink_cylinder(root, 0.1, 0.05, 0.225, dark_mat)
+
+        "can":
+            _drink_cylinder(root, 0.075, 0.3, 0.15, product_mat)
+            _drink_cylinder(root, 0.077, 0.12, 0.17, white_mat)
+            _drink_cylinder(root, 0.06, 0.02, 0.31, dark_mat)
+
+        "vial":
+            _drink_cylinder(root, 0.045, 0.18, 0.09, product_mat)
+            _drink_cylinder(root, 0.047, 0.08, 0.09, white_mat)
+            _drink_cylinder(root, 0.05, 0.04, 0.2, dark_mat)
+            _drink_cylinder(root, 0.052, 0.02, 0.23, white_mat)
+
+        _:
+            _drink_cylinder(root, 0.07, 0.24, 0.12, product_mat)
+            _drink_cylinder(root, 0.072, 0.1, 0.12, white_mat)
+            _drink_cylinder(root, 0.035, 0.05, 0.265, product_mat)
+            _drink_cylinder(root, 0.04, 0.04, 0.31, white_mat)
+
+
+func play_supplement_drink(id: String, product_color: Color) -> void:
+    if _supplement_drinking or is_dead or is_downed:
+        return
+
+    _supplement_drinking = true
+    _drink_weapon_was_visible = weapon_mount.visible
+    weapon_mount.visible = false
+
+    # Attach the hand and product to the first-person camera.
+    var rig := Node3D.new()
+    rig.name = "SupplementDrinkRig"
+    camera.add_child(rig)
+    _drink_rig = rig
+    rig.position = Vector3(0.48, -0.82, -0.62)
+    rig.rotation = Vector3(0.0, 0.0, deg_to_rad(-12.0))
+
+    var skin_mat := _drink_material(Color(0.72, 0.46, 0.31))
+    var product_mat := _drink_material(product_color.lightened(0.15))
+    var white_mat := _drink_material(Color(0.95, 0.95, 0.95))
+    var dark_mat := _drink_material(product_color.darkened(0.8))
+
+    # Forearm.
+    var arm := MeshInstance3D.new()
+    var arm_mesh := CapsuleMesh.new()
+    arm_mesh.radius = 0.075
+    arm_mesh.height = 0.42
+    arm.mesh = arm_mesh
+    arm.material_override = skin_mat
+    arm.position = Vector3(-0.02, -0.16, 0.0)
+    arm.rotation.z = deg_to_rad(-22.0)
+    rig.add_child(arm)
+
+    # Match the shape and scale used in the machine's display.
+    var shape: String = str(DRINK_PRODUCT_SHAPES.get(id, "bottle"))
+    var product := Node3D.new()
+    product.position = Vector3(-0.12, 0.08, -0.015)
+    product.rotation.z = deg_to_rad(-8.0)
+    product.scale = Vector3.ONE * (1.5 if shape == "vial" else 1.0)
+    rig.add_child(product)
+
+    _build_drink_product(
+        product, shape, product_mat, white_mat, dark_mat
+    )
+
+    # Raise the product toward the face.
+    var tw := create_tween()
+    tw.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    tw.tween_property(
+        rig, "position", Vector3(0.3, -0.28, -0.58), 0.38
+    )
+    tw.parallel().tween_property(
+        rig, "rotation:z", deg_to_rad(-3.0), 0.38
+    )
+
+    # Pause, then tilt the product to drink.
+    tw.tween_interval(0.22)
+    tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+    tw.tween_property(
+        rig, "rotation:x", deg_to_rad(-48.0), 0.28
+    )
+    tw.parallel().tween_property(
+        rig, "position", Vector3(0.22, -0.18, -0.48), 0.28
+    )
+
+    # Hold the drinking pose.
+    tw.tween_interval(0.72)
+
+    # Lower the product.
+    tw.tween_property(rig, "rotation:x", 0.0, 0.25)
+    tw.parallel().tween_property(
+        rig, "position", Vector3(0.3, -0.28, -0.58), 0.25
+    )
+
+    # Move the hand and product out of view.
+    tw.tween_interval(0.12)
+    tw.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+    tw.tween_property(
+        rig, "position", Vector3(0.48, -0.82, -0.62), 0.32
+    )
+    tw.parallel().tween_property(
+        rig, "rotation:z", deg_to_rad(-12.0), 0.32
+    )
+    tw.tween_callback(_finish_supplement_drink.bind(rig))
+
+
+func _finish_supplement_drink(rig: Node3D) -> void:
+    if is_instance_valid(rig):
+        rig.queue_free()
+
+    if _drink_rig == rig:
+        _drink_rig = null
+
+    _supplement_drinking = false
+
+    if is_instance_valid(weapon_mount):
+        weapon_mount.visible = (
+            _drink_weapon_was_visible and not is_dead and not is_downed
+        )
 
 # --- Supplement (perk) state ---
 var damage_multiplier: float = 1.0      # TRT
@@ -303,6 +481,8 @@ func _step_up_if_blocked(delta: float) -> void:
 
 
 func _handle_shooting(delta: float) -> void:
+    if _supplement_drinking:
+        return
     if _fire_cooldown > 0.0:
         _fire_cooldown -= delta
     _flame_marker_cooldown = maxf(_flame_marker_cooldown - delta, 0.0)
@@ -1571,3 +1751,4 @@ func _pr_day_factor() -> float:
         return 1.0
     var cur_dmg: float = maxf(float(_pu_tiers[cur_key]["damage"]), 0.01)
     return float(_pu_tiers[next_key]["damage"]) / cur_dmg
+
