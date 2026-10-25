@@ -28,7 +28,6 @@ var _rng := RandomNumberGenerator.new()
 
 var _title_label: Label
 var _play_button: Button
-var _volume_slider: HSlider
 
 
 func _ready() -> void:
@@ -160,10 +159,8 @@ func _load_saved_volume() -> void:
     else:
         _player.volume_db = linear_to_db(volume)
 
-    if _volume_slider != null:
-        _volume_slider.set_value_no_signal(volume)
 
-
+## One thin row: track title, PAUSE/PLAY, NEXT.
 func _create_player_ui() -> void:
     _music_layer = CanvasLayer.new()
     _music_layer.name = "MusicPlayerUI"
@@ -175,50 +172,36 @@ func _create_player_ui() -> void:
     _music_panel.mouse_filter = Control.MOUSE_FILTER_STOP
     _music_layer.add_child(_music_panel)
 
-    var column := VBoxContainer.new()
-    column.add_theme_constant_override("separation", 3)
-    _music_panel.add_child(column)
-
-    var heading := Label.new()
-    heading.text = "NOW PLAYING"
-    heading.add_theme_font_size_override("font_size", 12)
-    column.add_child(heading)
+    var row := HBoxContainer.new()
+    row.add_theme_constant_override("separation", 6)
+    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    _music_panel.add_child(row)
 
     _title_label = Label.new()
     _title_label.text = "Loading soundtrack..."
     _title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+    _title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    _title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _title_label.custom_minimum_size = Vector2(60, 0)
     _title_label.add_theme_font_size_override("font_size", 16)
-    column.add_child(_title_label)
-
-    var controls := HBoxContainer.new()
-    column.add_child(controls)
+    row.add_child(_title_label)
 
     _play_button = Button.new()
     _play_button.text = "PAUSE"
-    _play_button.custom_minimum_size = Vector2(76, 36)
+    _play_button.custom_minimum_size = Vector2(74, 30)
+    _play_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _play_button.add_theme_font_size_override("font_size", 14)
     _play_button.pressed.connect(toggle_playback)
-    controls.add_child(_play_button)
+    row.add_child(_play_button)
 
     var skip_button := Button.new()
     skip_button.text = "NEXT ▶|"
-    skip_button.custom_minimum_size = Vector2(88, 36)
+    skip_button.custom_minimum_size = Vector2(76, 30)
+    skip_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    skip_button.add_theme_font_size_override("font_size", 14)
     skip_button.pressed.connect(next_track)
-    controls.add_child(skip_button)
-
-    var volume_label := Label.new()
-    volume_label.text = "VOL"
-    volume_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    controls.add_child(volume_label)
-
-    _volume_slider = HSlider.new()
-    _volume_slider.min_value = 0.0
-    _volume_slider.max_value = 1.0
-    _volume_slider.step = 0.05
-    _volume_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    _volume_slider.custom_minimum_size = Vector2(45, 28)
-    _volume_slider.value = 0.7
-    _volume_slider.value_changed.connect(set_music_volume)
-    controls.add_child(_volume_slider)
+    row.add_child(skip_button)
 
     _refresh_ui()
     _apply_music_layout()
@@ -234,7 +217,7 @@ func _apply_music_layout() -> void:
     if vp.x <= 0.0 or vp.y <= 0.0:
         return
 
-    var base_size := Vector2(290.0, 140.0)
+    var base_size := Vector2(290.0, 44.0)
     var center := Vector2(vp.x - 160.0, 90.0)
     var scale_value := 1.0
     var alpha := 1.0
@@ -254,7 +237,7 @@ func _apply_music_layout() -> void:
 
     # Reserve a small margin so the panel never extends beyond the screen.
     var max_width := maxf(120.0, vp.x - 24.0)
-    var max_height := maxf(80.0, vp.y - 24.0)
+    var max_height := maxf(40.0, vp.y - 24.0)
 
     base_size.x = minf(base_size.x, max_width / scale_value)
     base_size.y = minf(base_size.y, max_height / scale_value)
