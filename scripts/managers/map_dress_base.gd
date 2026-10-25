@@ -45,15 +45,15 @@ func _setup_environment(fog_density: float, ambient: float, sun_energy: float) -
     if we != null and we.environment != null:
         var env := we.environment
         env.background_mode = Environment.BG_COLOR
-        env.background_color = Color(0.03, 0.03, 0.04)
+        env.background_color = Color(0.055, 0.055, 0.07)
         env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-        env.ambient_light_color = Color(0.85, 0.86, 0.95)
-        env.ambient_light_energy = ambient
+        env.ambient_light_color = Color(0.88, 0.90, 1.0)
+        env.ambient_light_energy = maxf(ambient, 0.85)
         env.ssao_enabled = false
         env.glow_enabled = false
         env.fog_enabled = true
-        env.fog_light_color = Color(0.07, 0.07, 0.09)
-        env.fog_density = fog_density
+        env.fog_light_color = Color(0.12, 0.12, 0.15)
+        env.fog_density = minf(fog_density, 0.003)
     var sun := p.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
     if sun != null:
         sun.light_color = Color(1.0, 0.95, 0.85)
