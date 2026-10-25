@@ -229,8 +229,11 @@ func _address_text() -> String:
         text += "\nAll addresses: %s" % ", ".join(PackedStringArray(all_ips))
     return text
 
+
 func _player_count() -> int:
     return multiplayer.get_peers().size() + 1
+
+
 ## Host only: loads the map on every phone at once.
 func start_game() -> void:
     if not is_host:
@@ -243,6 +246,7 @@ func start_game() -> void:
 func _load_map(path: String) -> void:
     _stop_signaling()
     get_tree().change_scene_to_file(path)
+
 
 func _on_peer_connected(id: int) -> void:
     if is_online:
@@ -275,6 +279,7 @@ func _on_server_disconnected() -> void:
     is_online = false
     status_changed.emit("Host disconnected")
 
+
 ## Host only: sends damage to the phone that owns this player.
 func damage_peer(peer_id: int, amount: float) -> void:
     if not is_online or not is_host:
@@ -288,6 +293,7 @@ func _take_hit(amount: float) -> void:
     if local_player != null and local_player.has_method("take_damage"):
         local_player.take_damage(amount)
 
+
 ## Host only: pays a kill reward to the phone that earned it.
 func reward_peer(peer_id: int, amount: int) -> void:
     if not is_online or not is_host:
@@ -298,6 +304,7 @@ func reward_peer(peer_id: int, amount: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func _get_reward(amount: int) -> void:
     GameManager.add_gains(amount)
+
 
 ## Tells every other phone that a door was bought so it opens for them too.
 func announce_door_opened(door_path: NodePath) -> void:
@@ -311,8 +318,10 @@ func _door_opened(door_path: String) -> void:
     if door != null and door.has_method("remote_open"):
         door.remote_open()
 
+
 const COOP_SYNC_PATH: String = "res://scripts/managers/coop_sync.gd"
 const ROUND_MANAGER_SCRIPT: String = "res://scripts/managers/round_manager.gd"
+const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
 
 var _round_manager_ref: Node = null
 
@@ -330,6 +339,8 @@ func start_game_on(map_path: String) -> void:
         shared_seed = randi_range(100000, 999999)
 
     _load_map_coop.rpc(map_path, shared_seed)
+
+
 @rpc("authority", "call_local", "reliable")
 func _load_map_coop(path: String, shared_seed: int) -> void:
     _stop_signaling()
@@ -369,6 +380,8 @@ func _on_node_added(node: Node) -> void:
     if not is_host:
         node.set("zombie_scene", null)
         node.set("roid_rager_scene", null)
+        # Joiners need a power-up manager too (effects, timers, pickups).
+        _make_client_powerup_manager.call_deferred()
 
 
 ## Adds the CoopSync node to whatever map just loaded and spreads players out.
@@ -400,6 +413,7 @@ func _setup_coop_in_scene() -> void:
     coop.name = "CoopSync"
     scene.add_child(coop)
     coop.setup(player, round_manager)
+
 
 signal stats_changed
 
@@ -594,3 +608,87 @@ func _set_badge(new_id: String) -> void:
     var id: int = multiplayer.get_remote_sender_id()
     badges[id] = new_id.left(32)
     badge_changed.emit(id)
+
+
+# ---------- power-ups ----------
+# The host decides everything. These are only relays; the real logic is in
+# powerup_manager.gd (net_spawn / net_remove / net_activate / host_collect_remote).
+
+func _powerup_manager() -> Node:
+    return get_tree().get_first_node_in_group("powerup_manager")
+
+
+## Joiners do not get a power-up manager from round_manager, so make one.
+func _make_client_powerup_manager() -> void:
+    if is_host or not is_online or _powerup_manager() != null:
+        return
+    var scene: Node = get_tree().current_scene
+    if scene == null:
+        return
+    var script = load(POWERUP_MANAGER_PATH)
+    if script == null:
+        push_warning("powerup_manager.gd is missing or broken.")
+        return
+    var node := Node.new()
+    node.set_script(script)
+    node.name = "PowerupManager"
+    scene.add_child(node)
+
+
+## Host only: a power-up dropped. Joiners show the pickup.
+func powerup_spawn(drop_id: int, type_id: String, pos: Vector3) -> void:
+    if not is_online or not is_host:
+        return
+    _pu_spawn.rpc(drop_id, type_id, pos)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _pu_spawn(drop_id: int, type_id: String, pos: Vector3) -> void:
+    var m: Node = _powerup_manager()
+    if m != null and m.has_method("net_spawn"):
+        m.net_spawn(drop_id, type_id, pos)
+
+
+## Joiner only: "I walked over this drop". The host decides.
+func powerup_request_pickup(drop_id: int) -> void:
+    if not is_online or is_host:
+        return
+    _pu_request.rpc_id(1, drop_id)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _pu_request(drop_id: int) -> void:
+    if not is_host:
+        return
+    var m: Node = _powerup_manager()
+    if m != null and m.has_method("host_collect_remote"):
+        m.host_collect_remote(drop_id)
+
+
+## Host only: the pickup was taken. Every joiner removes it and starts the effect.
+## (The host starts it on its own phone.)
+func powerup_activate(drop_id: int, type_id: String) -> void:
+    if not is_online or not is_host:
+        return
+    _pu_activate.rpc(drop_id, type_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _pu_activate(drop_id: int, type_id: String) -> void:
+    var m: Node = _powerup_manager()
+    if m != null and m.has_method("net_activate"):
+        m.net_activate(drop_id, type_id)
+
+
+## Host only: a drop despawned or was replaced. Joiners remove it.
+func powerup_despawn(drop_id: int) -> void:
+    if not is_online or not is_host:
+        return
+    _pu_despawn.rpc(drop_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _pu_despawn(drop_id: int) -> void:
+    var m: Node = _powerup_manager()
+    if m != null and m.has_method("net_remove"):
+        m.net_remove(drop_id)
