@@ -9,6 +9,7 @@ extends Node
 ##
 ## Co-op: the host decides drops and pickups, and NetManager relays them.
 ## Every phone runs its own countdown for the active effects.
+## Custom Game Mode: the "powerups" toggle OFF = no drops at all.
 
 signal powerup_started(id: String, duration: float)
 signal powerup_ended(id: String)
@@ -86,9 +87,11 @@ func on_round_start(total: int) -> void:
 
 
 ## Called by round_manager after every zombie death (killed = kills so far this round).
-## Only the host (or a solo player) rolls drops.
+## Only the host (or a solo player) rolls drops, and only if POWER-UPS is ON in Custom Mode.
 func on_zombie_killed(z: Node3D, killed: int, _total: int) -> void:
     if not ENABLED or _pickup_script == null or _is_joiner():
+        return
+    if not GameManager.custom_on("powerups"):
         return
     var forced: bool = false
     var drop: bool = false
