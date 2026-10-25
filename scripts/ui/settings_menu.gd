@@ -34,6 +34,7 @@ var _invert_button: Button
 var _vibration_button: Button
 var _color_button: Button
 var _hit_button: Button
+var _damage_numbers_button: Button
 var _outline_button: Button
 var _outline_color_button: Button
 var _replay_button: Button
@@ -108,6 +109,8 @@ func _ready() -> void:
         vbox.add_child(_color_button)
         _hit_button = _make_button("", _on_hit_markers)
         vbox.add_child(_hit_button)
+        _damage_numbers_button = _make_button("", _on_damage_numbers)
+        vbox.add_child(_damage_numbers_button)
         _outline_button = _make_button("", _on_outline)
         vbox.add_child(_outline_button)
         _outline_color_button = _make_button("", _on_outline_color)
@@ -337,6 +340,7 @@ func _refresh_buttons() -> void:
     _color_button.add_theme_color_override("font_hover_color", entry["color"])
     _color_button.add_theme_color_override("font_pressed_color", entry["color"])
     _hit_button.text = "HIT MARKERS: " + ("ON" if _settings.get_value("hit_markers") > 0.5 else "OFF")
+    _damage_numbers_button.text = "DAMAGE NUMBERS: " + ("ON" if _settings.get_value("damage_numbers") > 0.5 else "OFF")
     _outline_button.text = "RETICLE OUTLINE: " + ("ON" if _settings.get_value("outline") > 0.5 else "OFF")
     var oidx: int = clampi(int(_settings.get_value("outline_color")), 0, _settings.OUTLINE_COLORS.size() - 1)
     var oentry: Dictionary = _settings.OUTLINE_COLORS[oidx]
@@ -393,3 +397,8 @@ func _on_back() -> void:
 func _on_replay_tutorial() -> void:
     _settings.set_value("tutorial_seen", 0.0)
     _replay_button.text = "TUTORIAL SHOWS AT NEXT GAME"
+
+func _on_damage_numbers() -> void:
+    var on: bool = _settings.get_value("damage_numbers") > 0.5
+    _settings.set_value("damage_numbers", 0.0 if on else 1.0)
+    _refresh_buttons()
