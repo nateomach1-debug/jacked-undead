@@ -7,7 +7,7 @@ const RISE_DISTANCE: float = 0.9
 
 func setup(damage: float, headshot: bool = false) -> void:
     text = str(int(round(damage)))
-    font_size = 4 if headshot else 3
+    font_size = 8 if headshot else 4
     pixel_size = 0.008
     billboard = BaseMaterial3D.BILLBOARD_ENABLED
     no_depth_test = true
