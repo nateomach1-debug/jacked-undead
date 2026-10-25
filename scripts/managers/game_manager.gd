@@ -31,6 +31,7 @@ const CUSTOM_DEFAULTS: Dictionary = {
     "attachments": true,
     "supplements": true,
     "wall_buys": true,
+    "powerups": true,
     "zombie_hp": 1.0,
 }
 ## Short leaderboard code for each feature that is switched off.
@@ -41,6 +42,7 @@ const CUSTOM_CODES: Dictionary = {
     "attachments": "noatt",
     "supplements": "nosupp",
     "wall_buys": "nowall",
+    "powerups": "nopow",
 }
 
 var gains: int = 500
@@ -184,6 +186,7 @@ func dev_get(key: String) -> float:
     if dev_override.has(key) and _online():
         return float(dev_override[key])
     return float(dev.get(key, DEV_DEFAULTS.get(key, 0.0)))
+
 
 func dev_set(key: String, value: float) -> void:
     dev[key] = value
