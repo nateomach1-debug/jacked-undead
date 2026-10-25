@@ -228,7 +228,7 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     tw.tween_interval(0.22)
     tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
     tw.tween_property(
-        rig, "rotation:x", deg_to_rad(-48.0), 0.28
+        rig, "rotation:x", deg_to_rad(48.0), 0.28
     )
     tw.parallel().tween_property(
         rig, "position", Vector3(0.22, -0.18, -0.48), 0.28
