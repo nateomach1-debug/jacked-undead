@@ -55,6 +55,7 @@ func _ready() -> void:
     _build_stations()
     _build_signs()
     _build_lights()
+    _build_costumes()
 
 
 # ---------------------------------------------------------------- helpers
@@ -451,3 +452,19 @@ func _light(pos: Vector3, color: Color, light_range: float, energy: float) -> vo
     l.light_energy = energy
     l.shadow_enabled = false
     add_child(l)
+
+
+# ---------------------------------------------------------------- zombie costumes
+
+## Switches on Halloween zombie costumes (halloween_costume.gd). The costume
+## node only exists inside this map, so gym-map zombies stay as they are.
+func _build_costumes() -> void:
+    var s: Script = load("res://scripts/zombies/halloween_costume.gd") as Script
+    if s == null:
+        push_warning("Halloween: halloween_costume.gd is missing, zombies stay plain.")
+        return
+    var n: Node = s.new() as Node
+    if n == null:
+        return
+    n.name = "ZombieCostumes"
+    add_child(n)
