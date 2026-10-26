@@ -60,7 +60,6 @@ func _ready() -> void:
     call_deferred("_sync_playlist_with_scene")
     call_deferred("_apply_music_layout")
 
-    
 ## Reads the saved HUD layout again (the layout editor saves to a file).
 func _reload_layout() -> void:
     var layout_script = load(HUD_LAYOUT_PATH)
