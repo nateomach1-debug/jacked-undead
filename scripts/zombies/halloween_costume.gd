@@ -7,6 +7,8 @@ extends Node
 ## Co-op: the pick is seeded from the zombie's net id, so the host and every
 ## joined phone choose the same costume for the same zombie. The host assigns
 ## net ids a fraction of a second after a zombie spawns, so it waits for one.
+## Headshot pop: zombie_look.gd hides the whole head node, so when a headshot
+## kill happens the costume's head pieces are copied onto the flying head.
 ## Cheap: shared meshes and materials, no lights, no shadows, 7 to 14 small
 ## meshes per zombie.
 
@@ -15,6 +17,7 @@ const RAGER_SCRIPT_END: String = "scripts/zombies/roid_rager.gd"
 const COSTUME_COUNT: int = 10
 const ID_WAIT_TRIES: int = 12      # host: how many times to wait for the net id
 const ID_WAIT_TIME: float = 0.05   # seconds between those waits (12 x 0.05 = 0.6 s)
+const POP_COLOR: Color = Color(0.55, 0.62, 0.45)  # colour of the flying head in zombie_look.gd
 
 # Roid Rager fit: the costume is built for the normal zombie, and these resize it.
 # Head pieces are scaled together; body pieces are wider (x) and thicker (z).
@@ -62,6 +65,7 @@ func _dress(z) -> void:
 
     # Mount points: the Roid Rager's mounts resize the costume.
     var hr := Node3D.new()
+    hr.set_meta("halloween_part", true)  # copied onto the flying head on a headshot pop
     head.add_child(hr)
     var ur := Node3D.new()
     upper.add_child(ur)
@@ -71,8 +75,9 @@ func _dress(z) -> void:
         ur.position = RAGER_BODY_POS
         ur.scale = RAGER_BODY_SCALE
 
+    var kind: int = rng.randi() % COSTUME_COUNT
     var orange_eye := _mat("hw_eye", Color(1.0, 0.45, 0.05), 0.5, 4.0)
-    match rng.randi() % COSTUME_COUNT:
+    match kind:
         0:
             _pumpkin(hr, rng)
         1:
@@ -97,6 +102,14 @@ func _dress(z) -> void:
         _:
             _jester(hr, ur)
 
+    # Costumes that put a close-fitting shell over the face would show the
+    # zombie's hanging jaw sticking out in front, so hide it for those.
+    if kind == 4 or kind == 5 or kind == 6 or kind == 8:
+        _hide_jaw(z)
+
+    if not z.died.is_connected(_on_zombie_died):
+        z.died.connect(_on_zombie_died)
+
 
 ## Random numbers for this zombie's costume. Online, the seed comes from the
 ## net id so every phone gets the same result. Returns null when the host has
@@ -119,6 +132,44 @@ func _make_rng(z) -> RandomNumberGenerator:
     z.set_meta("hw_id_tries", tries + 1)
     get_tree().create_timer(ID_WAIT_TIME).timeout.connect(_dress.bind(z))
     return null
+
+
+static func _hide_jaw(z) -> void:
+    var jaw = z._look_data.get("jaw")
+    if jaw != null and is_instance_valid(jaw):
+        (jaw as Node3D).visible = false
+
+
+## Headshot kill: zombie_look.gd has hidden the head and made a plain flying
+## head in the scene. Copy the costume's head pieces onto that flying head.
+func _on_zombie_died(z) -> void:
+    if not is_instance_valid(z):
+        return
+    var head = z._head
+    if head == null or not is_instance_valid(head) or head.visible:
+        return  # not a head pop
+    var scene: Node = get_tree().current_scene
+    if scene == null:
+        return
+    var flying: Node3D = null
+    var i: int = scene.get_child_count() - 1
+    var checked: int = 0
+    while i >= 0 and checked < 6:
+        var c: Node = scene.get_child(i)
+        if c is Node3D and c.get_child_count() == 2:
+            var first = c.get_child(0)
+            if first is MeshInstance3D and first.material_override is StandardMaterial3D:
+                var col: Color = (first.material_override as StandardMaterial3D).albedo_color
+                if col.is_equal_approx(POP_COLOR):
+                    flying = c as Node3D
+                    break
+        i -= 1
+        checked += 1
+    if flying == null:
+        return
+    for part in head.get_children():
+        if part.has_meta("halloween_part"):
+            flying.add_child(part.duplicate())
 
 
 # ---------- costumes ----------
@@ -179,11 +230,10 @@ static func _mummy(head: Node3D, upper: Node3D, r: RandomNumberGenerator) -> voi
     # Loose strips hanging from the head.
     _put(head, _box_mesh(Vector3(0.035, 0.28, 0.01)), Vector3(0.12, 0.02, -0.06), wrap, Vector3.ONE, Vector3(0.0, 0.0, 0.12))
     _put(head, _box_mesh(Vector3(0.03, 0.2, 0.01)), Vector3(-0.1, 0.05, -0.1), wrap, Vector3.ONE, Vector3(0.0, 0.0, -0.1))
-    # Crossing strips on the chest.
-    var strip := _box_mesh(Vector3(0.44, 0.035, 0.02))
+    # Diagonal bands wrapped around the chest (flat rings that follow the torso).
     var dir: float = 1.0 if r.randf() < 0.5 else -1.0
     for y in [0.16, 0.28, 0.4]:
-        _put(upper, strip, Vector3(0.0, y, -0.16), wrap, Vector3.ONE, Vector3(0.0, 0.0, dir * 0.3))
+        _put(upper, _sphere(), Vector3(0.0, y, 0.0), wrap, Vector3(0.56, 0.045, 0.33), Vector3(0.0, 0.0, dir * 0.3))
         dir = -dir
 
 
@@ -217,13 +267,13 @@ static func _skeleton(head: Node3D, upper: Node3D) -> void:
     var tooth := _box_mesh(Vector3(0.012, 0.05, 0.022))
     for x in [-0.03, 0.0, 0.03]:
         _put(head, tooth, Vector3(x, 0.065, -0.132), bone)
-    # Ribcage over a dark chest: four ribs and a breastbone.
-    _put(upper, _box_mesh(Vector3(0.4, 0.36, 0.012)), Vector3(0.0, 0.27, -0.155), black)
+    # Ribcage: a dark chest with four flat bone rings around it and a breastbone.
+    _put(upper, _sphere(), Vector3(0.0, 0.27, 0.0), black, Vector3(0.545, 0.36, 0.315))
     var ys: Array[float] = [0.36, 0.29, 0.22, 0.15]
-    var ws: Array[float] = [0.3, 0.34, 0.32, 0.26]
+    var ws: Array[float] = [0.56, 0.58, 0.57, 0.54]
     for i in range(4):
-        _put(upper, _box_mesh(Vector3(ws[i], 0.028, 0.02)), Vector3(0.0, ys[i], -0.165), bone)
-    _put(upper, _box_mesh(Vector3(0.03, 0.3, 0.02)), Vector3(0.0, 0.255, -0.168), bone)
+        _put(upper, _sphere(), Vector3(0.0, ys[i], 0.0), bone, Vector3(ws[i], 0.028, 0.33))
+    _put(upper, _box_mesh(Vector3(0.03, 0.3, 0.02)), Vector3(0.0, 0.255, -0.166), bone)
 
 
 static func _devil(head: Node3D, upper: Node3D) -> void:
@@ -313,7 +363,7 @@ static func _scarecrow(head: Node3D, upper: Node3D, r: RandomNumberGenerator) ->
     _put(hat, _cyl_mesh(0.1, 0.115, 0.11), Vector3(0.0, 0.06, 0.0), crown)
     _put(hat, _cyl_mesh(0.118, 0.118, 0.03), Vector3(0.0, 0.03, 0.0), brown)
     # A patch on the chest.
-    _put(upper, _box_mesh(Vector3(0.13, 0.13, 0.012)), Vector3(0.1, 0.28, -0.16), patch, Vector3.ONE, Vector3(0.0, 0.0, 0.1))
+    _put(upper, _box_mesh(Vector3(0.13, 0.13, 0.012)), Vector3(0.1, 0.28, -0.15), patch, Vector3.ONE, Vector3(0.0, 0.0, 0.1))
 
 
 static func _jester(head: Node3D, upper: Node3D) -> void:
@@ -341,7 +391,8 @@ static func _jester(head: Node3D, upper: Node3D) -> void:
 
 
 ## Glowing eyes laid over the zombie's own eyes (the Roid Rager's sit lower).
-## Used by costumes that do not cover the head.
+## Used by costumes that do not cover the head. They sit directly on the head,
+## so they are marked to be copied onto the flying head on a headshot pop.
 static func _head_eyes(head: Node3D, rager: bool, mat: Material) -> void:
     var y: float = 0.19
     var z: float = -0.123
@@ -350,7 +401,10 @@ static func _head_eyes(head: Node3D, rager: bool, mat: Material) -> void:
         y = 0.12
         z = -0.132
         x = 0.06
-    _eye_pair(head, x, y, z, mat)
+    var m := _box_mesh(Vector3(0.065, 0.05, 0.02))
+    for sx in [-1.0, 1.0]:
+        var eye: MeshInstance3D = _put(head, m, Vector3(sx * x, y, z), mat)
+        eye.set_meta("halloween_part", true)
 
 
 static func _eye_pair(parent: Node3D, x: float, y: float, z: float, mat: Material) -> void:
