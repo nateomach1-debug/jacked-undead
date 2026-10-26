@@ -172,7 +172,8 @@ func _spawn_pumpkin_boss() -> void:
 	# Find the actual ground before creating the boss.
 	var ground_y: float = _find_pumpkin_ground_y(spawn_origin)
 
-	    if is_nan(ground_y):
+	    
+    if is_nan(ground_y):
         push_warning(
             "RoundManager: Could not find valid ground for Great Pumpkin. "
             + "Boss spawn cancelled."
@@ -182,6 +183,7 @@ func _spawn_pumpkin_boss() -> void:
         _round_total = maxi(_round_total - 1, _round_killed)
         _emit_counts()
         return
+
 
     var boss := pumpkin_boss_scene.instantiate() as Zombie
 
