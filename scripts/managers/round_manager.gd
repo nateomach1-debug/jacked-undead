@@ -18,6 +18,7 @@ const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
 
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
+@export var pumpkin_boss_scene: PackedScene
 @export var base_zombies_per_round: int = 6
 @export var zombies_per_round_growth: int = 3
 @export var time_between_spawns: float = 1.2
@@ -33,6 +34,7 @@ var _spawn_points: Array = []
 var _round_active: bool = false
 var _round_total: int = 0
 var _round_killed: int = 0
+var _last_boss_spawn_round: int = -999
 var _leash_timer: float = 1.0
 var _powerups = null
 
@@ -74,21 +76,31 @@ func get_zombies_remaining() -> int:
 func _start_round() -> void:
     _round_active = true
     _round_killed = 0
-    _round_total = base_zombies_per_round + (GameManager.round_number - 1) * zombies_per_round_growth
+
+    var normal_count: int = base_zombies_per_round \
+        + (GameManager.round_number - 1) * zombies_per_round_growth
+    var spawn_boss: bool = _should_spawn_pumpkin()
+
+    _round_total = normal_count + (1 if spawn_boss else 0)
+
     if _powerups != null:
         _powerups.on_round_start(_round_total)
+
     _emit_counts()
-    _spawn_wave(_round_total)
+    _spawn_wave(normal_count, spawn_boss)
 
 
-func _spawn_wave(count: int) -> void:
+func _spawn_wave(count: int, spawn_boss: bool = false) -> void:
     if _spawn_points.is_empty() or not zombie_scene:
         push_warning("RoundManager: no spawn points or zombie_scene, nothing to spawn.")
         return
+
     for i in range(count):
         await get_tree().create_timer(time_between_spawns).timeout
         _spawn_one_zombie()
 
+    if spawn_boss:
+        _spawn_pumpkin_boss()
 
 func _spawn_one_zombie() -> void:
     var scene_to_use: PackedScene = zombie_scene
@@ -102,6 +114,56 @@ func _spawn_one_zombie() -> void:
     zombie.global_position = point.global_position
     zombie.died.connect(_on_zombie_died)
 
+func _should_spawn_pumpkin() -> bool:
+    if pumpkin_boss_scene == null:
+        return false
+
+    var scene := get_tree().current_scene
+    if scene == null or scene.scene_file_path.get_file() != "halloween_map.tscn":
+        return false
+
+    var round_num: int = GameManager.round_number
+    if round_num < 5:
+        return false
+
+    if round_num - _last_boss_spawn_round < 5:
+        return false
+
+    for node in get_tree().get_nodes_in_group("great_pumpkin"):
+        if is_instance_valid(node) and not node.is_queued_for_deletion():
+            return false
+
+    return randf() < 0.15
+
+
+func _spawn_pumpkin_boss() -> void:
+    if pumpkin_boss_scene == null:
+        return
+
+    var candidates: Array[Marker3D] = []
+    for point in _spawn_points:
+        if not is_instance_valid(point):
+            continue
+
+        if str(point.get_meta("zone", "")) == "graveyard" \
+                and absf(point.global_position.x) >= 6.0:
+            candidates.append(point as Marker3D)
+
+    var spawn_position: Vector3 = Vector3(-7.0, 2.2, -4.0)
+    if not candidates.is_empty():
+        var point: Marker3D = candidates[randi_range(0, candidates.size() - 1)]
+        spawn_position = point.global_position + Vector3(0.0, 1.2, 0.0)
+
+    var boss := pumpkin_boss_scene.instantiate() as Zombie
+    if boss == null:
+        push_warning("RoundManager: Great Pumpkin scene is not a Zombie.")
+        return
+
+    get_tree().current_scene.add_child(boss)
+    boss.global_position = spawn_position
+    boss.died.connect(_on_zombie_died)
+
+    _last_boss_spawn_round = GameManager.round_number
 
 ## Only unlocked zones, not too close to the player, random among the nearest few.
 func _pick_spawn_point() -> Marker3D:
