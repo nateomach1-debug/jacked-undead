@@ -123,6 +123,28 @@ func _update_phase() -> void:
     if _face_material != null:
         _face_material.albedo_color = Color(0.18, 0.015, 0.005)
 
+func apply_network_state(
+    health_value: float,
+    max_health_value: float,
+    phase_value: bool
+) -> void:
+    current_health = health_value
+    max_health = maxf(max_health_value, 1.0)
+    phase_two = phase_value
+
+    if phase_two:
+        move_speed = BASE_MOVE_SPEED * PHASE_TWO_SPEED_MULTIPLIER
+
+        if _pumpkin_material != null:
+            _pumpkin_material.albedo_color = Color(0.85, 0.12, 0.025)
+            _pumpkin_material.emission = Color(0.9, 0.04, 0.01)
+            _pumpkin_material.emission_energy_multiplier = 0.45
+            _pumpkin_material.emission_enabled = true
+
+        if _face_material != null:
+            _face_material.albedo_color = Color(0.18, 0.015, 0.005)
+    else:
+        move_speed = BASE_MOVE_SPEED
 
 func is_headshot(world_hit_position: Vector3) -> bool:
     if _head == null or not is_instance_valid(_head):
