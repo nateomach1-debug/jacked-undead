@@ -106,7 +106,7 @@ func _ready() -> void:
             scene_file = scene.scene_file_path.get_file()
 
         # Generated maps place all supplements through the map generator.
-                if scene_file != "generated_gym_map.tscn" and scene_file != "swarm_underground_map.tscn" and scene_file != "halloween_map.tscn":
+        if scene_file != "generated_gym_map.tscn" and scene_file != "swarm_underground_map.tscn" and scene_file != "halloween_map.tscn":
             _spawn_extras.call_deferred()
 
 
