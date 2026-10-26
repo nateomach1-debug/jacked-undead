@@ -150,7 +150,8 @@ func _spawn_pumpkin_boss() -> void:
     var spawn_position: Vector3 = Vector3(-7.0, 2.2, -4.0)
     if not candidates.is_empty():
         var point: Marker3D = candidates[randi_range(0, candidates.size() - 1)]
-        spawn_position = point.global_position + Vector3(0.0, 1.2, 0.0)
+        spawn_position = point.global_position
+        spawn_position.y = 2.2
 
     var boss := pumpkin_boss_scene.instantiate() as Zombie
     if boss == null:
