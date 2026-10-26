@@ -399,9 +399,11 @@ func _build_stations() -> void:
     # Haunted house
     _supplement("pre_workout", "Pre-Workout", 2000, Color(0.8392, 0.6196, 0.1804), Vector3(-31.2, STATION_Y, -17), Vector2(1, 0))
     _supplement("bcaas", "BCAAs", 1500, Color(0.2196, 0.6314, 0.4118), Vector3(-31.2, STATION_Y, -28), Vector2(1, 0))
+    _supplement("glutamine", "GLUTAMINE", 3000, Color(0.6, 0.25, 0.9), Vector3(-24, STATION_Y, -28), Vector2(1, 0))
     # Crypt
     _supplement("whey", "Whey Protein", 2500, Color(0.4196, 0.2745, 0.7569), Vector3(31.2, STATION_Y, -14.5), Vector2(-1, 0))
     _supplement("fish_oil", "Fish Oil", 3000, Color(0.1922, 0.5922, 0.5843), Vector3(31.2, STATION_Y, -28.5), Vector2(-1, 0))
+    _supplement("collagen", "COLLAGEN", 2000, Color(1.0, 0.2, 0.6), Vector3(24, STATION_Y, -28), Vector2(-1, 0))
     _place("res://scenes/stations/loot_locker.tscn", "LootLockerCrypt", Vector3(18, 0, -31.4), 0.0, {})
 
 
