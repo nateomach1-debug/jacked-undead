@@ -16,6 +16,7 @@ const ROWS: Array = [
     {"key": "zombie_damage", "title": "Zombie damage (HP/hit)", "kind": "flat", "steps": [-1.0, 0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 35.0, 50.0, 75.0, 100.0]},
     {"key": "locker_cost", "title": "Loot Locker cost", "kind": "flat", "steps": [-1.0, 0.0, 100.0, 250.0, 500.0, 950.0, 1500.0, 2500.0, 5000.0]},
     {"key": "wall_scale", "title": "Wall buy prices", "kind": "pct", "steps": [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]},
+    {"key": "door_scale", "title": "Door buy prices", "kind": "pct", "steps": [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]},
     {"key": "supp_scale", "title": "Supplement prices", "kind": "pct", "steps": [0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]},
     {"key": "pr_cost", "title": "PR Rack cost", "kind": "flat", "steps": [-1.0, 0.0, 500.0, 1000.0, 2500.0, 5000.0, 7500.0, 10000.0]},
     {"key": "ending_cost", "title": "Ending cost", "kind": "flat", "steps": [-1.0, 0.0, 1000.0, 5000.0, 10000.0, 25000.0, 50000.0, 75000.0, 100000.0]},
