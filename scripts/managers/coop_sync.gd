@@ -260,8 +260,6 @@ func _receive_zombie_death(net_id: int, was_headshot: bool) -> void:
         z.queue_free()
 
 ## Other phones: create / move / remove puppet zombies, update round + counter.
-@rpc("authority", "call_remote", "unreliable")
-
 func broadcast_pumpkin_state(
     net_id: int,
     current_health: float,
@@ -347,6 +345,7 @@ func _receive_pumpkin_bombs(
     if boss != null and is_instance_valid(boss) and boss.has_method("show_network_bombs"):
         boss.show_network_bombs(start, targets)
 
+@rpc("authority", "call_remote", "unreliable")
 func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions: PackedVector3Array, yaws: PackedFloat32Array, round_num: int, remaining: int, total: int) -> void:
     if GameManager.round_number != round_num:
         GameManager.round_number = round_num
