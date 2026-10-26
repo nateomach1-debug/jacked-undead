@@ -416,11 +416,12 @@ func _damage_players(center: Vector3, radius: float, damage: float) -> void:
 
 
 func _player_is_out(player: Node) -> bool:
-    return bool(player.get("is_downed")) \
-        or bool(player.get("is_dead")) \
-        or bool(player.get_meta("downed", false)) \
+    return (
+        bool(player.get("is_downed"))
+        or bool(player.get("is_dead"))
+        or bool(player.get_meta("downed", false))
         or bool(player.get_meta("dead", false))
-
+    )
 
 func _spawn_corpse() -> void:
     var scene := get_tree().current_scene
