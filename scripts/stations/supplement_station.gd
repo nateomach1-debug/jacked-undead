@@ -98,14 +98,17 @@ func _ready() -> void:
 
     var others: Array = get_tree().get_nodes_in_group("supplement_station")
     others.erase(self)
-    if not is_extra and others.is_empty():
-    var scene: Node = get_tree().current_scene
-    var scene_file: String = ""
-    if scene != null:
-        scene_file = scene.scene_file_path.get_file()
 
-    if scene_file != "generated_gym_map.tscn":
-        _spawn_extras.call_deferred()
+    if not is_extra and others.is_empty():
+        var scene: Node = get_tree().current_scene
+        var scene_file: String = ""
+        if scene != null:
+            scene_file = scene.scene_file_path.get_file()
+
+        # Generated maps place all supplements through the map generator.
+        if scene_file != "generated_gym_map.tscn" \
+        and scene_file != "swarm_underground_map.tscn":
+            _spawn_extras.call_deferred()
 
 
 ## Custom mode (supplements OFF): hide the machine and make it unusable and
