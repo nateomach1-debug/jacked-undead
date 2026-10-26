@@ -24,5 +24,4 @@ func _ready() -> void:
             pause_menu.process_mode = Node.PROCESS_MODE_ALWAYS
             add_child(pause_menu)
         else:
-            push_warning("Testing pause menu script could not be loaded."
-)
+            push_warning("Testing pause menu script could not be loaded.")
