@@ -53,15 +53,16 @@ func _ready() -> void:
 
 
 func interact(_player: Node) -> void:
-    if _opened:
-        return
-    var buy_cost: int = GameManager.door_cost(cost)
-    if not GameManager.try_spend_gains(buy_cost):
-        return
-    _opened = true
-    NetManager.announce_door_opened(get_path())
-    GameManager.open_barrier(unlocks_zones)
-    queue_free()
+	if _opened:
+		return
+	var buy_cost: int = GameManager.door_cost(cost)
+	if not GameManager.try_spend_gains(buy_cost):
+		return
+	_opened = true
+	NetManager.announce_door_opened(get_path())
+	GameManager.open_barrier(unlocks_zones)
+	queue_free()
+
 
 ## Co-op: another phone bought this door, so open it here without charging.
 func remote_open() -> void:
@@ -73,8 +74,8 @@ func remote_open() -> void:
 
 
 func get_prompt_text() -> String:
-    var buy_cost: int = GameManager.door_cost(cost)
-    return "Tap USE to open %s - %d Gains" % [display_name, buy_cost]
+	var buy_cost: int = GameManager.door_cost(cost)
+	return "Tap USE to open %s - %d Gains" % [display_name, buy_cost]
 
 
 func get_prompt_color() -> Color:
