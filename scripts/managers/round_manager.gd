@@ -77,8 +77,7 @@ func _start_round() -> void:
     _round_active = true
     _round_killed = 0
 
-    var normal_count: int = base_zombies_per_round \
-        + (GameManager.round_number - 1) * zombies_per_round_growth
+    var normal_count: int = base_zombies_per_round + (GameManager.round_number - 1) * zombies_per_round_growth
     var spawn_boss: bool = _should_spawn_pumpkin()
 
     _round_total = normal_count + (1 if spawn_boss else 0)
