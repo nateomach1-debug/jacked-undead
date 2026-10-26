@@ -172,20 +172,16 @@ func _spawn_pumpkin_boss() -> void:
 	# Find the actual ground before creating the boss.
 	var ground_y: float = _find_pumpkin_ground_y(spawn_origin)
 
-	if is_nan(ground_y):
-		push_warning(
-			"RoundManager: Could not find valid ground for Great Pumpkin. "
-			+ "Boss spawn cancelled."
-		)
-		return
+	    if is_nan(ground_y):
+        push_warning(
+            "RoundManager: Could not find valid ground for Great Pumpkin. "
+            + "Boss spawn cancelled."
+        )
 
-	var boss := pumpkin_boss_scene.instantiate() as Zombie
-
-	if boss == null:
-		push_warning(
-			"RoundManager: Great Pumpkin scene is not a Zombie."
-		)
-		return
+        # The boss was included in the round total but did not spawn.
+        _round_total = maxi(_round_total - 1, _round_killed)
+        _emit_counts()
+        return
 
 	var capsule_height: float = 5.8
 	var shape_node := boss.get_node_or_null(
@@ -251,7 +247,7 @@ func _find_pumpkin_ground_y(origin: Vector3) -> float:
 			break
 
 		var hit_position: Vector3 = hit["position"]
-		var hit_normal: Vector3 = hit["normal"]
+        var hit_normal: Vector3 = hit["normal"] 
 
 		excluded.append(hit["rid"])
 
