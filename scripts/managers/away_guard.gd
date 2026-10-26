@@ -25,8 +25,11 @@ func _notification(what: int) -> void:
 
 
 func _punish() -> void:
+    if GameManager.TESTING_PAUSE_ENABLED:
+        return
     if get_tree().paused:
         return
+
     var player = get_tree().get_first_node_in_group("player")
     if player == null or player.is_downed or player.is_dead:
         return
