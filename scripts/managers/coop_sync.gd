@@ -9,6 +9,7 @@ const SEND_INTERVAL: float = 1.0 / 15.0
 const ZOMBIE_INTERVAL: float = 1.0 / 15.0
 const ZOMBIE_SCENE: String = "res://scenes/zombies/zombie.tscn"
 const RAGER_SCENE: String = "res://scenes/zombies/roid_rager.tscn"
+const PUMPKIN_SCENE: String = "res://scenes/zombies/great_pumpkin.tscn"
 
 var _local_player: Node3D
 var _round_manager = null
@@ -16,6 +17,7 @@ var _remotes: Dictionary = {}         # peer id -> player capsule
 var _targets: Dictionary = {}         # peer id -> {"pos", "yaw", "state", "bleed", "progress"}
 var _puppets: Dictionary = {}         # zombie net id -> puppet zombie (non-host phones)
 var _puppet_targets: Dictionary = {}  # zombie net id -> {"from_pos", "to_pos", "from_yaw", "to_yaw", "elapsed"}
+var _pending_pumpkin_states: Dictionary = {}
 var _timer: float = 0.0
 var _zombie_timer: float = 0.0
 var _next_zombie_id: int = 1
@@ -191,16 +193,28 @@ func _send_zombies() -> void:
     var kinds := PackedInt32Array()
     var positions := PackedVector3Array()
     var yaws := PackedFloat32Array()
+
     for n in get_tree().get_nodes_in_group("zombies"):
         var z := n as Node3D
         if z == null or not is_instance_valid(z) or z.is_queued_for_deletion():
             continue
+
         if not z.has_meta("net_id"):
             z.set_meta("net_id", _next_zombie_id)
             _next_zombie_id += 1
-        var is_rager: bool = z.scene_file_path == RAGER_SCENE or float(z.get("max_health")) >= 250.0
+
+        var script_res := z.get_script() as Script
+        var is_pumpkin: bool = (
+            z.scene_file_path == PUMPKIN_SCENE
+            or (script_res != null and script_res.resource_path.ends_with("great_pumpkin.gd"))
+        )
+        var is_rager: bool = (
+            not is_pumpkin
+            and (z.scene_file_path == RAGER_SCENE or float(z.get("max_health")) >= 250.0)
+        )
+
         ids.append(int(z.get_meta("net_id")))
-        kinds.append(1 if is_rager else 0)
+        kinds.append(2 if is_pumpkin else (1 if is_rager else 0))
         positions.append(z.global_position)
         yaws.append(z.rotation.y)
 
@@ -209,7 +223,16 @@ func _send_zombies() -> void:
     if _round_manager != null:
         remaining = _round_manager.get_zombies_remaining()
         total = _round_manager.get_zombies_total()
-    _receive_zombies.rpc(ids, kinds, positions, yaws, GameManager.round_number, remaining, total)
+
+    _receive_zombies.rpc(
+        ids,
+        kinds,
+        positions,
+        yaws,
+        GameManager.round_number,
+        remaining,
+        total
+    )
 
 ## Host: broadcast a confirmed zombie death to joined devices.
 func broadcast_zombie_death(net_id: int, was_headshot: bool) -> void:
@@ -238,6 +261,92 @@ func _receive_zombie_death(net_id: int, was_headshot: bool) -> void:
 
 ## Other phones: create / move / remove puppet zombies, update round + counter.
 @rpc("authority", "call_remote", "unreliable")
+
+func broadcast_pumpkin_state(
+    net_id: int,
+    current_health: float,
+    max_health: float,
+    phase_two: bool
+) -> void:
+    if not NetManager.is_host:
+        return
+
+    _receive_pumpkin_state.rpc(net_id, current_health, max_health, phase_two)
+
+
+@rpc("authority", "call_remote", "unreliable")
+func _receive_pumpkin_state(
+    net_id: int,
+    current_health: float,
+    max_health: float,
+    phase_two: bool
+) -> void:
+    var state: Dictionary = {
+        "current_health": current_health,
+        "max_health": max_health,
+        "phase_two": phase_two
+    }
+
+    _pending_pumpkin_states[net_id] = state
+    var boss = _puppets.get(net_id)
+    if boss != null and is_instance_valid(boss):
+        _apply_pumpkin_state(boss, state)
+
+
+func _apply_pumpkin_state(boss: Node, state: Dictionary) -> void:
+    if boss.has_method("apply_network_state"):
+        boss.apply_network_state(
+            float(state["current_health"]),
+            float(state["max_health"]),
+            bool(state["phase_two"])
+        )
+    else:
+        boss.set("current_health", float(state["current_health"]))
+        boss.set("max_health", float(state["max_health"]))
+        boss.set("phase_two", bool(state["phase_two"]))
+
+
+func broadcast_pumpkin_slam(
+    net_id: int,
+    pos: Vector3,
+    radius: float,
+    duration: float
+) -> void:
+    if NetManager.is_host:
+        _receive_pumpkin_slam.rpc(net_id, pos, radius, duration)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _receive_pumpkin_slam(
+    net_id: int,
+    pos: Vector3,
+    radius: float,
+    duration: float
+) -> void:
+    var boss = _puppets.get(net_id)
+    if boss != null and is_instance_valid(boss) and boss.has_method("show_slam_visual"):
+        boss.show_slam_visual(pos, radius, duration)
+
+
+func broadcast_pumpkin_bombs(
+    net_id: int,
+    start: Vector3,
+    targets: PackedVector3Array
+) -> void:
+    if NetManager.is_host:
+        _receive_pumpkin_bombs.rpc(net_id, start, targets)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _receive_pumpkin_bombs(
+    net_id: int,
+    start: Vector3,
+    targets: PackedVector3Array
+) -> void:
+    var boss = _puppets.get(net_id)
+    if boss != null and is_instance_valid(boss) and boss.has_method("show_network_bombs"):
+        boss.show_network_bombs(start, targets)
+
 func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions: PackedVector3Array, yaws: PackedFloat32Array, round_num: int, remaining: int, total: int) -> void:
     if GameManager.round_number != round_num:
         GameManager.round_number = round_num
@@ -279,22 +388,36 @@ func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions:
                 node.queue_free()
             _puppets.erase(id)
             _puppet_targets.erase(id)
+            _pending_pumpkin_states.erase(net_id)
 
 
 func _make_puppet(kind: int, at: Vector3, net_id: int):
-    var scene = load(RAGER_SCENE if kind == 1 else ZOMBIE_SCENE)
+    var scene_path: String = ZOMBIE_SCENE
+    if kind == 1:
+        scene_path = RAGER_SCENE
+    elif kind == 2:
+        scene_path = PUMPKIN_SCENE
+
+    var scene = load(scene_path)
     if scene == null:
+        push_warning("CoopSync: could not load zombie puppet scene: " + scene_path)
         return null
+
     var z = scene.instantiate()
     z.is_puppet = true
     z.set_meta("net_id", net_id)
-    z.collision_layer = 4  # shootable: shots at it are forwarded to the host
+    z.collision_layer = 4
     z.collision_mask = 0
     z.set_physics_process(false)
+
     get_parent().add_child(z)
     z.global_position = at
-    return z
 
+    if kind == 2 and _pending_pumpkin_states.has(net_id):
+        var state: Dictionary = _pending_pumpkin_states[net_id]
+        _apply_pumpkin_state(z, state)
+
+    return z
 
 # ---------- shooting ----------
 
