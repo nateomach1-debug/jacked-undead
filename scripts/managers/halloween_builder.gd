@@ -56,6 +56,7 @@ func _ready() -> void:
     _build_signs()
     _build_lights()
     _build_costumes()
+    _build_banner()
 
 
 # ---------------------------------------------------------------- helpers
@@ -469,4 +470,20 @@ func _build_costumes() -> void:
     if n == null:
         return
     n.name = "ZombieCostumes"
+    add_child(n)
+
+
+# ---------------------------------------------------------------- limited-time banner
+
+## Shows the "LIMITED TIME - 2X JUICE" banner at the start of a run
+## (halloween_banner.gd removes itself after a few seconds).
+func _build_banner() -> void:
+    var s: Script = load("res://scripts/managers/halloween_banner.gd") as Script
+    if s == null:
+        push_warning("Halloween: halloween_banner.gd is missing, no banner.")
+        return
+    var n: Node = s.new() as Node
+    if n == null:
+        return
+    n.name = "LimitedTimeBanner"
     add_child(n)
