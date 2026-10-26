@@ -100,6 +100,4 @@ func _set_paused(paused: bool) -> void:
 
     if paused:
         Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-    elif not OS.has_feature("mobile"):
-        Input.mouse_mode =
-        Input.MOUSE_MODE_CAPTURED
+        Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
