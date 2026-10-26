@@ -27,7 +27,7 @@ const BOMB_RADIUS: float = 3.5
 const BOMB_FLIGHT_SECONDS: float = 1.3
 const BOMBS_PER_VOLLEY: int = 3
 
-const HEADSHOT_MARGIN: float = 0.55
+const HEADSHOT_MARGIN: float = 0.28
 const BOSS_UI_PATH: String = "res://scripts/ui/boss_health_bar.gd"
 const BOMB_SCRIPT_PATH: String = "res://scripts/zombies/pumpkin_bomb.gd"
 const SUPPLEMENT_DROP_PATH: String = "res://scripts/pickups/supplement_reward_drop.gd"
@@ -118,6 +118,7 @@ func _update_phase() -> void:
         _pumpkin_material.albedo_color = Color(0.85, 0.12, 0.025)
         _pumpkin_material.emission = Color(0.9, 0.04, 0.01)
         _pumpkin_material.emission_energy_multiplier = 0.45
+        _pumpkin_material.emission_enabled = true
 
     if _face_material != null:
         _face_material.albedo_color = Color(0.18, 0.015, 0.005)
