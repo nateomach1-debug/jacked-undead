@@ -144,35 +144,33 @@ func _should_spawn_pumpkin() -> bool:
     return randf() < 0.15
 
 
-
 func _spawn_pumpkin_boss() -> void:
-	if pumpkin_boss_scene == null:
-		return
+    if pumpkin_boss_scene == null:
+        return
 
-	var candidates: Array[Marker3D] = []
+    var candidates: Array[Marker3D] = []
 
-	for point in _spawn_points:
-		if not is_instance_valid(point):
-			continue
+    for point in _spawn_points:
+        if not is_instance_valid(point):
+            continue
 
-		if (
-			str(point.get_meta("zone", "")) == "graveyard"
-			and absf(point.global_position.x) >= 6.0
-		):
-			candidates.append(point as Marker3D)
+        if (
+            str(point.get_meta("zone", "")) == "graveyard"
+            and absf(point.global_position.x) >= 6.0
+        ):
+            candidates.append(point as Marker3D)
 
-	var spawn_origin: Vector3 = Vector3(-7.0, 0.0, -4.0)
+    var spawn_origin: Vector3 = Vector3(-7.0, 0.0, -4.0)
 
-	if not candidates.is_empty():
-		var point: Marker3D = candidates[
-			randi_range(0, candidates.size() - 1)
-		]
-		spawn_origin = point.global_position
+    if not candidates.is_empty():
+        var point: Marker3D = candidates[
+            randi_range(0, candidates.size() - 1)
+        ]
+        spawn_origin = point.global_position
 
-	# Find the actual ground before creating the boss.
-	var ground_y: float = _find_pumpkin_ground_y(spawn_origin)
+    # Find the actual ground before creating the boss.
+    var ground_y: float = _find_pumpkin_ground_y(spawn_origin)
 
-	    
     if is_nan(ground_y):
         push_warning(
             "RoundManager: Could not find valid ground for Great Pumpkin. "
@@ -184,107 +182,106 @@ func _spawn_pumpkin_boss() -> void:
         _emit_counts()
         return
 
-
-    var boss := pumpkin_boss_scene.instantiate() as Zombie
+    var boss_node: Node = pumpkin_boss_scene.instantiate()
+    var boss := boss_node as Zombie
 
     if boss == null:
         push_warning(
             "RoundManager: Great Pumpkin scene is not a Zombie."
         )
+        boss_node.free()
         _round_total = maxi(_round_total - 1, _round_killed)
         _emit_counts()
         return
 
-	var capsule_height: float = 5.8
-	var shape_node := boss.get_node_or_null(
-		"CollisionShape3D"
-	) as CollisionShape3D
+    var capsule_height: float = 5.8
+    var shape_node := boss.get_node_or_null(
+        "CollisionShape3D"
+    ) as CollisionShape3D
 
-	if shape_node != null and shape_node.shape is CapsuleShape3D:
-		capsule_height = (
-			shape_node.shape as CapsuleShape3D
-		).height
+    if shape_node != null and shape_node.shape is CapsuleShape3D:
+        capsule_height = (
+            shape_node.shape as CapsuleShape3D
+        ).height
 
-	get_tree().current_scene.add_child(boss)
+    get_tree().current_scene.add_child(boss)
 
-	# CharacterBody3D is positioned at the capsule's center.
-	# Place the bottom of the capsule on the detected ground.
-	boss.global_position = Vector3(
-		spawn_origin.x,
-		ground_y + capsule_height * 0.5,
-		spawn_origin.z
-	)
+    # CharacterBody3D is positioned at the capsule's center.
+    # Place the bottom of the capsule on the detected ground.
+    boss.global_position = Vector3(
+        spawn_origin.x,
+        ground_y + capsule_height * 0.5,
+        spawn_origin.z
+    )
 
-	boss.died.connect(_on_zombie_died)
+    boss.died.connect(_on_zombie_died)
 
-	_last_boss_spawn_round = GameManager.round_number
+    _last_boss_spawn_round = GameManager.round_number
 
-	if force_pumpkin_spawn_for_testing:
-		_test_pumpkin_spawned = true
+    if force_pumpkin_spawn_for_testing:
+        _test_pumpkin_spawned = true
+
 
 
 func _find_pumpkin_ground_y(origin: Vector3) -> float:
-	var scene := get_tree().current_scene
+    var scene := get_tree().current_scene
 
-	if scene == null:
-		return NAN
+    if scene == null:
+        return NAN
 
-	var world := scene.get_world_3d()
+    var world := scene.get_world_3d()
 
-	if world == null:
-		return NAN
+    if world == null:
+        return NAN
 
-	var space_state := world.direct_space_state
+    var space_state := world.direct_space_state
 
-	# Search below and above the marker, allowing for elevated
-	# decorations while limiting how far below the marker we search.
-	var ray_start: Vector3 = origin + Vector3(0.0, 10.0, 0.0)
-	var ray_end: Vector3 = origin + Vector3(0.0, -6.0, 0.0)
+    # Search above and below the spawn marker.
+    var ray_start: Vector3 = origin + Vector3(0.0, 10.0, 0.0)
+    var ray_end: Vector3 = origin + Vector3(0.0, -6.0, 0.0)
 
-	var excluded: Array[RID] = []
-	var lowest_ground_y: float = NAN
+    var excluded: Array[RID] = []
+    var lowest_ground_y: float = NAN
 
-	# Inspect multiple surfaces instead of accepting the first hit.
-	for attempt in range(16):
-		var query := PhysicsRayQueryParameters3D.create(
-			ray_start,
-			ray_end,
-			1
-		)
-		query.exclude = excluded
+    # Inspect multiple surfaces instead of accepting the first hit.
+    for attempt in range(16):
+        var query := PhysicsRayQueryParameters3D.create(
+            ray_start,
+            ray_end,
+            1
+        )
+        query.exclude = excluded
 
-		var hit: Dictionary = space_state.intersect_ray(query)
+        var hit: Dictionary = space_state.intersect_ray(query)
 
-		if hit.is_empty():
-			break
+        if hit.is_empty():
+            break
 
-		var hit_position: Vector3 = hit["position"]
-        var hit_normal: Vector3 = hit["normal"] 
+        var hit_position: Vector3 = hit["position"]
+        var hit_normal: Vector3 = hit["normal"]
 
-		excluded.append(hit["rid"])
+        excluded.append(hit["rid"])
 
-		# Ignore walls, steep surfaces, and surfaces well above
-		# the spawn marker.
-		if hit_normal.y < 0.65:
-			continue
+        # Ignore walls and steep surfaces.
+        if hit_normal.y < 0.65:
+            continue
 
-		if hit_position.y > origin.y + 0.35:
-			continue
+        # Ignore surfaces above the spawn marker.
+        if hit_position.y > origin.y + 0.35:
+            continue
 
-		# Reject surfaces more than 4 metres below the marker.
-		if hit_position.y < origin.y - 4.0:
-			continue
+        # Reject surfaces more than 4 metres below the marker.
+        if hit_position.y < origin.y - 4.0:
+            continue
 
-		# Keep the lowest valid surface in the search range.
-		# This helps avoid choosing the top of a low decoration.
-		if (
-			is_nan(lowest_ground_y)
-			or hit_position.y < lowest_ground_y
-		):
-			lowest_ground_y = hit_position.y
+        # Keep the lowest valid surface found.
+        if (
+            is_nan(lowest_ground_y)
+            or hit_position.y < lowest_ground_y
+        ):
+            lowest_ground_y = hit_position.y
 
-	return lowest_ground_y
-
+    return lowest_ground_y
 
 ## Only unlocked zones, not too close to the player, random among the nearest few.
 func _pick_spawn_point() -> Marker3D:
