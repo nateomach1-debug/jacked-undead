@@ -96,6 +96,8 @@ func _sync_playlist_with_scene() -> void:
 func _on_scene_changed(scene: Node) -> void:
     _update_playlist_for_scene(scene)
 
+func set_playlist_for_scene(scene: Node) -> void:
+    _update_playlist_for_scene(scene)
 
 func _update_playlist_for_scene(scene: Node) -> void:
     var use_halloween := false
