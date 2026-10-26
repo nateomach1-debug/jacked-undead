@@ -88,20 +88,46 @@ func get_zombies_remaining() -> int:
 
 
 func _start_round() -> void:
-    _round_active = true
+    _refresh_spawn_points()
+
+    if _spawn_points.is_empty():
+        _round_active = false
+        _round_total = 0
+        _round_killed = 0
+        push_warning(
+            "RoundManager: Cannot start round. "
+            + "No valid Marker3D nodes found in group 'spawn_points'."
+        )
+        _emit_counts()
+        return
+
+    if zombie_scene == null:
+        _round_active = false
+        _round_total = 0
+        _round_killed = 0
+        push_warning(
+            "RoundManager: Cannot start spawning. "
+            + "zombie_scene is not assigned."
+        )
+        _emit_counts()
+        return
+
     _round_killed = 0
 
-    var normal_count: int = base_zombies_per_round + (GameManager.round_number - 1) * zombies_per_round_growth
+    var normal_count: int = (
+        base_zombies_per_round
+        + (GameManager.round_number - 1) * zombies_per_round_growth
+    )
     var spawn_boss: bool = _should_spawn_pumpkin()
 
     _round_total = normal_count + (1 if spawn_boss else 0)
+    _round_active = true
 
     if _powerups != null:
         _powerups.on_round_start(_round_total)
 
     _emit_counts()
     _spawn_wave(normal_count, spawn_boss)
-
 
 func _spawn_wave(count: int, spawn_boss: bool = false) -> void:
     if _spawn_points.is_empty() or not zombie_scene:
