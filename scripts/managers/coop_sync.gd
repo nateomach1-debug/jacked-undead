@@ -387,7 +387,7 @@ func _receive_zombies(ids: PackedInt32Array, kinds: PackedInt32Array, positions:
                 node.queue_free()
             _puppets.erase(id)
             _puppet_targets.erase(id)
-            _pending_pumpkin_states.erase(net_id)
+            _pending_pumpkin_states.erase(id)
 
 
 func _make_puppet(kind: int, at: Vector3, net_id: int):
