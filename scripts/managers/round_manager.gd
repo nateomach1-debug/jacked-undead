@@ -36,7 +36,7 @@ var _round_active: bool = false
 var _round_total: int = 0
 var _round_killed: int = 0
 var _last_boss_spawn_round: int = -999
-var _test_pumpkin_spawned: bool = true
+var _test_pumpkin_spawned: bool = false
 var _leash_timer: float = 1.0
 var _powerups = null
 
