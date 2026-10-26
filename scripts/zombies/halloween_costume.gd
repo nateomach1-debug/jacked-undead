@@ -2,10 +2,12 @@ extends Node
 ## Halloween zombie costumes. Lives only inside the Halloween map (added by
 ## halloween_builder.gd), so gym-map zombies are never touched. Watches for new
 ## zombies and gives each a random costume: pumpkin head, witch hat, mummy
-## wraps or ghost sheet. Cheap: shared meshes and materials, no lights, no
-## shadows, 3 to 10 small meshes per zombie.
+## wraps or ghost sheet. The Roid Rager gets one too, sized up to fit him.
+## Cheap: shared meshes and materials, no lights, no shadows, 3 to 10 small
+## meshes per zombie.
 
 const BASE_SCRIPT_END: String = "scripts/zombies/zombie.gd"
+const RAGER_SCRIPT_END: String = "scripts/zombies/roid_rager.gd"
 
 static var _meshes: Dictionary = {}
 static var _mats: Dictionary = {}
@@ -28,23 +30,39 @@ func _dress(z) -> void:
         return
     z.set_meta("halloween_costume", true)
     var s: Script = z.get_script() as Script
-    if s == null or not s.resource_path.ends_with(BASE_SCRIPT_END):
-        return  # Roid Rager and other subclasses are dressed separately
+    if s == null:
+        return
+    var is_rager: bool = s.resource_path.ends_with(RAGER_SCRIPT_END)
+    if not is_rager and not s.resource_path.ends_with(BASE_SCRIPT_END):
+        return  # any other variant stays plain
     var head: Node3D = z._head
     var upper: Node3D = z._upper
     if head == null or upper == null:
         return
+
+    # Mount points: the costume is built for the normal zombie, and the Roid
+    # Rager's mounts resize it (bigger head pieces, wider and taller body pieces).
+    var hr := Node3D.new()
+    head.add_child(hr)
+    var ur := Node3D.new()
+    upper.add_child(ur)
+    if is_rager:
+        hr.position = Vector3(0.0, -0.05, 0.0)
+        hr.scale = Vector3.ONE * 1.1
+        ur.position = Vector3(0.0, 0.2, 0.0)
+        ur.scale = Vector3(1.9, 1.0, 1.3)
+
     match randi() % 4:
         0:
-            _pumpkin(head)
+            _pumpkin(hr)
         1:
-            _witch(head)
-            _eyes(head)
+            _witch(hr)
+            _eyes(head, is_rager)
         2:
-            _mummy(head, upper)
-            _eyes(head)
+            _mummy(hr, ur)
+            _eyes(head, is_rager)
         _:
-            _ghost(head, upper)
+            _ghost(hr, ur)
 
 
 # ---------- costumes ----------
@@ -109,12 +127,19 @@ static func _ghost(head: Node3D, upper: Node3D) -> void:
     _put(head, _sphere(), Vector3(0.0, 0.07, -0.185), black, Vector3(0.07, 0.1, 0.03))
 
 
-## Glowing orange eyes laid over the normal ones.
-static func _eyes(head: Node3D) -> void:
+## Glowing orange eyes laid over the normal ones (the Roid Rager's sit lower).
+static func _eyes(head: Node3D, rager: bool) -> void:
     var glow := _mat("hw_eye", Color(1.0, 0.45, 0.05), 0.5, 4.0)
-    var m := _box_mesh(Vector3(0.06, 0.045, 0.02))
+    var y: float = 0.19
+    var z: float = -0.123
+    var x: float = 0.065
+    if rager:
+        y = 0.12
+        z = -0.132
+        x = 0.06
+    var m := _box_mesh(Vector3(0.065, 0.05, 0.02))
     for sx in [-1.0, 1.0]:
-        _put(head, m, Vector3(sx * 0.065, 0.19, -0.123), glow)
+        _put(head, m, Vector3(sx * x, y, z), glow)
 
 
 # ---------- shared meshes and materials ----------
