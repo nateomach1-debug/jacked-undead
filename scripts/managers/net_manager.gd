@@ -380,6 +380,7 @@ func _on_node_added(node: Node) -> void:
     if not is_host:
         node.set("zombie_scene", null)
         node.set("roid_rager_scene", null)
+        node.set("pumpkin_boss_scene", null)
         # Joiners need a power-up manager too (effects, timers, pickups).
         _make_client_powerup_manager.call_deferred()
 
