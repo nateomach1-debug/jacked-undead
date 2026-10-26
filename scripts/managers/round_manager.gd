@@ -183,6 +183,16 @@ func _spawn_pumpkin_boss() -> void:
         _emit_counts()
         return
 
+    var boss := pumpkin_boss_scene.instantiate() as Zombie
+
+    if boss == null:
+        push_warning(
+            "RoundManager: Great Pumpkin scene is not a Zombie."
+        )
+        _round_total = maxi(_round_total - 1, _round_killed)
+        _emit_counts()
+        return
+
 	var capsule_height: float = 5.8
 	var shape_node := boss.get_node_or_null(
 		"CollisionShape3D"
