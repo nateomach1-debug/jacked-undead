@@ -134,9 +134,9 @@ func _collect(player: Node) -> void:
         return
 
     var owned = player.get("owned_perks")
-if owned is Array and supplement_id in owned:
-    queue_free()
-    return
+    if owned is Array and supplement_id in owned:
+        queue_free()
+        return
     if not player.has_method("apply_supplement"):
         return
 
