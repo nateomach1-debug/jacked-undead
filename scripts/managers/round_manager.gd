@@ -40,6 +40,18 @@ var _test_pumpkin_spawned: bool = false
 var _leash_timer: float = 1.0
 var _powerups = null
 
+func _refresh_spawn_points() -> void:
+    _spawn_points.clear()
+
+    for node in get_tree().get_nodes_in_group("spawn_points"):
+        if not is_instance_valid(node):
+            continue
+
+        if node.is_queued_for_deletion():
+            continue
+
+        if node is Marker3D:
+            _spawn_points.append(node)
 
 func _ready() -> void:
     _spawn_points = get_tree().get_nodes_in_group("spawn_points")
