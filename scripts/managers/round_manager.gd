@@ -19,6 +19,7 @@ const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
 @export var pumpkin_boss_scene: PackedScene
+@export var force_pumpkin_spawn_for_testing: bool = true
 @export var base_zombies_per_round: int = 6
 @export var zombies_per_round_growth: int = 3
 @export var time_between_spawns: float = 1.2
@@ -35,6 +36,7 @@ var _round_active: bool = false
 var _round_total: int = 0
 var _round_killed: int = 0
 var _last_boss_spawn_round: int = -999
+var _test_pumpkin_spawned: bool = true
 var _leash_timer: float = 1.0
 var _powerups = null
 
@@ -122,7 +124,11 @@ func _should_spawn_pumpkin() -> bool:
         return false
 
     var round_num: int = GameManager.round_number
-    if round_num < 5:
+
+    if force_pumpkin_spawn_for_testing:
+        if _test_pumpkin_spawned:
+            return false
+    elif round_num < 5:
         return false
 
     if round_num - _last_boss_spawn_round < 5:
@@ -131,6 +137,9 @@ func _should_spawn_pumpkin() -> bool:
     for node in get_tree().get_nodes_in_group("great_pumpkin"):
         if is_instance_valid(node) and not node.is_queued_for_deletion():
             return false
+
+    if force_pumpkin_spawn_for_testing:
+        return true
 
     return randf() < 0.15
 
@@ -163,6 +172,8 @@ func _spawn_pumpkin_boss() -> void:
     boss.died.connect(_on_zombie_died)
 
     _last_boss_spawn_round = GameManager.round_number
+    if force_pumpkin_spawn_for_testing:
+        _test_pumpkin_spawned = true
 
 ## Only unlocked zones, not too close to the player, random among the nearest few.
 func _pick_spawn_point() -> Marker3D:
