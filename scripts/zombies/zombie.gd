@@ -848,7 +848,7 @@ func _die(was_headshot: bool = false) -> void:
                 was_headshot
             )
 
-    var reward: int = HEADSHOT_KILL_GAINS if was_headshot else gains_on_death
+    var reward: int = headshot_kill_gains if was_headshot else gains_on_death
 
     # A co-op kill pays the player who made the kill.
     if _last_source != null and is_instance_valid(_last_source) and _last_source.has_meta("peer_id"):
