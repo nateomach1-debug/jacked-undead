@@ -9,8 +9,9 @@ extends Node3D
 
 
 func _ready() -> void:
-	GameManager.reset_run()
-	if player and hud and hud.has_method("bind_player"):
-		hud.bind_player(player)
-	if round_manager and hud and hud.has_method("bind_round_manager"):
-		hud.bind_round_manager(round_manager)
+    MusicManager.set_playlist_for_scene(self)
+    GameManager.reset_run()
+    if player and hud and hud.has_method("bind_player"):
+        hud.bind_player(player)
+    if round_manager and hud and hud.has_method("bind_round_manager"):
+        hud.bind_round_manager(round_manager)
