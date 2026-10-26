@@ -13,6 +13,15 @@ const TRACK_PATHS: Array[String] = [
     "res://assets/audio/music/strawberry candy.mp3",
 ]
 
+const HALLOWEEN_SCENE_PATH := "res://scenes/main/halloween_map.tscn"
+
+const HALLOWEEN_TRACK_PATHS: Array[String] = [
+    "res://assets/audio/music/halloween-waltz.mp3",
+    "res://assets/audio/music/halloween-spooky.mp3",
+    "res://assets/audio/music/orchestral-halloween.mp3",
+    "res://assets/audio/music/halloween-is-here.mp3",
+]
+
 const SETTINGS_PATH := "res://scripts/managers/game_settings.gd"
 const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
 const LAYOUT_EDITOR_FILE := "hud_layout_editor.gd"
@@ -25,6 +34,7 @@ var _player: AudioStreamPlayer
 var _tracks: Array[AudioStream] = []
 var _track_paths: Array[String] = []
 var _last_index := -1
+var _is_halloween_playlist := false
 var _rng := RandomNumberGenerator.new()
 
 var _title_label: Label
@@ -41,12 +51,13 @@ func _ready() -> void:
     _player.finished.connect(_on_track_finished)
 
     _reload_layout()
-    _load_tracks()
     _create_player_ui()
     _load_saved_volume()
 
     get_viewport().size_changed.connect(_apply_music_layout)
     get_tree().node_added.connect(_on_node_added)
+    get_tree().scene_changed.connect(_on_scene_changed)
+    call_deferred("_sync_playlist_with_scene")
     call_deferred("_apply_music_layout")
 
     if not _tracks.is_empty():
@@ -83,8 +94,34 @@ func _on_layout_editor_closed() -> void:
     _apply_music_layout()
 
 
-func _load_tracks() -> void:
-    for path in TRACK_PATHS:
+func _sync_playlist_with_scene() -> void:
+    var current_scene := get_tree().current_scene
+    var use_halloween := false
+
+    if current_scene != null:
+        use_halloween = current_scene.scene_file_path == HALLOWEEN_SCENE_PATH
+
+    if use_halloween != _is_halloween_playlist or _tracks.is_empty():
+        _switch_playlist(use_halloween)
+
+
+func _on_scene_changed(_scene: Node) -> void:
+    _sync_playlist_with_scene()
+
+
+func _switch_playlist(use_halloween: bool) -> void:
+    _is_halloween_playlist = use_halloween
+    _tracks.clear()
+    _track_paths.clear()
+    _last_index = -1
+
+    var paths: Array[String]
+    if _is_halloween_playlist:
+        paths = HALLOWEEN_TRACK_PATHS
+    else:
+        paths = TRACK_PATHS
+
+    for path in paths:
         if not ResourceLoader.exists(path):
             push_warning("Music track not found: " + path)
             continue
@@ -93,6 +130,13 @@ func _load_tracks() -> void:
         if stream != null:
             _track_paths.append(path)
             _tracks.append(stream)
+
+    if not _tracks.is_empty():
+        _play_random_track()
+    else:
+        _player.stop()
+        _refresh_ui()
+        push_warning("MusicManager could not find any tracks for the active playlist.")
 
 
 func _on_track_finished() -> void:
@@ -299,7 +343,6 @@ func _refresh_ui() -> void:
         var filename := _track_paths[_last_index].get_file().get_basename()
         _title_label.text = filename.replace("_", " ").capitalize()
 
-    # Pause icon while music plays, play icon while paused or stopped.
     _show_pause = _player.playing and not _player.stream_paused
     if _play_icon != null:
         _play_icon.queue_redraw()
