@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over_screen.tscn" id="9"]
 [ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/managers/halloween_builder.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/managers/halloween_dresser.gd" id="12"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -30,6 +31,9 @@ environment = SubResource("Environment_1")
 
 [node name="HalloweenBuilder" type="Node3D" parent="."]
 script = ExtResource("11")
+
+[node name="HalloweenDresser" type="Node3D" parent="."]
+script = ExtResource("12")
 
 [node name="Player" parent="." instance=ExtResource("3")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 26)
