@@ -794,8 +794,12 @@ func _pad_rumble_shot() -> void:
     _pad_rumble(0.15, strong, 0.07)
 
 
+
 func take_damage(amount: float, from_position: Vector3 = Vector3.INF) -> void:
+    if GameManager.TESTING_PAUSE_ENABLED and get_tree().paused:
+        return
     if invuln_left > 0.0: return
+
     if is_downed or is_dead:
         return  # a downed or bled-out player can't be hurt further
     if _pu("spotter"):
