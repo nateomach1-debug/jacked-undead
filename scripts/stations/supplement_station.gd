@@ -99,6 +99,12 @@ func _ready() -> void:
     var others: Array = get_tree().get_nodes_in_group("supplement_station")
     others.erase(self)
     if not is_extra and others.is_empty():
+    var scene: Node = get_tree().current_scene
+    var scene_file: String = ""
+    if scene != null:
+        scene_file = scene.scene_file_path.get_file()
+
+    if scene_file != "generated_gym_map.tscn":
         _spawn_extras.call_deferred()
 
 
