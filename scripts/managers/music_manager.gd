@@ -91,17 +91,25 @@ func _on_layout_editor_closed() -> void:
 
 func _sync_playlist_with_scene() -> void:
     var current_scene := get_tree().current_scene
+    _update_playlist_for_scene(current_scene)
+
+
+func _on_scene_changed(scene: Node) -> void:
+    _update_playlist_for_scene(scene)
+
+
+func _update_playlist_for_scene(scene: Node) -> void:
     var use_halloween := false
 
-    if current_scene != null:
-        use_halloween = current_scene.scene_file_path == HALLOWEEN_SCENE_PATH
+    if scene != null:
+        use_halloween = (
+            scene.scene_file_path == HALLOWEEN_SCENE_PATH
+            or scene.name == "Halloween"
+        )
 
     if use_halloween != _is_halloween_playlist or _tracks.is_empty():
+        print("MusicManager: Switching to ", "Halloween" if use_halloween else "regular", " playlist.")
         _switch_playlist(use_halloween)
-
-
-func _on_scene_changed(_scene: Node) -> void:
-    _sync_playlist_with_scene()
 
 
 func _switch_playlist(use_halloween: bool) -> void:
