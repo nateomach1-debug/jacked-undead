@@ -15,3 +15,14 @@ func _ready() -> void:
         hud.bind_player(player)
     if round_manager and hud and hud.has_method("bind_round_manager"):
         hud.bind_round_manager(round_manager)
+
+    if GameManager.TESTING_PAUSE_ENABLED:
+        var pause_script = load("res://scripts/ui/testing_pause_menu.gd")
+        if pause_script != null:
+            var pause_menu: Node = pause_script.new()
+            pause_menu.name = "TestingPauseMenu"
+            pause_menu.process_mode = Node.PROCESS_MODE_ALWAYS
+            add_child(pause_menu)
+        else:
+            push_warning("Testing pause menu script could not be loaded."
+)
