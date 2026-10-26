@@ -19,6 +19,7 @@ const DEV_DEFAULTS: Dictionary = {
     "pr_cost": -1.0,        # flat Gains; negative = the scene's value
     "ending_cost": -1.0,
     "wall_scale": 1.0,      # multiplier on wall buy + ammo prices
+    "door_scale": 1.0,      # multiplier on buyable door prices
     "supp_scale": 1.0,      # multiplier on supplement prices
     "show_nav": 0.0,        # 1.0 = nav polygons + NAV label visible
     "start_wonder": 0.0,    # 1.0 = start the run with a wonder gun next to the pistol
@@ -216,6 +217,10 @@ func get_zombie_damage(base: float) -> float:
 
 func wall_cost(base: int) -> int:
     return int(round(base * dev_get("wall_scale")))
+
+
+func door_cost(base: int) -> int:
+    return int(round(base * dev_get("door_scale")))
 
 
 func supplement_cost(base: int) -> int:
