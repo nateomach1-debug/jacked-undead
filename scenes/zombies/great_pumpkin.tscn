@@ -4,8 +4,8 @@
 [ext_resource type="Script" path="res://scripts/zombies/great_pumpkin.gd" id="1"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
-radius = 0.78
-height = 4.4
+radius = 1.2
+height = 5.8
 
 [node name="GreatPumpkin" type="CharacterBody3D"]
 collision_layer = 4
