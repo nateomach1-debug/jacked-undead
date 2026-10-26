@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/managers/halloween_builder.gd" id="11"]
 [ext_resource type="Script" path="res://scripts/managers/halloween_dresser.gd" id="12"]
+[ext_resource type="PackedScene" path="res://scenes/zombies/great_pumpkin.tscn" id="13"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -50,6 +51,7 @@ weapon_loadout = [ExtResource("7")]
 script = ExtResource("2")
 zombie_scene = ExtResource("4")
 roid_rager_scene = ExtResource("5")
+pumpkin_boss_scene = ExtResource("13")
 
 [node name="SpawnPoints" type="Node3D" parent="."]
 
