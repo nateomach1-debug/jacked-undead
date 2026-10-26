@@ -156,24 +156,74 @@ func _spawn_pumpkin_boss() -> void:
         if str(point.get_meta("zone", "")) == "graveyard" and absf(point.global_position.x) >= 6.0:
             candidates.append(point as Marker3D)
 
-    var spawn_position: Vector3 = Vector3(-7.0, 2.2, -4.0)
+    var spawn_origin: Vector3 = Vector3(-7.0, 0.0, -4.0)
     if not candidates.is_empty():
         var point: Marker3D = candidates[randi_range(0, candidates.size() - 1)]
-        spawn_position = point.global_position
-        spawn_position.y = 2.2
+        spawn_origin = point.global_position
 
     var boss := pumpkin_boss_scene.instantiate() as Zombie
     if boss == null:
         push_warning("RoundManager: Great Pumpkin scene is not a Zombie.")
         return
 
+    var capsule_height: float = 5.8
+    var shape_node := boss.get_node_or_null("CollisionShape3D") as CollisionShape3D
+    if shape_node != null and shape_node.shape is CapsuleShape3D:
+        capsule_height = (shape_node.shape as CapsuleShape3D).height
+
+    var ground_y: float = _find_pumpkin_ground_y(spawn_origin)
+    if is_nan(ground_y):
+        ground_y = spawn_origin.y
+
     get_tree().current_scene.add_child(boss)
-    boss.global_position = spawn_position
+    boss.global_position = Vector3(
+        spawn_origin.x,
+        ground_y + capsule_height * 0.5,
+        spawn_origin.z
+    )
     boss.died.connect(_on_zombie_died)
 
     _last_boss_spawn_round = GameManager.round_number
     if force_pumpkin_spawn_for_testing:
         _test_pumpkin_spawned = true
+
+
+func _find_pumpkin_ground_y(origin: Vector3) -> float:
+    var scene := get_tree().current_scene
+    if scene == null:
+        return NAN
+
+    var space_state := scene.get_world_3d().direct_space_state
+    var ray_start: Vector3 = origin + Vector3(0.0, 10.0, 0.0)
+    var ray_end: Vector3 = origin - Vector3(0.0, 2.0, 0.0)
+    var excluded: Array[RID] = []
+
+    # Skip elevated objects so the boss can spawn on the ground beneath them.
+    for attempt in range(8):
+        var query := PhysicsRayQueryParameters3D.create(
+            ray_start,
+            ray_end,
+            1
+        )
+        query.exclude = excluded
+
+        var hit: Dictionary = space_state.intersect_ray(query)
+        if hit.is_empty():
+            return NAN
+
+        var hit_y: float = (hit["position"] as Vector3).y
+        var hit_normal: Vector3 = hit["normal"]
+
+        if hit_y > origin.y + 0.35 or hit_normal.y < 0.65:
+            excluded.append(hit["rid"])
+            continue
+
+        if hit_y < origin.y - 2.0:
+            return NAN
+
+        return hit_y
+
+    return NAN
 
 ## Only unlocked zones, not too close to the player, random among the nearest few.
 func _pick_spawn_point() -> Marker3D:
