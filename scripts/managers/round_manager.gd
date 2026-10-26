@@ -144,9 +144,8 @@ func _spawn_pumpkin_boss() -> void:
         if not is_instance_valid(point):
             continue
 
-        if str(point.get_meta("zone", "")) == "graveyard" \
-                and absf(point.global_position.x) >= 6.0:
-            candidates.append(point as Marker3D)
+        if str(point.get_meta("zone", "")) == "graveyard" and absf(point.global_position.x) >= 6.0:
+    candidates.append(point as Marker3D)
 
     var spawn_position: Vector3 = Vector3(-7.0, 2.2, -4.0)
     if not candidates.is_empty():
