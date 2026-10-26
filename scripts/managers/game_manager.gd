@@ -13,6 +13,10 @@ signal barrier_opened
 signal dev_settings_changed
 
 const DEV_FILE: String = "user://dev_settings.cfg"
+
+## Testing-only pause menu. Set false to restore normal leave-game death behavior.
+const TESTING_PAUSE_ENABLED: bool = true
+
 const DEV_DEFAULTS: Dictionary = {
     "zombie_damage": -1.0,  # flat HP per zombie hit; negative = the zombie's own value
     "locker_cost": -1.0,    # flat Gains; negative = the scene's value
@@ -159,10 +163,10 @@ func open_barrier(zones: PackedStringArray) -> void:
 
 
 func report_player_death() -> void:
+    if TESTING_PAUSE_ENABLED and get_tree().paused:
+        return
     if is_game_over:
         return
-    is_game_over = true
-    player_died.emit()
 
 
 func reset_run() -> void:
