@@ -167,6 +167,8 @@ func report_player_death() -> void:
         return
     if is_game_over:
         return
+    is_game_over = true
+    player_died.emit()
 
 
 func reset_run() -> void:
