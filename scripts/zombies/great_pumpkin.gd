@@ -41,6 +41,7 @@ var _bomb_timer: float = 5.0
 var _state_timer: float = 0.0
 var _boss_ui: Node = null
 var _pumpkin_material: StandardMaterial3D = null
+var _lobe_material: StandardMaterial3D = null
 var _face_material: StandardMaterial3D = null
 
 
@@ -113,15 +114,7 @@ func _update_phase() -> void:
 
     phase_two = true
     move_speed = BASE_MOVE_SPEED * PHASE_TWO_SPEED_MULTIPLIER
-
-    if _pumpkin_material != null:
-        _pumpkin_material.albedo_color = Color(0.85, 0.12, 0.025)
-        _pumpkin_material.emission = Color(0.9, 0.04, 0.01)
-        _pumpkin_material.emission_energy_multiplier = 0.45
-        _pumpkin_material.emission_enabled = true
-
-    if _face_material != null:
-        _face_material.albedo_color = Color(0.18, 0.015, 0.005)
+    _apply_phase_two_look()
 
 
 func apply_network_state(
@@ -135,17 +128,27 @@ func apply_network_state(
 
     if phase_two:
         move_speed = BASE_MOVE_SPEED * PHASE_TWO_SPEED_MULTIPLIER
-
-        if _pumpkin_material != null:
-            _pumpkin_material.albedo_color = Color(0.85, 0.12, 0.025)
-            _pumpkin_material.emission = Color(0.9, 0.04, 0.01)
-            _pumpkin_material.emission_energy_multiplier = 0.45
-            _pumpkin_material.emission_enabled = true
-
-        if _face_material != null:
-            _face_material.albedo_color = Color(0.18, 0.015, 0.005)
+        _apply_phase_two_look()
     else:
         move_speed = BASE_MOVE_SPEED
+
+
+## Phase two: the pumpkin goes red-hot and the carved face blazes.
+func _apply_phase_two_look() -> void:
+    if _pumpkin_material != null:
+        _pumpkin_material.albedo_color = Color(0.85, 0.12, 0.025)
+        _pumpkin_material.emission_enabled = true
+        _pumpkin_material.emission = Color(0.9, 0.04, 0.01)
+        _pumpkin_material.emission_energy_multiplier = 0.45
+
+    if _lobe_material != null:
+        _lobe_material.albedo_color = Color(0.6, 0.07, 0.02)
+
+    if _face_material != null:
+        _face_material.albedo_color = Color(1.0, 0.18, 0.04)
+        _face_material.emission_enabled = true
+        _face_material.emission = Color(1.0, 0.12, 0.02)
+        _face_material.emission_energy_multiplier = 5.0
 
 
 func is_headshot(world_hit_position: Vector3) -> bool:
@@ -166,15 +169,27 @@ func _build_visuals() -> void:
     if shape_node != null and shape_node.shape is CapsuleShape3D:
         body_height = (shape_node.shape as CapsuleShape3D).height
 
-    var skin := _make_mat(Color(0.24, 0.31, 0.16))
+    # Materials. The skin, shirt and shorts flash red when the boss is hit.
+    var skin := _make_mat(Color(0.30, 0.38, 0.20))
+    var skin_dark := _make_mat(Color(0.17, 0.22, 0.11))
     var shirt := _make_mat(Color(0.12, 0.16, 0.10))
-    var shorts := _make_mat(Color(0.12, 0.07, 0.035))
-    var dark := _make_mat(Color(0.035, 0.018, 0.008), 0.9, false)
+    var shorts := _make_mat(Color(0.20, 0.10, 0.045))
+    var belt := _make_mat(Color(0.08, 0.045, 0.02), 0.8, false)
+    var gold := _make_mat(Color(0.95, 0.74, 0.12), 0.35, false)
+    var wrap := _make_mat(Color(0.86, 0.83, 0.72), 0.9, false)
+    var boot := _make_mat(Color(0.06, 0.045, 0.04), 0.8, false)
+    var sole := _make_mat(Color(0.82, 0.8, 0.74), 0.8, false)
     var orange := _make_mat(Color(0.95, 0.29, 0.025), 0.8, false)
+    var orange_dark := _make_mat(Color(0.74, 0.2, 0.015), 0.85, false)
     var green := _make_mat(Color(0.13, 0.32, 0.055), 0.8, false)
+    var glow := _make_mat(Color(1.0, 0.62, 0.08), 0.5, false)
+    glow.emission_enabled = true
+    glow.emission = Color(1.0, 0.55, 0.05)
+    glow.emission_energy_multiplier = 3.5
 
     _pumpkin_material = orange
-    _face_material = dark
+    _lobe_material = orange_dark
+    _face_material = glow
 
     _visual = Node3D.new()
     _visual.name = "GreatPumpkinVisual"
@@ -186,8 +201,11 @@ func _build_visuals() -> void:
     _visual.scale = Vector3.ONE * BOSS_SCALE
     add_child(_visual)
 
+    # Legs: shorts-covered thighs, calves, knee wraps, boots.
     _leg_l = _make_leg(-0.19, skin, shorts)
     _leg_r = _make_leg(0.19, skin, shorts)
+    _decorate_leg(_leg_l, skin, shorts, wrap, boot, sole)
+    _decorate_leg(_leg_r, skin, shorts, wrap, boot, sole)
     _part(_visual, Vector3(0.58, 0.18, 0.32), Vector3(0.0, 0.92, 0.0), shorts)
 
     _upper = Node3D.new()
@@ -195,59 +213,110 @@ func _build_visuals() -> void:
     _upper.rotation.x = -0.12
     _visual.add_child(_upper)
 
+    # Torso: broad core, traps, pecs, abs, suspenders and a championship belt.
     _part(_upper, Vector3(0.72, 0.65, 0.42), Vector3(0.0, 0.35, 0.0), skin)
-    _part(_upper, Vector3(0.82, 0.48, 0.45), Vector3(0.0, 0.35, 0.0), shirt)
-    _part(_upper, Vector3(0.18, 0.12, 0.02), Vector3(0.12, 0.35, -0.235), orange)
+    _ell(_upper, Vector3(0.62, 0.24, 0.36), Vector3(0.0, 0.66, 0.02), skin)
+    _ell(_upper, Vector3(0.38, 0.26, 0.2), Vector3(-0.19, 0.5, -0.17), skin)
+    _ell(_upper, Vector3(0.38, 0.26, 0.2), Vector3(0.19, 0.5, -0.17), skin)
+    _part(_upper, Vector3(0.025, 0.28, 0.02), Vector3(0.0, 0.27, -0.215), skin_dark)
+    for y in [0.2, 0.28, 0.36]:
+        _part(_upper, Vector3(0.36, 0.02, 0.02), Vector3(0.0, y, -0.215), skin_dark)
+    _part(_upper, Vector3(0.1, 0.5, 0.5), Vector3(-0.22, 0.42, 0.0), shirt)
+    _part(_upper, Vector3(0.1, 0.5, 0.5), Vector3(0.22, 0.42, 0.0), shirt)
+    _part(_upper, Vector3(0.76, 0.12, 0.45), Vector3(0.0, 0.1, 0.0), belt)
+    _part(_upper, Vector3(0.28, 0.16, 0.04), Vector3(0.0, 0.1, -0.235), gold)
+    _part(_upper, Vector3(0.14, 0.08, 0.02), Vector3(0.0, 0.1, -0.26), orange)
 
+    # Head: a wide, ribbed pumpkin with a glowing carved face.
     _head = Node3D.new()
     _head.position = Vector3(0.0, 0.91, -0.02)
     _upper.add_child(_head)
 
-    _put_mesh(
-        _head,
-        _mesh_sphere(0.43),
-        Vector3.ZERO,
-        orange,
-        Vector3.ONE,
-        Vector3.ZERO
-    )
+    _ell(_head, Vector3(0.95, 0.8, 0.86), Vector3.ZERO, orange)
+    _ell(_head, Vector3(0.34, 0.78, 0.84), Vector3(-0.3, 0.0, 0.0), orange_dark)
+    _ell(_head, Vector3(0.34, 0.78, 0.84), Vector3(0.3, 0.0, 0.0), orange_dark)
 
-    var stem := _mesh_cylinder(0.06, 0.10, 0.22)
-    _put_mesh(_head, stem, Vector3(0.0, 0.49, 0.0), green, Vector3.ONE, Vector3(0.0, 0.0, -0.2))
+    # Stem, a curled second piece and a leaf.
+    _put_mesh(_head, _mesh_cylinder(0.07, 0.11, 0.2), Vector3(0.0, 0.46, 0.0), green, Vector3.ONE, Vector3.ZERO)
+    _put_mesh(_head, _mesh_cylinder(0.05, 0.07, 0.18), Vector3(0.07, 0.6, 0.0), green, Vector3.ONE, Vector3(0.0, 0.0, -0.5))
+    _put_mesh(_head, _mesh_box(Vector3(0.22, 0.02, 0.12)), Vector3(-0.12, 0.47, 0.05), green, Vector3.ONE, Vector3(0.0, 0.3, 0.4))
 
+    # Angry glowing eyes, triangle nose, wide grin with teeth.
     for side in [-1.0, 1.0]:
         _put_mesh(
             _head,
-            _mesh_sphere(0.075),
-            Vector3(side * 0.16, 0.12, -0.35),
-            dark,
-            Vector3(1.0, 1.25, 0.35),
-            Vector3.ZERO
+            _mesh_box(Vector3(0.18, 0.09, 0.06)),
+            Vector3(side * 0.17, 0.12, -0.375),
+            glow,
+            Vector3.ONE,
+            Vector3(0.0, 0.0, side * 0.45)
         )
 
     _put_mesh(
         _head,
-        _mesh_box(Vector3(0.30, 0.07, 0.035)),
-        Vector3(0.0, -0.14, -0.40),
-        dark,
+        _mesh_box(Vector3(0.07, 0.07, 0.05)),
+        Vector3(0.0, -0.03, -0.425),
+        glow,
+        Vector3.ONE,
+        Vector3(0.0, 0.0, PI * 0.25)
+    )
+
+    _put_mesh(
+        _head,
+        _mesh_box(Vector3(0.36, 0.1, 0.06)),
+        Vector3(0.0, -0.17, -0.375),
+        glow,
         Vector3.ONE,
         Vector3.ZERO
     )
 
-    for x in [-0.11, 0.0, 0.11]:
+    for x in [-0.12, 0.04, 0.12]:
         _put_mesh(
             _head,
-            _mesh_box(Vector3(0.045, 0.07, 0.025)),
-            Vector3(x, -0.15, -0.425),
+            _mesh_box(Vector3(0.06, 0.07, 0.05)),
+            Vector3(x, -0.135, -0.385),
+            orange,
+            Vector3.ONE,
+            Vector3.ZERO
+        )
+    for x in [-0.06, 0.08]:
+        _put_mesh(
+            _head,
+            _mesh_box(Vector3(0.06, 0.06, 0.05)),
+            Vector3(x, -0.205, -0.385),
             orange,
             Vector3.ONE,
             Vector3.ZERO
         )
 
+    # Arms: shoulder, bicep, forearm, wrist wrap and a big fist.
     _arm_l = _make_arm(-0.46, skin)
     _arm_r = _make_arm(0.46, skin)
+    _decorate_arm(_arm_l, skin, wrap)
+    _decorate_arm(_arm_r, skin, wrap)
     _arm_base_l = 1.0
     _arm_base_r = 1.0
+
+
+func _decorate_leg(leg: Node3D, skin: Material, shorts: Material, wrap: Material, boot: Material, sole: Material) -> void:
+    _ell(leg, Vector3(0.3, 0.5, 0.32), Vector3(0.0, -0.12, 0.0), shorts)
+    _ell(leg, Vector3(0.22, 0.34, 0.24), Vector3(0.0, -0.6, 0.02), skin)
+    _part(leg, Vector3(0.2, 0.08, 0.22), Vector3(0.0, -0.42, 0.0), wrap)
+    _part(leg, Vector3(0.22, 0.1, 0.34), Vector3(0.0, -0.84, -0.05), boot)
+    _part(leg, Vector3(0.23, 0.04, 0.36), Vector3(0.0, -0.89, -0.05), sole)
+
+
+func _decorate_arm(arm: Node3D, skin: Material, wrap: Material) -> void:
+    _ell(arm, Vector3(0.34, 0.32, 0.34), Vector3(0.0, 0.0, 0.0), skin)
+    _ell(arm, Vector3(0.22, 0.34, 0.22), Vector3(0.0, -0.2, 0.0), skin)
+    _ell(arm, Vector3(0.2, 0.3, 0.2), Vector3(0.0, -0.46, 0.0), skin)
+    _part(arm, Vector3(0.17, 0.08, 0.17), Vector3(0.0, -0.57, 0.0), wrap)
+    _ell(arm, Vector3(0.2, 0.2, 0.2), Vector3(0.0, -0.68, 0.0), skin)
+
+
+## A sphere stretched into an ellipsoid. "size" is the full width, height and depth.
+func _ell(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
+    return _put_mesh(parent, _mesh_sphere(0.5), pos, mat, size, rot)
 
 
 func _put_mesh(
