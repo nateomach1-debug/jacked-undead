@@ -42,7 +42,6 @@ var _state_timer: float = 0.0
 var _boss_ui: Node = null
 var _pumpkin_material: StandardMaterial3D = null
 var _face_material: StandardMaterial3D = null
-var _feet_offset: float = 2.9  # distance from the origin (capsule middle) down to the feet
 
 
 func _ready() -> void:
@@ -166,7 +165,6 @@ func _build_visuals() -> void:
     var body_height: float = 4.4
     if shape_node != null and shape_node.shape is CapsuleShape3D:
         body_height = (shape_node.shape as CapsuleShape3D).height
-    _feet_offset = body_height * 0.5
 
     var skin := _make_mat(Color(0.24, 0.31, 0.16))
     var shirt := _make_mat(Color(0.12, 0.16, 0.10))
@@ -183,7 +181,7 @@ func _build_visuals() -> void:
     # The origin is the middle of the capsule, so the feet are half a capsule lower.
     # zombie.gd resets the body height from _visual_base_y every walk-bob frame,
     # so it must be set too, or the boss floats up to the capsule middle.
-    _visual_base_y = -_feet_offset
+    _visual_base_y = -body_height * 0.5
     _visual.position = Vector3(0.0, _visual_base_y, 0.0)
     _visual.scale = Vector3.ONE * BOSS_SCALE
     add_child(_visual)
@@ -467,7 +465,7 @@ func _spawn_corpse() -> void:
     var orange := _chunk_material()
     var chunk_count: int = 9
     # The origin is the middle of the capsule; the chunks burst out from the feet up.
-    var feet: Vector3 = global_position - Vector3(0.0, _feet_offset, 0.0)
+    var feet: Vector3 = Vector3(global_position.x, _feet_y(), global_position.z)
 
     for i in range(chunk_count):
         var chunk := MeshInstance3D.new()
