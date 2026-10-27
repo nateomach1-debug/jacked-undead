@@ -193,8 +193,9 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     var dark_mat := _drink_material(product_color.darkened(0.8))
 
     
+    
     # Forearm and hand rig.
-    # Keep these parts separate so we can articulate them in Step 2.
+    # The hand overlaps the forearm slightly so the wrist does not look detached.
     var forearm := Node3D.new()
     forearm.name = "Forearm"
     forearm.position = Vector3(-0.02, -0.16, 0.0)
@@ -203,71 +204,25 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
 
     var arm_mesh_instance := MeshInstance3D.new()
     arm_mesh_instance.name = "ForearmMesh"
+
     var arm_mesh := CapsuleMesh.new()
     arm_mesh.radius = 0.075
     arm_mesh.height = 0.42
+
     arm_mesh_instance.mesh = arm_mesh
     arm_mesh_instance.material_override = skin_mat
-    arm_mesh_instance.position = Vector3.ZERO
     arm_mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     forearm.add_child(arm_mesh_instance)
 
-    # Hand pivot: the hand and supplement move together.
+    # Move the hand closer to the forearm to close the wrist gap.
     var hand := Node3D.new()
     hand.name = "Hand"
-    hand.position = Vector3(-0.12, 0.24, -0.015)
+    hand.position = Vector3(-0.10, 0.18, 0.0)
     forearm.add_child(hand)
 
-    # Palm, positioned slightly in front of the container.
-    var palm := MeshInstance3D.new()
-    palm.name = "Palm"
-    var palm_mesh := BoxMesh.new()
-    palm_mesh.size = Vector3(0.13, 0.105, 0.055)
-    palm.mesh = palm_mesh
-    palm.material_override = skin_mat
-    palm.position = Vector3(0.0, 0.035, -0.055)
-    palm.rotation.z = deg_to_rad(-8.0)
-    palm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    hand.add_child(palm)
-
-    # Four simplified fingers. Their positions suggest a grip around
-    # the container without adding a costly skeletal model.
-    for i in range(4):
-        var finger := MeshInstance3D.new()
-        finger.name = "Finger%d" % (i + 1)
-
-        var finger_mesh := CapsuleMesh.new()
-        finger_mesh.radius = 0.014
-        finger_mesh.height = 0.075
-        finger.mesh = finger_mesh
-        finger.material_override = skin_mat
-
-        finger.position = Vector3(
-            -0.042 + float(i) * 0.028,
-            0.005,
-            -0.09
-        )
-        finger.rotation.z = deg_to_rad(-12.0)
-        finger.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-        hand.add_child(finger)
-
-    # Thumb crosses the side of the container to suggest a secure grip.
-    var thumb := MeshInstance3D.new()
-    thumb.name = "Thumb"
-
-    var thumb_mesh := CapsuleMesh.new()
-    thumb_mesh.radius = 0.018
-    thumb_mesh.height = 0.085
-    thumb.mesh = thumb_mesh
-    thumb.material_override = skin_mat
-    thumb.position = Vector3(-0.075, 0.035, -0.075)
-    thumb.rotation.z = deg_to_rad(-48.0)
-    thumb.rotation.x = deg_to_rad(-12.0)
-    thumb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    hand.add_child(thumb)
-
-    # Preserve the existing supplement-specific container shapes and colors.
+    # Container remains centered in the grip.
     var shape: String = str(DRINK_PRODUCT_SHAPES.get(id, "bottle"))
+
     var product := Node3D.new()
     product.name = "SupplementContainer"
     product.position = Vector3.ZERO
@@ -278,6 +233,56 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     _build_drink_product(
         product, shape, product_mat, white_mat, dark_mat
     )
+
+    # Palm sits behind the container, toward the arm.
+    var palm := MeshInstance3D.new()
+    palm.name = "Palm"
+
+    var palm_mesh := BoxMesh.new()
+    palm_mesh.size = Vector3(0.13, 0.105, 0.045)
+
+    palm.mesh = palm_mesh
+    palm.material_override = skin_mat
+    palm.position = Vector3(0.0, 0.025, -0.045)
+    palm.rotation.z = deg_to_rad(-8.0)
+    palm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    hand.add_child(palm)
+
+    # Fingers sit on the camera-facing side of the container.
+    for i in range(4):
+        var finger := MeshInstance3D.new()
+        finger.name = "Finger%d" % (i + 1)
+
+        var finger_mesh := CapsuleMesh.new()
+        finger_mesh.radius = 0.014
+        finger_mesh.height = 0.075
+
+        finger.mesh = finger_mesh
+        finger.material_override = skin_mat
+        finger.position = Vector3(
+            -0.042 + float(i) * 0.028,
+            0.005,
+            0.045
+        )
+        finger.rotation.z = deg_to_rad(-8.0)
+        finger.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        hand.add_child(finger)
+
+    # Thumb reaches across one side of the container.
+    var thumb := MeshInstance3D.new()
+    thumb.name = "Thumb"
+
+    var thumb_mesh := CapsuleMesh.new()
+    thumb_mesh.radius = 0.018
+    thumb_mesh.height = 0.085
+
+    thumb.mesh = thumb_mesh
+    thumb.material_override = skin_mat
+    thumb.position = Vector3(-0.075, 0.025, 0.025)
+    thumb.rotation.z = deg_to_rad(-48.0)
+    thumb.rotation.x = deg_to_rad(-12.0)
+    thumb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    hand.add_child(thumb)
 
 
     # Raise the product toward the face.
