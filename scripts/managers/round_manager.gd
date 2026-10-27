@@ -7,19 +7,25 @@ extends Node
 ##
 ## Leash: a zombie that stays far from every living player for a few seconds is
 ## moved to a spawn point near that player (same zombie, same health, and the
-## round's zombie count is unchanged). Only real zombies are moved, not puppets.
+## round's zombie count is unchanged). Only real zombies are moved, not puppets,
+## and the Great Pumpkin boss is never moved.
 ##
 ## Power-ups: creates the power-up manager (scripts/powerups/powerup_manager.gd)
 ## and tells it when a round starts and when a zombie dies.
+##
+## Great Pumpkin: on the Halloween map only, a rare boss joins a round. It spawns
+## at an unlocked spawn point away from the player.
 
 signal zombies_changed(remaining: int, total: int)
 
 const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
+const BOSS_GROUP: String = "great_pumpkin"
+const BOSS_MIN_SPAWN_DISTANCE: float = 18.0  # boss spawns at least this far from the player if possible
 
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
 @export var pumpkin_boss_scene: PackedScene
-@export var force_pumpkin_spawn_for_testing: bool = true
+@export var force_pumpkin_spawn_for_testing: bool = true  # set to false when done testing
 @export var base_zombies_per_round: int = 6
 @export var zombies_per_round_growth: int = 3
 @export var time_between_spawns: float = 1.2
@@ -40,18 +46,6 @@ var _test_pumpkin_spawned: bool = false
 var _leash_timer: float = 1.0
 var _powerups = null
 
-func _refresh_spawn_points() -> void:
-    _spawn_points.clear()
-
-    for node in get_tree().get_nodes_in_group("spawn_points"):
-        if not is_instance_valid(node):
-            continue
-
-        if node.is_queued_for_deletion():
-            continue
-
-        if node is Marker3D:
-            _spawn_points.append(node)
 
 func _ready() -> void:
     _spawn_points = get_tree().get_nodes_in_group("spawn_points")
@@ -88,46 +82,20 @@ func get_zombies_remaining() -> int:
 
 
 func _start_round() -> void:
-    _refresh_spawn_points()
-
-    if _spawn_points.is_empty():
-        _round_active = false
-        _round_total = 0
-        _round_killed = 0
-        push_warning(
-            "RoundManager: Cannot start round. "
-            + "No valid Marker3D nodes found in group 'spawn_points'."
-        )
-        _emit_counts()
-        return
-
-    if zombie_scene == null:
-        _round_active = false
-        _round_total = 0
-        _round_killed = 0
-        push_warning(
-            "RoundManager: Cannot start spawning. "
-            + "zombie_scene is not assigned."
-        )
-        _emit_counts()
-        return
-
+    _round_active = true
     _round_killed = 0
 
-    var normal_count: int = (
-        base_zombies_per_round
-        + (GameManager.round_number - 1) * zombies_per_round_growth
-    )
+    var normal_count: int = base_zombies_per_round + (GameManager.round_number - 1) * zombies_per_round_growth
     var spawn_boss: bool = _should_spawn_pumpkin()
 
     _round_total = normal_count + (1 if spawn_boss else 0)
-    _round_active = true
 
     if _powerups != null:
         _powerups.on_round_start(_round_total)
 
     _emit_counts()
     _spawn_wave(normal_count, spawn_boss)
+
 
 func _spawn_wave(count: int, spawn_boss: bool = false) -> void:
     if _spawn_points.is_empty() or not zombie_scene:
@@ -141,6 +109,7 @@ func _spawn_wave(count: int, spawn_boss: bool = false) -> void:
     if spawn_boss:
         _spawn_pumpkin_boss()
 
+
 func _spawn_one_zombie() -> void:
     var scene_to_use: PackedScene = zombie_scene
     var is_special_round := GameManager.round_number % roid_rager_every_n_rounds == 0
@@ -152,6 +121,9 @@ func _spawn_one_zombie() -> void:
     get_tree().current_scene.add_child(zombie)
     zombie.global_position = point.global_position
     zombie.died.connect(_on_zombie_died)
+
+
+# ---------------------------------------------------------------- Great Pumpkin boss
 
 func _should_spawn_pumpkin() -> bool:
     if pumpkin_boss_scene == null:
@@ -172,7 +144,7 @@ func _should_spawn_pumpkin() -> bool:
     if round_num - _last_boss_spawn_round < 5:
         return false
 
-    for node in get_tree().get_nodes_in_group("great_pumpkin"):
+    for node in get_tree().get_nodes_in_group(BOSS_GROUP):
         if is_instance_valid(node) and not node.is_queued_for_deletion():
             return false
 
@@ -182,65 +154,63 @@ func _should_spawn_pumpkin() -> bool:
     return randf() < 0.15
 
 
+## The boss was counted in the round total but could not be spawned.
+func _cancel_boss_spawn(reason: String) -> void:
+    push_warning("RoundManager: Great Pumpkin spawn cancelled: " + reason)
+    _round_total = maxi(_round_total - 1, _round_killed)
+    _emit_counts()
+    if _round_killed >= _round_total and _round_active:
+        _round_active = false
+        _end_round()
+
+
+## An unlocked spawn point, preferably well away from the player.
+func _pick_boss_spawn_point() -> Marker3D:
+    var player := get_tree().get_first_node_in_group("player") as Node3D
+    var far_enough: Array = []
+    var any_unlocked: Array = []
+    for p in _spawn_points:
+        if not is_instance_valid(p):
+            continue
+        var zone: String = str(p.get_meta("zone", ""))
+        if not GameManager.is_zone_unlocked(zone):
+            continue
+        any_unlocked.append(p)
+        if player == null or p.global_position.distance_to(player.global_position) >= BOSS_MIN_SPAWN_DISTANCE:
+            far_enough.append(p)
+    var pool: Array = far_enough if not far_enough.is_empty() else any_unlocked
+    if pool.is_empty():
+        return null
+    return pool[randi() % pool.size()] as Marker3D
+
+
 func _spawn_pumpkin_boss() -> void:
     if pumpkin_boss_scene == null:
         return
 
-    var candidates: Array[Marker3D] = []
-
-    for point in _spawn_points:
-        if not is_instance_valid(point):
-            continue
-
-        if (
-            str(point.get_meta("zone", "")) == "graveyard"
-            and absf(point.global_position.x) >= 6.0
-        ):
-            candidates.append(point as Marker3D)
-
-    var spawn_origin: Vector3 = Vector3(-7.0, 0.0, -4.0)
-
-    if not candidates.is_empty():
-        var point: Marker3D = candidates[
-            randi_range(0, candidates.size() - 1)
-        ]
-        spawn_origin = point.global_position
+    var point: Marker3D = _pick_boss_spawn_point()
+    if point == null:
+        _cancel_boss_spawn("no unlocked spawn point.")
+        return
+    var spawn_origin: Vector3 = point.global_position
 
     # Find the actual ground before creating the boss.
     var ground_y: float = _find_pumpkin_ground_y(spawn_origin)
-
     if is_nan(ground_y):
-        push_warning(
-            "RoundManager: Could not find valid ground for Great Pumpkin. "
-            + "Boss spawn cancelled."
-        )
-
-        # The boss was included in the round total but did not spawn.
-        _round_total = maxi(_round_total - 1, _round_killed)
-        _emit_counts()
+        _cancel_boss_spawn("could not find valid ground.")
         return
 
     var boss_node: Node = pumpkin_boss_scene.instantiate()
     var boss := boss_node as Zombie
-
     if boss == null:
-        push_warning(
-            "RoundManager: Great Pumpkin scene is not a Zombie."
-        )
         boss_node.free()
-        _round_total = maxi(_round_total - 1, _round_killed)
-        _emit_counts()
+        _cancel_boss_spawn("the boss scene is not a Zombie.")
         return
 
     var capsule_height: float = 5.8
-    var shape_node := boss.get_node_or_null(
-        "CollisionShape3D"
-    ) as CollisionShape3D
-
+    var shape_node := boss.get_node_or_null("CollisionShape3D") as CollisionShape3D
     if shape_node != null and shape_node.shape is CapsuleShape3D:
-        capsule_height = (
-            shape_node.shape as CapsuleShape3D
-        ).height
+        capsule_height = (shape_node.shape as CapsuleShape3D).height
 
     get_tree().current_scene.add_child(boss)
 
@@ -260,19 +230,16 @@ func _spawn_pumpkin_boss() -> void:
         _test_pumpkin_spawned = true
 
 
-
 func _find_pumpkin_ground_y(origin: Vector3) -> float:
-    var scene := get_tree().current_scene
-
-    if scene == null:
+    var scene3d := get_tree().current_scene as Node3D
+    if scene3d == null:
         return NAN
 
-    var world := scene.get_world_3d()
-
+    var world: World3D = scene3d.get_world_3d()
     if world == null:
         return NAN
 
-    var space_state := world.direct_space_state
+    var space_state: PhysicsDirectSpaceState3D = world.direct_space_state
 
     # Search above and below the spawn marker.
     var ray_start: Vector3 = origin + Vector3(0.0, 10.0, 0.0)
@@ -282,16 +249,11 @@ func _find_pumpkin_ground_y(origin: Vector3) -> float:
     var lowest_ground_y: float = NAN
 
     # Inspect multiple surfaces instead of accepting the first hit.
-    for attempt in range(16):
-        var query := PhysicsRayQueryParameters3D.create(
-            ray_start,
-            ray_end,
-            1
-        )
+    for _attempt in range(16):
+        var query := PhysicsRayQueryParameters3D.create(ray_start, ray_end, 1)
         query.exclude = excluded
 
         var hit: Dictionary = space_state.intersect_ray(query)
-
         if hit.is_empty():
             break
 
@@ -313,13 +275,13 @@ func _find_pumpkin_ground_y(origin: Vector3) -> float:
             continue
 
         # Keep the lowest valid surface found.
-        if (
-            is_nan(lowest_ground_y)
-            or hit_position.y < lowest_ground_y
-        ):
+        if is_nan(lowest_ground_y) or hit_position.y < lowest_ground_y:
             lowest_ground_y = hit_position.y
 
     return lowest_ground_y
+
+
+# ---------------------------------------------------------------- spawn points
 
 ## Only unlocked zones, not too close to the player, random among the nearest few.
 func _pick_spawn_point() -> Marker3D:
@@ -365,6 +327,8 @@ func _check_far_zombies() -> void:
         var z := n as Zombie
         if z == null or not is_instance_valid(z) or z.is_puppet:
             continue
+        if z.is_in_group(BOSS_GROUP):
+            continue  # the boss is never teleported
         var nearest: Node3D = null
         var best: float = INF
         for q in players:
