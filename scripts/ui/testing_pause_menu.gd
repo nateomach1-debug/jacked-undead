@@ -58,7 +58,7 @@ func _on_node_added(node: Node) -> void:
     if str(scr.resource_path).get_file() != LAYOUT_EDITOR_FILE:
         return
 
-    _pause_button.visible = false
+    _layer.visible = false
     node.tree_exited.connect(_on_layout_editor_closed, CONNECT_ONE_SHOT)
 
 
@@ -66,9 +66,11 @@ func _on_layout_editor_closed() -> void:
     _reload_layout()
     _apply_pause_layout()
 
+        if _layer != null:
+        _layer.visible = true
+
     if _pause_button != null:
         _pause_button.visible = not get_tree().paused and not GameManager.is_game_over
-
 
 func _build_ui() -> void:
     _layer = CanvasLayer.new()
