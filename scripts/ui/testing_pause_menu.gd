@@ -66,7 +66,7 @@ func _on_layout_editor_closed() -> void:
     _reload_layout()
     _apply_pause_layout()
 
-        if _layer != null:
+    if _layer != null:
         _layer.visible = true
 
     if _pause_button != null:
