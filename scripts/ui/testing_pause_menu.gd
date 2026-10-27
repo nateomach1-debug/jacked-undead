@@ -3,6 +3,7 @@ extends Node
 ## Testing-only pause menu. This node keeps processing while gameplay is paused.
 
 const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
+const LAYOUT_EDITOR_FILE := "hud_layout_editor.gd"
 
 var _layer: CanvasLayer
 var _root: Control
@@ -16,6 +17,7 @@ func _ready() -> void:
     _reload_layout()
     _build_ui()
     get_viewport().size_changed.connect(_apply_pause_layout)
+    get_tree().node_added.connect(_on_node_added)
     _apply_pause_layout()
 
 
@@ -30,15 +32,42 @@ func _apply_pause_layout() -> void:
         return
 
     var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-    var base_size: Vector2 = _hud_layout.size_of("hud_pause", viewport_size)
-    var scale_value: float = _hud_layout.scale_of("hud_pause")
-    var button_size: Vector2 = base_size * scale_value
-    var button_center: Vector2 = _hud_layout.center("hud_pause", viewport_size)
+    if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+        return
 
-    _pause_button.position = button_center - button_size / 2.0
-    _pause_button.size = button_size
+    var base_size: Vector2 = _hud_layout.size_of("hud_pause", viewport_size)
+    var center: Vector2 = _hud_layout.center("hud_pause", viewport_size)
+    var scale_value: float = clampf(_hud_layout.scale_of("hud_pause"), 0.5, 2.0)
+
+    _pause_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+    _pause_button.size = base_size
     _pause_button.custom_minimum_size = Vector2.ZERO
+    _pause_button.scale = Vector2.ONE * scale_value
+    _pause_button.pivot_offset = base_size / 2.0
+    _pause_button.position = center - base_size / 2.0
     _pause_button.modulate.a = clampf(_hud_layout.alpha_of("hud_pause"), 0.0, 1.0)
+
+
+func _on_node_added(node: Node) -> void:
+    if _pause_button == null:
+        return
+
+    var scr = node.get_script()
+    if scr == null:
+        return
+    if str(scr.resource_path).get_file() != LAYOUT_EDITOR_FILE:
+        return
+
+    _pause_button.visible = false
+    node.tree_exited.connect(_on_layout_editor_closed, CONNECT_ONE_SHOT)
+
+
+func _on_layout_editor_closed() -> void:
+    _reload_layout()
+    _apply_pause_layout()
+
+    if _pause_button != null:
+        _pause_button.visible = not get_tree().paused and not GameManager.is_game_over
 
 
 func _build_ui() -> void:
