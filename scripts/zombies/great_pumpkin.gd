@@ -1,4 +1,3 @@
-
 extends Zombie
 
 const BASE_HEALTH: float = 1200.0
@@ -26,6 +25,7 @@ const BOMB_DAMAGE: float = 25.0
 const BOMB_RADIUS: float = 3.5
 const BOMB_FLIGHT_SECONDS: float = 1.3
 const BOMBS_PER_VOLLEY: int = 3
+const BOMB_START_HEIGHT: float = 1.4  # above the boss's origin (the middle of its capsule), about head height
 
 const HEADSHOT_MARGIN: float = 0.28
 const BOSS_UI_PATH: String = "res://scripts/ui/boss_health_bar.gd"
@@ -42,6 +42,7 @@ var _state_timer: float = 0.0
 var _boss_ui: Node = null
 var _pumpkin_material: StandardMaterial3D = null
 var _face_material: StandardMaterial3D = null
+var _feet_offset: float = 2.9  # distance from the origin (capsule middle) down to the feet
 
 
 func _ready() -> void:
@@ -123,6 +124,7 @@ func _update_phase() -> void:
     if _face_material != null:
         _face_material.albedo_color = Color(0.18, 0.015, 0.005)
 
+
 func apply_network_state(
     health_value: float,
     max_health_value: float,
@@ -146,6 +148,7 @@ func apply_network_state(
     else:
         move_speed = BASE_MOVE_SPEED
 
+
 func is_headshot(world_hit_position: Vector3) -> bool:
     if _head == null or not is_instance_valid(_head):
         return super.is_headshot(world_hit_position)
@@ -163,6 +166,7 @@ func _build_visuals() -> void:
     var body_height: float = 4.4
     if shape_node != null and shape_node.shape is CapsuleShape3D:
         body_height = (shape_node.shape as CapsuleShape3D).height
+    _feet_offset = body_height * 0.5
 
     var skin := _make_mat(Color(0.24, 0.31, 0.16))
     var shirt := _make_mat(Color(0.12, 0.16, 0.10))
@@ -176,7 +180,11 @@ func _build_visuals() -> void:
 
     _visual = Node3D.new()
     _visual.name = "GreatPumpkinVisual"
-    _visual.position = Vector3(0.0, -body_height * 0.5, 0.0)
+    # The origin is the middle of the capsule, so the feet are half a capsule lower.
+    # zombie.gd resets the body height from _visual_base_y every walk-bob frame,
+    # so it must be set too, or the boss floats up to the capsule middle.
+    _visual_base_y = -_feet_offset
+    _visual.position = Vector3(0.0, _visual_base_y, 0.0)
     _visual.scale = Vector3.ONE * BOSS_SCALE
     add_child(_visual)
 
@@ -388,7 +396,7 @@ func _throw_bombs() -> void:
         target.y = 0.05
         targets.append(target)
 
-    var start: Vector3 = global_position + Vector3(0.0, 2.8, 0.0)
+    var start: Vector3 = global_position + Vector3(0.0, BOMB_START_HEIGHT, 0.0)
     _spawn_bombs(start, targets, false)
 
     if NetManager.is_online and NetManager.is_host and has_meta("net_id"):
@@ -446,6 +454,7 @@ func _player_is_out(player: Node) -> bool:
         or bool(player.get_meta("dead", false))
     )
 
+
 func _spawn_corpse() -> void:
     var scene := get_tree().current_scene
     if scene == null:
@@ -457,6 +466,8 @@ func _spawn_corpse() -> void:
 
     var orange := _chunk_material()
     var chunk_count: int = 9
+    # The origin is the middle of the capsule; the chunks burst out from the feet up.
+    var feet: Vector3 = global_position - Vector3(0.0, _feet_offset, 0.0)
 
     for i in range(chunk_count):
         var chunk := MeshInstance3D.new()
@@ -466,11 +477,11 @@ func _spawn_corpse() -> void:
         scene.add_child(chunk)
 
         var offset := Vector3(
-            randf_range(-0.8, 0.8),
-            randf_range(0.4, 2.2),
-            randf_range(-0.8, 0.8)
+            randf_range(-1.0, 1.0),
+            randf_range(1.0, 4.0),
+            randf_range(-1.0, 1.0)
         )
-        chunk.global_position = global_position + offset
+        chunk.global_position = feet + offset
         chunk.scale = Vector3.ONE * randf_range(0.7, 1.5)
 
         var tw := chunk.create_tween()
@@ -478,7 +489,7 @@ func _spawn_corpse() -> void:
         tw.tween_property(
             chunk,
             "global_position",
-            chunk.global_position + Vector3(offset.x * 1.8, -randf_range(0.1, 0.8), offset.z * 1.8),
+            Vector3(chunk.global_position.x + offset.x * 1.8, feet.y + 0.2, chunk.global_position.z + offset.z * 1.8),
             0.65
         )
         tw.tween_property(
