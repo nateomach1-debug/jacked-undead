@@ -2,15 +2,43 @@
 extends Node
 ## Testing-only pause menu. This node keeps processing while gameplay is paused.
 
+const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
+
 var _layer: CanvasLayer
 var _root: Control
 var _pause_button: Button
 var _pause_panel: PanelContainer
+var _hud_layout = null
 
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
+    _reload_layout()
     _build_ui()
+    get_viewport().size_changed.connect(_apply_pause_layout)
+    _apply_pause_layout()
+
+
+func _reload_layout() -> void:
+    var layout_script = load(HUD_LAYOUT_PATH)
+    if layout_script != null:
+        _hud_layout = layout_script.new()
+
+
+func _apply_pause_layout() -> void:
+    if _pause_button == null or _hud_layout == null:
+        return
+
+    var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+    var base_size: Vector2 = _hud_layout.size_of("hud_pause", viewport_size)
+    var scale_value: float = _hud_layout.scale_of("hud_pause")
+    var button_size: Vector2 = base_size * scale_value
+    var button_center: Vector2 = _hud_layout.center("hud_pause", viewport_size)
+
+    _pause_button.position = button_center - button_size / 2.0
+    _pause_button.size = button_size
+    _pause_button.custom_minimum_size = Vector2.ZERO
+    _pause_button.modulate.a = clampf(_hud_layout.alpha_of("hud_pause"), 0.0, 1.0)
 
 
 func _build_ui() -> void:
@@ -26,15 +54,6 @@ func _build_ui() -> void:
 
     _pause_button = Button.new()
     _pause_button.text = "PAUSE"
-    _pause_button.custom_minimum_size = Vector2(156.0, 60.0)
-    _pause_button.anchor_left = 1.0
-    _pause_button.anchor_right = 1.0
-    _pause_button.anchor_top = 0.0
-    _pause_button.anchor_bottom = 0.0
-    _pause_button.offset_left = -180.0
-    _pause_button.offset_right = -24.0
-    _pause_button.offset_top = 24.0
-    _pause_button.offset_bottom = 84.0
     _pause_button.pressed.connect(_on_pause_pressed)
     _root.add_child(_pause_button)
 
