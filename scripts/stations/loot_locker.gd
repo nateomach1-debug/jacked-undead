@@ -27,6 +27,7 @@ const TEST_GUN_NAME: String = ""
 const TEST_TIERS: Array = ["common", "uncommon", "rare", "rare", "common", "legendary"]
 
 const DISPLAY_LENGTH: float = 0.9  # every gun shown in the locker is scaled to this length (meters)
+const LABEL_HOME: Vector3 = Vector3(0, 2.6, 0)   # where the name sits when no gun is showing
 const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
 const WONDER_CHANCE: float = 0.02        # chance per pull to roll a wonder weapon
 const WONDER_GUARANTEE_USE: int = 30     # the 30th pull of a run always gives one (once)
@@ -329,6 +330,7 @@ func _net_active(idx: int) -> void:
 # ------------------------------------------------------------- using it
 
 func _process(delta: float) -> void:
+    _update_label_spot()
     if _state == State.ROLLING:
         _timer -= delta
         # Rattle the whole locker a little
@@ -342,10 +344,27 @@ func _process(delta: float) -> void:
             _finish_roll()
     elif _state == State.READY:
         _timer -= delta
+        if _is_wonder and _rolled != null:
+            # Rainbow name for wonder weapons (slow hue cycle).
+            _label.modulate = Color.from_hsv(
+                fposmod(float(Time.get_ticks_msec()) * 0.0003, 1.0), 0.65, 1.0
+            )
         if _display_model:
             _display_mount.rotate_y(delta * 1.5)
         if _timer <= 0.0:
             _close_locker()
+
+
+## Keeps the name directly above the gun that is showing. With no gun showing,
+## it goes back to its normal spot above the locker.
+func _update_label_spot() -> void:
+    if _label == null or _display_mount == null:
+        return
+    if _display_model == null:
+        _label.position = LABEL_HOME
+        return
+    var lines: int = _label.text.count("\n") + 1
+    _label.position = _display_mount.position + Vector3(0.0, 0.32 + 0.17 * float(lines), 0.0)
 
 
 func interact(player: Node) -> void:
