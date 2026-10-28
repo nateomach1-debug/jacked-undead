@@ -364,6 +364,7 @@ func _build_drink_grip(
     _drink_segment(parent, t1, t2, 0.0165, skin_mat)
     _drink_nail(parent, t1, t2, 0.0165, 0.012, 0.0105, nail_mat)
 
+
 func play_supplement_drink(id: String, product_color: Color) -> void:
     if _supplement_drinking or is_dead or is_downed:
         return
