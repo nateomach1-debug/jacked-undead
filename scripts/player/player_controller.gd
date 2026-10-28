@@ -180,66 +180,157 @@ const DRINK_GRIP: Dictionary = {
 }
 
 
-func _build_drink_grip(parent: Node3D, r: float, skin_mat: Material) -> void:
-    # Palm covers the arm side (+x) of the container.
-    var palm := MeshInstance3D.new()
-    palm.name = "Palm"
-    var palm_mesh := BoxMesh.new()
-    palm_mesh.size = Vector3(0.05, 0.12, r + 0.042)
-    palm.mesh = palm_mesh
-    palm.material_override = skin_mat
-    palm.position = Vector3(r + 0.03, 0.0, (0.018 - r) / 2.0)
-    palm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    parent.add_child(palm)
-
-    # Four fingers wrap around the BACK of the container (away from player).
-    for i in range(4):
-        var finger := MeshInstance3D.new()
-        finger.name = "Finger%d" % (i + 1)
-        var finger_mesh := CapsuleMesh.new()
-        finger_mesh.radius = 0.014
-        finger_mesh.height = 2.0 * r + 0.05
-        finger.mesh = finger_mesh
-        finger.material_override = skin_mat
-        finger.position = Vector3(
-            0.005,
-            -0.045 + float(i) * 0.03,
-            -(r + 0.012)
-        )
-        finger.rotation.z = deg_to_rad(90.0)
-        finger.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-        parent.add_child(finger)
-
-    # Thumb on the side closest to the player.
-    var thumb := MeshInstance3D.new()
-    thumb.name = "Thumb"
-    var thumb_mesh := CapsuleMesh.new()
-    thumb_mesh.radius = 0.018
-    thumb_mesh.height = 1.3 * r + 0.03
-    thumb.mesh = thumb_mesh
-    thumb.material_override = skin_mat
-    thumb.position = Vector3(0.35 * r + 0.015, 0.03, r + 0.012)
-    thumb.rotation.z = deg_to_rad(90.0)
-    thumb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    parent.add_child(thumb)
-
-
-func _drink_limb(
+func _drink_blob(
     parent: Node3D,
     radius: float,
-    length: float,
-    center_y: float,
+    pos: Vector3,
+    blob_scale: Vector3,
+    material: Material
+) -> MeshInstance3D:
+    var item := MeshInstance3D.new()
+    var mesh := SphereMesh.new()
+    mesh.radius = radius
+    mesh.height = radius * 2.0
+    mesh.radial_segments = 16
+    mesh.rings = 8
+    item.mesh = mesh
+    item.material_override = material
+    item.position = pos
+    item.scale = blob_scale
+    item.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(item)
+    return item
+
+
+func _drink_taper(
+    parent: Node3D,
+    radius_bottom: float,
+    radius_top: float,
+    y_center: float,
+    height: float,
     material: Material
 ) -> void:
     var item := MeshInstance3D.new()
-    var mesh := CapsuleMesh.new()
-    mesh.radius = radius
-    mesh.height = length
+    var mesh := CylinderMesh.new()
+    mesh.bottom_radius = radius_bottom
+    mesh.top_radius = radius_top
+    mesh.height = height
+    mesh.radial_segments = 16
+    mesh.rings = 1
     item.mesh = mesh
     item.material_override = material
-    item.position.y = center_y
+    item.position.y = y_center
     item.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(item)
+
+
+func _drink_segment(
+    parent: Node3D,
+    from_pt: Vector3,
+    to_pt: Vector3,
+    radius: float,
+    material: Material
+) -> void:
+    var dir: Vector3 = to_pt - from_pt
+    var item := MeshInstance3D.new()
+    var mesh := CapsuleMesh.new()
+    mesh.radius = radius
+    mesh.height = dir.length() + radius * 2.0
+    mesh.radial_segments = 12
+    mesh.rings = 4
+    item.mesh = mesh
+    item.material_override = material
+    item.position = (from_pt + to_pt) * 0.5
+    item.quaternion = Quaternion(Vector3.UP, dir.normalized())
+    item.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(item)
+
+
+# Point on a circle around the container. 0 deg = arm side (+x),
+# 90 deg = back (away from player), -90 deg = front (toward player).
+func _drink_wrap_pt(rr: float, deg: float, y: float) -> Vector3:
+    var a: float = deg_to_rad(deg)
+    return Vector3(rr * cos(a), y, -rr * sin(a))
+
+
+func _build_drink_grip(
+    parent: Node3D,
+    r: float,
+    skin_mat: Material,
+    skin_dark: Material,
+    nail_mat: Material
+) -> void:
+    var rr: float = r + 0.014
+
+    # Palm (rounded) on the arm side, plus the heel that meets the wrist.
+    var palm_hz: float = (r + 0.042) / 2.0 + 0.004
+    var palm := _drink_blob(
+        parent, 1.0,
+        Vector3(r + 0.03, 0.0, (0.018 - r) / 2.0),
+        Vector3(0.028, 0.062, palm_hz), skin_mat
+    )
+    palm.name = "Palm"
+    _drink_blob(
+        parent, 0.04,
+        Vector3(r + 0.032, -0.05, -0.012),
+        Vector3(0.9, 1.0, 1.1), skin_mat
+    )
+
+    # Four fingers, three segments each, curling around the back.
+    var fingers: Array = [
+        {"y": 0.045, "a": [25.0, 80.0, 135.0, 178.0]},
+        {"y": 0.015, "a": [25.0, 85.0, 145.0, 192.0]},
+        {"y": -0.015, "a": [25.0, 80.0, 138.0, 182.0]},
+        {"y": -0.045, "a": [25.0, 72.0, 118.0, 155.0]},
+    ]
+    for i in range(fingers.size()):
+        var spec: Dictionary = fingers[i]
+        var angles: Array = spec["a"]
+        var fy: float = float(spec["y"])
+        var base: float = 0.0145 if i < 3 else 0.0125
+
+        # Knuckle bump where the finger leaves the palm.
+        _drink_blob(
+            parent, base * 1.12,
+            _drink_wrap_pt(rr + 0.002, float(angles[0]), fy),
+            Vector3.ONE, skin_dark
+        )
+
+        for k in range(3):
+            var seg_r: float = base * (1.0 - 0.07 * float(k))
+            _drink_segment(
+                parent,
+                _drink_wrap_pt(rr, float(angles[k]), fy),
+                _drink_wrap_pt(rr, float(angles[k + 1]), fy),
+                seg_r, skin_mat
+            )
+
+        # Fingernail on the outside of the tip.
+        var tip_deg: float = float(angles[3]) - 8.0
+        var nail := _drink_blob(
+            parent, 0.011,
+            _drink_wrap_pt(rr + base * 0.75, tip_deg, fy),
+            Vector3(0.4, 0.9, 0.8), nail_mat
+        )
+        nail.rotation.y = deg_to_rad(tip_deg)
+
+    # Thumb on the side closest to the player: base pad + two segments.
+    _drink_blob(
+        parent, 0.026,
+        _drink_wrap_pt(rr * 0.95, -6.0, -0.01),
+        Vector3(1.0, 1.3, 1.0), skin_mat
+    )
+    var t0: Vector3 = _drink_wrap_pt(rr, -10.0, 0.0)
+    var t1: Vector3 = _drink_wrap_pt(rr, -58.0, 0.02)
+    var t2: Vector3 = _drink_wrap_pt(rr, -105.0, 0.032)
+    _drink_segment(parent, t0, t1, 0.0185, skin_mat)
+    _drink_segment(parent, t1, t2, 0.0165, skin_mat)
+    var thumb_nail := _drink_blob(
+        parent, 0.012,
+        _drink_wrap_pt(rr + 0.012, -105.0, 0.032),
+        Vector3(0.4, 0.9, 0.8), nail_mat
+    )
+    thumb_nail.rotation.y = deg_to_rad(-105.0)
 
 
 func play_supplement_drink(id: String, product_color: Color) -> void:
@@ -251,42 +342,56 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     weapon_mount.visible = false
 
     var skin_mat := _drink_material(Color(0.72, 0.46, 0.31))
+    var skin_dark := _drink_material(Color(0.62, 0.38, 0.25))
+    var nail_mat := _drink_material(Color(0.92, 0.72, 0.64))
+    var cloth_mat := _drink_material(Color(0.13, 0.13, 0.15))
     var product_mat := _drink_material(product_color.lightened(0.15))
     var white_mat := _drink_material(Color(0.95, 0.95, 0.95))
     var dark_mat := _drink_material(product_color.darkened(0.8))
 
     # Arm chain: shoulder -> upper arm -> elbow -> forearm -> wrist -> hand.
-    # Rotation x pitches the limb (negative = swings forward/up).
     var rig := Node3D.new()
     rig.name = "SupplementDrinkRig"
     camera.add_child(rig)
     _drink_rig = rig
     rig.position = Vector3(0.40, -0.45, -0.05)
     rig.rotation = Vector3(deg_to_rad(-150.0), deg_to_rad(20.0), 0.0)
-    _drink_limb(rig, 0.07, 0.40, 0.17, skin_mat)
+
+    # Upper arm: tapered, bicep bulge, T-shirt sleeve with a white hem.
+    _drink_taper(rig, 0.08, 0.062, 0.17, 0.34, skin_mat)
+    _drink_blob(
+        rig, 0.076, Vector3(0.0, 0.15, 0.0),
+        Vector3(1.0, 1.6, 1.1), skin_mat
+    )
+    _drink_blob(rig, 0.095, Vector3.ZERO, Vector3.ONE, cloth_mat)
+    _drink_taper(rig, 0.095, 0.088, 0.075, 0.15, cloth_mat)
+    _drink_taper(rig, 0.09, 0.09, 0.152, 0.012, white_mat)
 
     var elbow := Node3D.new()
     elbow.name = "Elbow"
     elbow.position = Vector3(0.0, 0.34, 0.0)
     elbow.rotation.x = deg_to_rad(20.0)
     rig.add_child(elbow)
-    _drink_limb(elbow, 0.065, 0.36, 0.15, skin_mat)
 
-    # Round joint so the bend looks like an elbow.
-    var joint := MeshInstance3D.new()
-    var joint_mesh := SphereMesh.new()
-    joint_mesh.radius = 0.07
-    joint_mesh.height = 0.14
-    joint.mesh = joint_mesh
-    joint.material_override = skin_mat
-    joint.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    elbow.add_child(joint)
+    # Forearm: tapered toward the wrist, muscle near the elbow.
+    _drink_taper(elbow, 0.064, 0.042, 0.15, 0.30, skin_mat)
+    _drink_blob(
+        elbow, 0.066, Vector3(0.0, 0.075, 0.0),
+        Vector3(1.0, 1.5, 1.0), skin_mat
+    )
+    # Elbow joint (slightly darker skin).
+    _drink_blob(elbow, 0.07, Vector3.ZERO, Vector3.ONE, skin_dark)
 
     var wrist := Node3D.new()
     wrist.name = "Wrist"
     wrist.position = Vector3(0.0, 0.30, 0.0)
     wrist.rotation.x = 0.0
     elbow.add_child(wrist)
+
+    # Wrist cap and wristband.
+    _drink_blob(elbow, 0.042, Vector3(0.0, 0.30, 0.0), Vector3.ONE, skin_mat)
+    _drink_taper(elbow, 0.052, 0.05, 0.255, 0.045, white_mat)
+    _drink_taper(elbow, 0.0535, 0.0535, 0.255, 0.01, dark_mat)
 
     var shape: String = str(DRINK_PRODUCT_SHAPES.get(id, "bottle"))
     var grip: Dictionary = DRINK_GRIP.get(shape, DRINK_GRIP["bottle"])
@@ -309,7 +414,7 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     _build_drink_product(
         product, shape, product_mat, white_mat, dark_mat
     )
-    _build_drink_grip(held, r, skin_mat)
+    _build_drink_grip(held, r, skin_mat, skin_dark, nail_mat)
 
     # Raise the arm: shoulder lifts, elbow folds, wrist levels the container.
     var tw := create_tween()
