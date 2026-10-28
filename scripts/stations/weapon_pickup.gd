@@ -5,6 +5,8 @@ extends Area3D
 ## If you already carry this gun, a higher-rarity version can swap in for your copy.
 ## You have to look at the ring on the floor to use it (so stations and
 ## loot lockers behind a dropped gun still work).
+## Dropped guns spread out so they never sit on top of each other.
+## Wonder weapon names cycle through the rainbow.
 
 ## Rarity colors. A weapon's rarity is read from its "rarity" meta
 ## (weapon.set_meta("rarity", "rare")). No meta = common (white).
@@ -19,6 +21,10 @@ const RARITY_COLORS: Dictionary = {
 ## Ring size (matches the torus below). The click area is a flat disc this wide.
 const RING_INNER: float = 0.62
 const RING_OUTER: float = 0.74
+
+## Closest two dropped guns may be (center to center, meters). A bit more
+## than the ring width (1.48) so the rings never overlap.
+const MIN_SPACING: float = 1.7
 
 var weapon: WeaponData
 var mag_ammo: int = 0
@@ -55,6 +61,7 @@ func _ready() -> void:
     collision_layer = 2
     collision_mask = 0
     monitoring = false
+    add_to_group("weapon_pickups")
     _player = get_tree().get_first_node_in_group("player")
     var col: Color = _rarity_color()
 
@@ -131,16 +138,73 @@ func _build_ring(col: Color) -> void:
     add_child(beam)
 
 
+## Straight down from above a point to find the floor (layer 1). Empty if none.
+func _floor_hit(at: Vector3) -> Dictionary:
+    var space := get_world_3d().direct_space_state
+    var from: Vector3 = at + Vector3(0.0, 1.5, 0.0)
+    var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(0.0, -8.0, 0.0), 1)
+    return space.intersect_ray(query)
+
+
 func _drop_to_floor() -> void:
     await get_tree().physics_frame
     if not is_inside_tree():
         return
-    var space := get_world_3d().direct_space_state
-    var from: Vector3 = global_position + Vector3(0.0, 1.5, 0.0)
-    var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(0.0, -8.0, 0.0), 1)
-    var hit: Dictionary = space.intersect_ray(query)
+    var hit: Dictionary = _floor_hit(global_position)
     if not hit.is_empty():
         global_position.y = hit["position"].y + 0.1
+    _spread_from_others()
+
+
+## True if another dropped gun is too close to point p (flat distance).
+func _is_crowded(p: Vector3) -> bool:
+    for other in get_tree().get_nodes_in_group("weapon_pickups"):
+        if other == self or not is_instance_valid(other):
+            continue
+        var o := other as Node3D
+        if o == null:
+            continue
+        var dx: float = o.global_position.x - p.x
+        var dz: float = o.global_position.z - p.z
+        if Vector2(dx, dz).length() < MIN_SPACING:
+            return true
+    return false
+
+
+## True if a wall or prop blocks the straight path between two points.
+func _blocked_between(a: Vector3, b: Vector3) -> bool:
+    var space := get_world_3d().direct_space_state
+    var lift := Vector3(0.0, 0.5, 0.0)
+    var query := PhysicsRayQueryParameters3D.create(a + lift, b + lift, 1)
+    return not space.intersect_ray(query).is_empty()
+
+
+## If this gun landed on top of another one, slide it to the nearest free
+## spot on the floor (widening circles around where it landed).
+func _spread_from_others() -> void:
+    if not _is_crowded(global_position):
+        return
+    var origin: Vector3 = global_position
+    for ring in range(1, 5):
+        var dist: float = MIN_SPACING * float(ring)
+        var count: int = 6 * ring
+        for i in range(count):
+            var a: float = TAU * float(i) / float(count)
+            var cand: Vector3 = origin + Vector3(cos(a) * dist, 0.0, sin(a) * dist)
+            var hit: Dictionary = _floor_hit(cand)
+            if hit.is_empty():
+                continue
+            var fy: float = float(hit["position"].y) + 0.1
+            # Same floor level only (not up on a ledge or down a drop).
+            if absf(fy - origin.y) > 0.4:
+                continue
+            cand.y = fy
+            if _blocked_between(origin, cand):
+                continue
+            if _is_crowded(cand):
+                continue
+            global_position = cand
+            return
 
 
 func _process(delta: float) -> void:
@@ -150,6 +214,9 @@ func _process(delta: float) -> void:
         _model_root.position.y = 0.5 + sin(_t * 2.0) * 0.06
     if _ring_mat != null:
         _ring_mat.emission_energy_multiplier = 2.4 + sin(_t * 3.0) * 0.8
+    # Wonder weapon names cycle through the rainbow.
+    if _label != null and weapon != null and weapon.is_wonder:
+        _label.modulate = Color.from_hsv(fposmod(_t * 0.3, 1.0), 0.65, 1.0)
 
 
 func _owns_base(player: Node) -> bool:
