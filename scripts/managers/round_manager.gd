@@ -25,7 +25,7 @@ const BOSS_MIN_SPAWN_DISTANCE: float = 18.0  # boss spawns at least this far fro
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
 @export var pumpkin_boss_scene: PackedScene
-@export var force_pumpkin_spawn_for_testing: bool = true  # set to false when done testing
+@export var force_pumpkin_spawn_for_testing: bool = false  # set to false when done testing
 @export var base_zombies_per_round: int = 6
 @export var zombies_per_round_growth: int = 3
 @export var time_between_spawns: float = 1.2
