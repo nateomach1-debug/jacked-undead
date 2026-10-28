@@ -3,6 +3,8 @@ extends Area3D
 ## Keeps the gun's ammo (and PR level / attachments, which live on the WeaponData).
 ## A glowing ring + light beam marks it; the color shows its rarity.
 ## If you already carry this gun, a higher-rarity version can swap in for your copy.
+## You have to look at the ring on the floor to use it (so stations and
+## loot lockers behind a dropped gun still work).
 
 ## Rarity colors. A weapon's rarity is read from its "rarity" meta
 ## (weapon.set_meta("rarity", "rare")). No meta = common (white).
@@ -13,6 +15,10 @@ const RARITY_COLORS: Dictionary = {
     "epic": Color(0.7, 0.35, 1.0),
     "legendary": Color(1.0, 0.75, 0.15),
 }
+
+## Ring size (matches the torus below). The click area is a flat disc this wide.
+const RING_INNER: float = 0.62
+const RING_OUTER: float = 0.74
 
 var weapon: WeaponData
 var mag_ammo: int = 0
@@ -52,11 +58,14 @@ func _ready() -> void:
     _player = get_tree().get_first_node_in_group("player")
     var col: Color = _rarity_color()
 
+    # Flat disc on the floor, same size as the ring. Only aiming at the ring
+    # selects this gun; the floating model and beam do not block anything.
     var shape := CollisionShape3D.new()
-    var sphere := SphereShape3D.new()
-    sphere.radius = 0.8
-    shape.shape = sphere
-    shape.position = Vector3(0.0, 0.5, 0.0)
+    var disc := CylinderShape3D.new()
+    disc.radius = RING_OUTER
+    disc.height = 0.12
+    shape.shape = disc
+    shape.position = Vector3(0.0, -0.07, 0.0)
     add_child(shape)
 
     _model_root = Node3D.new()
@@ -85,8 +94,8 @@ func _ready() -> void:
 func _build_ring(col: Color) -> void:
     # Glowing ring flat on the floor (the node sits about 0.1 above the floor).
     var torus := TorusMesh.new()
-    torus.inner_radius = 0.62
-    torus.outer_radius = 0.74
+    torus.inner_radius = RING_INNER
+    torus.outer_radius = RING_OUTER
     torus.rings = 32
     torus.ring_segments = 8
     _ring_mat = StandardMaterial3D.new()
