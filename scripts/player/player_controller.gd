@@ -364,22 +364,6 @@ func _build_drink_grip(
     _drink_segment(parent, t1, t2, 0.0165, skin_mat)
     _drink_nail(parent, t1, t2, 0.0165, 0.012, 0.0105, nail_mat)
 
-    # Thumbnail (the thumb ends at -105 deg and points toward -angle).
-    var thumb_nail_deg: float = -102.0
-    var thumb_nail := _drink_blob(
-        parent, 1.0,
-        _drink_wrap_pt(rr, thumb_nail_deg, 0.0305),
-        Vector3(0.0185, 0.0105, 0.0088), nail_pink
-    )
-    thumb_nail.rotation.y = deg_to_rad(thumb_nail_deg)
-
-    var thumb_edge_deg: float = -108.5
-    var thumb_edge := _drink_blob(
-        parent, 1.0,
-        _drink_wrap_pt(rr, thumb_edge_deg, 0.0315),
-        Vector3(0.0168, 0.009, 0.0032), nail_edge
-    )
-    thumb_edge.rotation.y = deg_to_rad(thumb_edge_deg)
 func play_supplement_drink(id: String, product_color: Color) -> void:
     if _supplement_drinking or is_dead or is_downed:
         return
