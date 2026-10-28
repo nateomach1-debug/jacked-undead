@@ -79,6 +79,7 @@ const SPOTTER_DAMAGE_FACTOR: float = 0.5 # SPOTTER power-up: damage taken
 
 var _current_model: Node3D
 var _gun_hands: Node3D
+var _my_dropped_guns: Array = []
 
 # First-person supplement pickup and drinking animation.
 var _supplement_drinking: bool = false
@@ -1323,16 +1324,33 @@ func _replace_held_weapon(w: WeaponData, mag: int, reserve: int) -> void:
     _update_weapon_model()
 
 
+const MAX_DROPPED_GUNS: int = 3
+
+
 func _drop_weapon(w: WeaponData, mag: int, reserve: int) -> void:
     var script = load("res://scripts/stations/weapon_pickup.gd")
     if script == null or get_parent() == null:
         return
+
+    # Keep at most MAX_DROPPED_GUNS of your own drops on the floor.
+    # Picked-up (freed) drops fall out of the list automatically.
+    var alive: Array = []
+    for d in _my_dropped_guns:
+        if is_instance_valid(d):
+            alive.append(d)
+    while alive.size() >= MAX_DROPPED_GUNS:
+        var oldest = alive.pop_front()
+        if is_instance_valid(oldest):
+            oldest.queue_free()
+    _my_dropped_guns = alive
+
     var drop := Area3D.new()
     drop.set_script(script)
     if drop.has_method("setup"):
         drop.setup(w, mag, reserve)
     get_parent().add_child(drop)
     drop.global_position = global_position + (-global_transform.basis.z) * 1.4
+    _my_dropped_guns.append(drop)
 
 
 func _add_weapon_free_slot(w: WeaponData) -> void:
