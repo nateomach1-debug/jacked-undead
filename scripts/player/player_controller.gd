@@ -305,12 +305,13 @@ func _build_drink_grip(
                 seg_r, skin_mat
             )
 
-        # Fingernail on the outside of the tip.
+        # Fingernail: flat disc, nearly flush with the fingertip.
         var tip_deg: float = float(angles[3]) - 8.0
+        var tip_r: float = base * (1.0 - 0.07 * 2.0)
         var nail := _drink_blob(
-            parent, 0.011,
-            _drink_wrap_pt(rr + base * 0.75, tip_deg, fy),
-            Vector3(0.4, 0.9, 0.8), nail_mat
+            parent, 0.010,
+            _drink_wrap_pt(rr + tip_r * 0.93, tip_deg, fy),
+            Vector3(0.12, 0.9, 0.75), nail_mat
         )
         nail.rotation.y = deg_to_rad(tip_deg)
 
@@ -326,12 +327,11 @@ func _build_drink_grip(
     _drink_segment(parent, t0, t1, 0.0185, skin_mat)
     _drink_segment(parent, t1, t2, 0.0165, skin_mat)
     var thumb_nail := _drink_blob(
-        parent, 0.012,
-        _drink_wrap_pt(rr + 0.012, -105.0, 0.032),
-        Vector3(0.4, 0.9, 0.8), nail_mat
+        parent, 0.011,
+        _drink_wrap_pt(rr + 0.0153, -105.0, 0.032),
+        Vector3(0.12, 0.9, 0.75), nail_mat
     )
     thumb_nail.rotation.y = deg_to_rad(-105.0)
-
 
 func play_supplement_drink(id: String, product_color: Color) -> void:
     if _supplement_drinking or is_dead or is_downed:
