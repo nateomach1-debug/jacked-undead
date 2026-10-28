@@ -51,6 +51,52 @@ const PR_RESERVE: Array = [2.0, 2.5, 3.0]
 
 const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
 
+# Gun sizing: every gun is scaled so its length = the starter pistol's length
+# times the factor below. 1.0 = pistol-sized. Raise a number to make that gun
+# longer, lower it to make it shorter. Guns not listed use DEFAULT_LENGTH_FACTOR.
+const STARTER_PISTOL_PATH: String = "res://resources/weapons/pistol.tres"
+const DEFAULT_LENGTH_FACTOR: float = 2.0
+const LENGTH_FACTOR: Dictionary = {
+    # Pistols and revolvers
+    "Pistol": 1.0,
+    "Tactical .45": 1.0,
+    "Revolver": 1.05,
+    "Speed Revolver": 1.05,
+    "Magnum": 1.15,
+    "Hand Cannon": 1.15,
+    # SMGs
+    "SMG": 1.5,
+    "Micro SMG": 1.2,
+    # Rifles
+    "Rifle": 2.4,
+    "Marksman DMR": 2.6,
+    "Burst Rifle": 2.3,
+    "Heavy Burst": 2.1,
+    # Crossbows
+    "Crossbow": 1.8,
+    "Repeater Crossbow": 1.6,
+    # Shotguns
+    "Shotgun": 2.3,
+    "Pump Shotgun": 2.4,
+    "Double-Barrel": 2.2,
+    "Auto-Shotgun": 2.3,
+    # Snipers
+    "Sniper": 3.0,
+    "Semi-Auto Sniper": 2.9,
+    # Heavy
+    "LMG": 2.8,
+    "Chaingun": 2.5,
+    "Flamethrower": 2.4,
+    "Grenade Launcher": 2.2,
+    "Rocket Launcher": 2.8,
+    # Wonder weapons
+    "Frenemy": 1.2,
+    "Br-Nh": 1.5,
+}
+
+# Length of the starter pistol model (measured once, then remembered).
+static var _ref_length: float = -1.0
+
 @export var weapon_name: String = "Pistol"
 @export var damage: float = 20.0
 @export var fire_rate: float = 0.25
@@ -89,7 +135,31 @@ var pr_level: int = 0
 var pr_base: WeaponData = null
 
 
+## The gun's model, sized relative to the starter pistol.
 func create_model() -> Node3D:
+    var raw: Node3D = _create_raw_model()
+    if raw == null:
+        return null
+    var ref: float = _get_ref_length()
+    if ref <= 0.0:
+        return raw
+    var length: float = _model_length(raw)
+    if length < 0.001:
+        return raw
+    var factor: float = float(
+        LENGTH_FACTOR.get(get_base_name(), DEFAULT_LENGTH_FACTOR)
+    )
+    var fit: float = (ref * factor) / length
+    # The model sits inside a holder so callers that reset the top node's
+    # rotation/scale don't lose the sizing.
+    var holder := Node3D.new()
+    holder.name = "SizedGun"
+    holder.add_child(raw)
+    raw.scale = raw.scale * fit
+    return holder
+
+
+func _create_raw_model() -> Node3D:
     if is_wonder:
         var wonder_script = load(WONDER_PATH)
         if wonder_script:
@@ -114,6 +184,54 @@ func create_model() -> Node3D:
         mesh_instance.material_override = mat
         return mesh_instance
     return null
+
+
+## Length of the starter pistol's model (0 if it can't be measured).
+static func _get_ref_length() -> float:
+    if _ref_length >= 0.0:
+        return _ref_length
+    _ref_length = 0.0
+    if not ResourceLoader.exists(STARTER_PISTOL_PATH):
+        return _ref_length
+    var pistol = load(STARTER_PISTOL_PATH)
+    if pistol == null or pistol.model_scene == null:
+        return _ref_length
+    var node: Node3D = pistol.model_scene.instantiate() as Node3D
+    if node == null:
+        return _ref_length
+    _ref_length = _model_length(node)
+    node.free()
+    return _ref_length
+
+
+## Longest horizontal size of a model (x or z), from its meshes.
+static func _model_length(root: Node3D) -> float:
+    var box: Array = [AABB(), false]
+    _collect_bounds(root, Transform3D.IDENTITY, box)
+    if not bool(box[1]):
+        return 0.0
+    var b: AABB = box[0]
+    return maxf(b.size.x, b.size.z)
+
+
+static func _collect_bounds(node: Node, xf: Transform3D, box: Array) -> void:
+    var here: Transform3D = xf
+    if node is Node3D:
+        here = xf * (node as Node3D).transform
+    if node is MeshInstance3D:
+        var mi: MeshInstance3D = node
+        if mi.mesh != null:
+            var aabb: AABB = mi.mesh.get_aabb()
+            for i in range(8):
+                var p: Vector3 = here * aabb.get_endpoint(i)
+                if bool(box[1]):
+                    var cur: AABB = box[0]
+                    box[0] = cur.expand(p)
+                else:
+                    box[0] = AABB(p, Vector3.ZERO)
+                    box[1] = true
+    for child in node.get_children():
+        _collect_bounds(child, here, box)
 
 
 ## The gun's name without any PR suffix ("Pistol" for "Pistol - 2RM").
