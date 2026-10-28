@@ -253,6 +253,41 @@ func _drink_wrap_pt(rr: float, deg: float, y: float) -> Vector3:
     return Vector3(rr * cos(a), y, -rr * sin(a))
 
 
+# Extra curl (degrees, total per finger). Raise to wrap the fingertips
+# further round the container so they show on the left side.
+const DRINK_FINGER_CURL_EXTRA: float = 0.0
+
+
+func _drink_nail(
+    parent: Node3D,
+    p_from: Vector3,
+    p_to: Vector3,
+    finger_r: float,
+    nail_len: float,
+    nail_w: float,
+    material: Material
+) -> void:
+    var d: Vector3 = (p_to - p_from).normalized()
+    var mid: Vector3 = (p_from + p_to) * 0.5
+    var n := Vector3(mid.x, 0.0, mid.z).normalized()
+    var bx: Vector3 = (n - d * n.dot(d)).normalized()
+    var bz: Vector3 = d
+    var by: Vector3 = bz.cross(bx)
+
+    var nail := MeshInstance3D.new()
+    var mesh := SphereMesh.new()
+    mesh.radius = 1.0
+    mesh.height = 2.0
+    mesh.radial_segments = 12
+    mesh.rings = 6
+    nail.mesh = mesh
+    nail.material_override = material
+    nail.basis = Basis(bx * 0.0035, by * nail_w, bz * nail_len)
+    nail.position = p_to - d * (nail_len * 0.55) + bx * (finger_r - 0.0008)
+    nail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(nail)
+
+
 func _build_drink_grip(
     parent: Node3D,
     r: float,
@@ -262,11 +297,9 @@ func _build_drink_grip(
 ) -> void:
     var rr: float = r + 0.014
 
-    # Nail plate (pink, a little glossy) and white free edge.
-    var nail_pink := _drink_material(Color(0.85, 0.55, 0.48))
-    nail_pink.roughness = 0.35
-    var nail_edge := _drink_material(Color(0.94, 0.86, 0.80))
-    nail_edge.roughness = 0.45
+    # Nail plate: slightly lighter and pinker than the skin, a little glossy.
+    var nail_mat := _drink_material(Color(0.80, 0.58, 0.48))
+    nail_mat.roughness = 0.3
 
     # Palm (rounded) on the arm side, plus the heel that meets the wrist.
     var palm_hz: float = (r + 0.042) / 2.0 + 0.004
@@ -282,54 +315,41 @@ func _build_drink_grip(
         Vector3(0.9, 1.0, 1.1), skin_mat
     )
 
-    # Four fingers, three segments each, curling around the back.
-    var fingers: Array = [
-        {"y": 0.045, "a": [25.0, 80.0, 135.0, 178.0]},
-        {"y": 0.015, "a": [25.0, 85.0, 145.0, 192.0]},
-        {"y": -0.015, "a": [25.0, 80.0, 138.0, 182.0]},
-        {"y": -0.045, "a": [25.0, 72.0, 118.0, 155.0]},
-    ]
-    for i in range(fingers.size()):
-        var spec: Dictionary = fingers[i]
-        var angles: Array = spec["a"]
-        var fy: float = float(spec["y"])
+    # Four fingers with real proportions (segment lengths in metres),
+    # curling around the back of the container.
+    var finger_y: Array = [0.045, 0.015, -0.015, -0.045]
+    var finger_scale: Array = [1.0, 1.08, 1.0, 0.85]
+    var seg_len: Array = [0.048, 0.034, 0.028]
+
+    for i in range(4):
+        var fy: float = float(finger_y[i])
+        var fscale: float = float(finger_scale[i])
         var base: float = 0.0145 if i < 3 else 0.0125
+
+        var ang: float = 22.0
+        var pts: Array = [_drink_wrap_pt(rr, ang, fy)]
+        for k in range(3):
+            var step: float = rad_to_deg(float(seg_len[k]) * fscale / rr)
+            ang += step + DRINK_FINGER_CURL_EXTRA / 3.0
+            pts.append(_drink_wrap_pt(rr, ang, fy))
 
         # Knuckle bump where the finger leaves the palm.
         _drink_blob(
             parent, base * 1.12,
-            _drink_wrap_pt(rr + 0.002, float(angles[0]), fy),
+            Vector3(pts[0].x * (1.0 + 0.002 / rr), fy, pts[0].z),
             Vector3.ONE, skin_dark
         )
 
         for k in range(3):
             var seg_r: float = base * (1.0 - 0.07 * float(k))
-            _drink_segment(
-                parent,
-                _drink_wrap_pt(rr, float(angles[k]), fy),
-                _drink_wrap_pt(rr, float(angles[k + 1]), fy),
-                seg_r, skin_mat
-            )
+            _drink_segment(parent, pts[k], pts[k + 1], seg_r, skin_mat)
 
-        # Fingernail: curved shell hugging the fingertip, set back from the
-        # tip, with a thin white free edge at the end.
-        var a3: float = float(angles[3])
-        var tip_r: float = base * 0.86
-        var nail_deg: float = a3 - 3.0
-        var nail := _drink_blob(
-            parent, 1.0,
-            _drink_wrap_pt(rr, nail_deg, fy),
-            Vector3(tip_r + 0.002, 0.009, 0.0075), nail_pink
+        var tip_r: float = base * (1.0 - 0.07 * 2.0)
+        var nail_len: float = 0.011 if i < 3 else 0.0095
+        var nail_w: float = 0.0085 if i < 3 else 0.0075
+        _drink_nail(
+            parent, pts[2], pts[3], tip_r, nail_len, nail_w, nail_mat
         )
-        nail.rotation.y = deg_to_rad(nail_deg)
-
-        var edge_deg: float = a3 + 3.5
-        var edge := _drink_blob(
-            parent, 1.0,
-            _drink_wrap_pt(rr, edge_deg, fy),
-            Vector3(tip_r + 0.0003, 0.0075, 0.003), nail_edge
-        )
-        edge.rotation.y = deg_to_rad(edge_deg)
 
     # Thumb on the side closest to the player: base pad + two segments.
     _drink_blob(
@@ -338,10 +358,11 @@ func _build_drink_grip(
         Vector3(1.0, 1.3, 1.0), skin_mat
     )
     var t0: Vector3 = _drink_wrap_pt(rr, -10.0, 0.0)
-    var t1: Vector3 = _drink_wrap_pt(rr, -58.0, 0.02)
-    var t2: Vector3 = _drink_wrap_pt(rr, -105.0, 0.032)
+    var t1: Vector3 = _drink_wrap_pt(rr, -42.0, 0.02)
+    var t2: Vector3 = _drink_wrap_pt(rr, -72.0, 0.03)
     _drink_segment(parent, t0, t1, 0.0185, skin_mat)
     _drink_segment(parent, t1, t2, 0.0165, skin_mat)
+    _drink_nail(parent, t1, t2, 0.0165, 0.012, 0.0105, nail_mat)
 
     # Thumbnail (the thumb ends at -105 deg and points toward -angle).
     var thumb_nail_deg: float = -102.0
