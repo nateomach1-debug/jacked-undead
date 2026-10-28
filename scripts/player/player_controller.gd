@@ -1402,6 +1402,9 @@ func _update_weapon_model() -> void:
     if _current_model:
         _current_model.queue_free()
         _current_model = null
+    if _gun_hands:
+        _gun_hands.queue_free()
+        _gun_hands = null
     if _attach_root:
         _attach_root.queue_free()
         _attach_root = null
@@ -1413,9 +1416,25 @@ func _update_weapon_model() -> void:
             if not current_weapon.model_scene:
                 # Placeholder guns are built pointing straight ahead, so cancel the mount's rotation
                 _current_model.transform.basis = weapon_mount.transform.basis.orthonormalized().inverse()
+            _add_gun_hands()
             _add_attachment_visuals()
             _ads_dirty = true
 
+
+func _add_gun_hands() -> void:
+    if _current_model == null or current_weapon == null:
+        return
+    var path := "res://scripts/weapons/gun_hands.gd"
+    if not ResourceLoader.exists(path):
+        return
+    var script = load(path)
+    if script == null:
+        return
+    var built = script.call(
+        "build", _current_model, camera, current_weapon.get_base_name()
+    )
+    if built is Node3D:
+        _gun_hands = built
 
 func _try_interact() -> void:
     if is_downed or is_dead:
