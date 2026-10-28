@@ -221,7 +221,16 @@ func _on_ammo_changed(current_mag: int, reserve: int) -> void:
     if _player and _player.current_weapon:
         weapon_label.text = _player.current_weapon.weapon_name
         _refresh_weapon_level()
+        _apply_wonder_rainbow()
 
+
+func _apply_wonder_rainbow() -> void:
+    if _player == null or _player.current_weapon == null:
+        return
+    var script = load("res://scripts/ui/rainbow_text.gd")
+    if script == null:
+        return
+    script.apply(weapon_label, _player.current_weapon.is_wonder)
 
 func _on_gains_changed(amount: int) -> void:
     gains_label.text = "Gains: %d" % amount
@@ -372,10 +381,10 @@ func _refresh_weapon_level() -> void:
             "font_color",
             rarity_script.new().tier_color(tier)
         )
+    _apply_wonder_rainbow()
     _xp_bar.value = float(p["frac"])
     if not _lv_seen.has(base):
         _lv_seen[base] = _wl.get_level(base, false)
-
 
 func _on_kills_for_xp(_total: int) -> void:
     if _wl == null:
