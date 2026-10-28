@@ -181,47 +181,65 @@ const DRINK_GRIP: Dictionary = {
 
 
 func _build_drink_grip(parent: Node3D, r: float, skin_mat: Material) -> void:
-    # Palm on the arm side of the container.
+    # Palm covers the arm side (+x) of the container.
     var palm := MeshInstance3D.new()
     palm.name = "Palm"
     var palm_mesh := BoxMesh.new()
-    palm_mesh.size = Vector3(0.05, 0.12, 0.09)
+    palm_mesh.size = Vector3(0.05, 0.12, r + 0.042)
     palm.mesh = palm_mesh
     palm.material_override = skin_mat
-    palm.position = Vector3(r + 0.03, 0.0, 0.0)
+    palm.position = Vector3(r + 0.03, 0.0, (0.018 - r) / 2.0)
     palm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(palm)
 
-    # Four fingers stacked up the side, wrapping across the front.
+    # Four fingers wrap around the BACK of the container (away from player).
     for i in range(4):
         var finger := MeshInstance3D.new()
         finger.name = "Finger%d" % (i + 1)
         var finger_mesh := CapsuleMesh.new()
         finger_mesh.radius = 0.014
-        finger_mesh.height = 2.0 * r + 0.03
+        finger_mesh.height = 2.0 * r + 0.05
         finger.mesh = finger_mesh
         finger.material_override = skin_mat
         finger.position = Vector3(
-            0.0,
+            0.005,
             -0.045 + float(i) * 0.03,
-            r + 0.012
+            -(r + 0.012)
         )
         finger.rotation.z = deg_to_rad(90.0)
         finger.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
         parent.add_child(finger)
 
-    # Thumb on the opposite side of the container.
+    # Thumb on the side closest to the player.
     var thumb := MeshInstance3D.new()
     thumb.name = "Thumb"
     var thumb_mesh := CapsuleMesh.new()
     thumb_mesh.radius = 0.018
-    thumb_mesh.height = 0.085
+    thumb_mesh.height = 1.3 * r + 0.03
     thumb.mesh = thumb_mesh
     thumb.material_override = skin_mat
-    thumb.position = Vector3(-(r + 0.012), 0.03, 0.02)
-    thumb.rotation.z = deg_to_rad(-10.0)
+    thumb.position = Vector3(0.35 * r + 0.015, 0.03, r + 0.012)
+    thumb.rotation.z = deg_to_rad(90.0)
     thumb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     parent.add_child(thumb)
+
+
+func _drink_limb(
+    parent: Node3D,
+    radius: float,
+    length: float,
+    center_y: float,
+    material: Material
+) -> void:
+    var item := MeshInstance3D.new()
+    var mesh := CapsuleMesh.new()
+    mesh.radius = radius
+    mesh.height = length
+    item.mesh = mesh
+    item.material_override = material
+    item.position.y = center_y
+    item.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    parent.add_child(item)
 
 
 func play_supplement_drink(id: String, product_color: Color) -> void:
@@ -232,46 +250,43 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     _drink_weapon_was_visible = weapon_mount.visible
     weapon_mount.visible = false
 
-    # Attach the hand and product to the first-person camera.
-    var rig := Node3D.new()
-    rig.name = "SupplementDrinkRig"
-    camera.add_child(rig)
-    _drink_rig = rig
-    rig.position = Vector3(0.48, -0.82, -0.62)
-    rig.rotation = Vector3(0.0, 0.0, deg_to_rad(-12.0))
-
     var skin_mat := _drink_material(Color(0.72, 0.46, 0.31))
     var product_mat := _drink_material(product_color.lightened(0.15))
     var white_mat := _drink_material(Color(0.95, 0.95, 0.95))
     var dark_mat := _drink_material(product_color.darkened(0.8))
 
-    # Forearm and hand rig.
-    var forearm := Node3D.new()
-    forearm.name = "Forearm"
-    forearm.position = Vector3(-0.02, -0.16, 0.0)
-    forearm.rotation.z = deg_to_rad(-22.0)
-    rig.add_child(forearm)
+    # Arm chain: shoulder -> upper arm -> elbow -> forearm -> wrist -> hand.
+    # Rotation x pitches the limb (negative = swings forward/up).
+    var rig := Node3D.new()
+    rig.name = "SupplementDrinkRig"
+    camera.add_child(rig)
+    _drink_rig = rig
+    rig.position = Vector3(0.40, -0.45, -0.05)
+    rig.rotation = Vector3(deg_to_rad(-150.0), deg_to_rad(20.0), 0.0)
+    _drink_limb(rig, 0.07, 0.40, 0.17, skin_mat)
 
-    var arm_mesh_instance := MeshInstance3D.new()
-    arm_mesh_instance.name = "ForearmMesh"
-    var arm_mesh := CapsuleMesh.new()
-    arm_mesh.radius = 0.075
-    arm_mesh.height = 0.42
-    arm_mesh_instance.mesh = arm_mesh
-    arm_mesh_instance.material_override = skin_mat
-    arm_mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    forearm.add_child(arm_mesh_instance)
+    var elbow := Node3D.new()
+    elbow.name = "Elbow"
+    elbow.position = Vector3(0.0, 0.34, 0.0)
+    elbow.rotation.x = deg_to_rad(20.0)
+    rig.add_child(elbow)
+    _drink_limb(elbow, 0.065, 0.36, 0.15, skin_mat)
 
-    var hand := Node3D.new()
-    hand.name = "Hand"
-    hand.position = Vector3(-0.10, 0.18, 0.0)
-    forearm.add_child(hand)
+    # Round joint so the bend looks like an elbow.
+    var joint := MeshInstance3D.new()
+    var joint_mesh := SphereMesh.new()
+    joint_mesh.radius = 0.07
+    joint_mesh.height = 0.14
+    joint.mesh = joint_mesh
+    joint.material_override = skin_mat
+    joint.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    elbow.add_child(joint)
 
-    # Everything held is tilted back upright against the forearm lean.
-    var held := Node3D.new()
-    held.name = "Held"
-    held.rotation.z = deg_to_rad(14.0)
-    hand.add_child(held)
+    var wrist := Node3D.new()
+    wrist.name = "Wrist"
+    wrist.position = Vector3(0.0, 0.30, 0.0)
+    wrist.rotation.x = 0.0
+    elbow.add_child(wrist)
 
     var shape: String = str(DRINK_PRODUCT_SHAPES.get(id, "bottle"))
     var grip: Dictionary = DRINK_GRIP.get(shape, DRINK_GRIP["bottle"])
@@ -279,7 +294,12 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     var r: float = float(grip["r"]) * s
     var grip_y: float = float(grip["y"]) * s
 
-    # Container is shifted down so the hand holds it mid-body.
+    # Grip centre sits 9 cm past the wrist, palm on the arm side.
+    var held := Node3D.new()
+    held.name = "Held"
+    held.position = Vector3(-(r + 0.035), 0.09, 0.0)
+    wrist.add_child(held)
+
     var product := Node3D.new()
     product.name = "SupplementContainer"
     product.position = Vector3(0.0, -grip_y, 0.0)
@@ -291,45 +311,63 @@ func play_supplement_drink(id: String, product_color: Color) -> void:
     )
     _build_drink_grip(held, r, skin_mat)
 
-    # Raise the product toward the face.
+    # Raise the arm: shoulder lifts, elbow folds, wrist levels the container.
     var tw := create_tween()
     tw.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
     tw.tween_property(
-        rig, "position", Vector3(0.3, -0.28, -0.58), 0.38
+        rig, "rotation",
+        Vector3(deg_to_rad(-115.0), deg_to_rad(20.0), 0.0), 0.40
     )
     tw.parallel().tween_property(
-        rig, "rotation:z", deg_to_rad(-3.0), 0.38
+        elbow, "rotation:x", deg_to_rad(95.0), 0.40
+    )
+    tw.parallel().tween_property(
+        wrist, "rotation:x", deg_to_rad(20.0), 0.40
     )
 
-    # Pause, then tilt the product to drink.
+    # Pause, then bend the wrist to tip the container toward the mouth.
     tw.tween_interval(0.22)
     tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
     tw.tween_property(
-        rig, "rotation:x", deg_to_rad(48.0), 0.28
+        rig, "rotation",
+        Vector3(deg_to_rad(-95.0), deg_to_rad(28.0), 0.0), 0.30
     )
     tw.parallel().tween_property(
-        rig, "position", Vector3(0.22, -0.18, -0.48), 0.28
+        elbow, "rotation:x", deg_to_rad(105.0), 0.30
     )
-
-    # Hold the drinking pose with three small gulps.
-    for i in range(3):
-        tw.tween_property(rig, "position:y", -0.2, 0.12)
-        tw.tween_property(rig, "position:y", -0.18, 0.12)
-
-    # Lower the product.
-    tw.tween_property(rig, "rotation:x", 0.0, 0.25)
     tw.parallel().tween_property(
-        rig, "position", Vector3(0.3, -0.28, -0.58), 0.25
+        wrist, "rotation:x", deg_to_rad(45.0), 0.30
     )
 
-    # Move the hand and product out of view.
-    tw.tween_interval(0.12)
+    # Three small gulps with the wrist.
+    for _i in range(3):
+        tw.tween_property(wrist, "rotation:x", deg_to_rad(53.0), 0.12)
+        tw.tween_property(wrist, "rotation:x", deg_to_rad(45.0), 0.12)
+
+    # Lower the container.
+    tw.tween_property(
+        rig, "rotation",
+        Vector3(deg_to_rad(-115.0), deg_to_rad(20.0), 0.0), 0.28
+    )
+    tw.parallel().tween_property(
+        elbow, "rotation:x", deg_to_rad(95.0), 0.28
+    )
+    tw.parallel().tween_property(
+        wrist, "rotation:x", deg_to_rad(20.0), 0.28
+    )
+
+    # Drop the arm out of view.
+    tw.tween_interval(0.10)
     tw.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
     tw.tween_property(
-        rig, "position", Vector3(0.48, -0.82, -0.62), 0.32
+        rig, "rotation",
+        Vector3(deg_to_rad(-150.0), deg_to_rad(20.0), 0.0), 0.35
     )
     tw.parallel().tween_property(
-        rig, "rotation:z", deg_to_rad(-12.0), 0.32
+        elbow, "rotation:x", deg_to_rad(20.0), 0.35
+    )
+    tw.parallel().tween_property(
+        wrist, "rotation:x", 0.0, 0.35
     )
     tw.tween_callback(_finish_supplement_drink.bind(rig))
 
