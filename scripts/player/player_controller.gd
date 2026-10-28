@@ -78,6 +78,7 @@ const SPOTTER_DAMAGE_FACTOR: float = 0.5 # SPOTTER power-up: damage taken
 @onready var fire_sound_player: AudioStreamPlayer = $FireSound
 
 var _current_model: Node3D
+var _gun_hands: Node3D
 
 # First-person supplement pickup and drinking animation.
 var _supplement_drinking: bool = false
