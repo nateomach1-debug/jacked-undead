@@ -1150,6 +1150,17 @@ func add_reserve_ammo(amount: int) -> void:
     ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
 
 
+## Water station: the held gun gets a full magazine AND a full reserve.
+func refill_current_weapon_ammo() -> void:
+    if not current_weapon:
+        return
+    current_mag_ammo = current_weapon.mag_size
+    current_reserve_ammo = current_weapon.max_reserve_ammo
+    if current_weapon_index < _saved_mag_ammo.size():
+        _saved_mag_ammo[current_weapon_index] = current_mag_ammo
+        _saved_reserve_ammo[current_weapon_index] = current_reserve_ammo
+    ammo_changed.emit(current_mag_ammo, current_reserve_ammo)
+
 func equip_weapon(weapon: WeaponData) -> void:
     _cancel_actions()
     current_weapon = weapon
