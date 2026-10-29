@@ -6,6 +6,7 @@ const SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
 const SLIDER_PATH: String = "res://scripts/ui/touch_slider.gd"
 const BACKDROP_PATH: String = "res://scripts/ui/poster_backdrop.gd"
 const DIVIDER_PATH: String = "res://scripts/ui/poster_divider.gd"
+const AIM_ASSIST_NAMES: Array = ["OFF", "LOW", "MED", "HIGH"]
 const ROWS: Array = [
     {"key": "touch_look", "title": "Touch look speed", "min": 0.5, "max": 2.0, "step": 0.1, "fmt": "x%.1f"},
     {"key": "pad_look", "title": "Gamepad look speed", "min": 100.0, "max": 400.0, "step": 20.0, "fmt": "%d DEG/S"},
@@ -35,6 +36,7 @@ var _vibration_button: Button
 var _color_button: Button
 var _hit_button: Button
 var _damage_numbers_button: Button
+var _aim_assist_button: Button
 var _outline_button: Button
 var _outline_color_button: Button
 var _replay_button: Button
@@ -111,6 +113,8 @@ func _ready() -> void:
         vbox.add_child(_hit_button)
         _damage_numbers_button = _make_button("", _on_damage_numbers)
         vbox.add_child(_damage_numbers_button)
+        _aim_assist_button = _make_button("", _on_aim_assist)
+        vbox.add_child(_aim_assist_button)
         _outline_button = _make_button("", _on_outline)
         vbox.add_child(_outline_button)
         _outline_color_button = _make_button("", _on_outline_color)
@@ -330,6 +334,12 @@ func _on_sprint_mode() -> void:
     _refresh_buttons()
 
 
+func _on_aim_assist() -> void:
+    var idx: int = (int(_settings.get_value("aim_assist")) + 1) % AIM_ASSIST_NAMES.size()
+    _settings.set_value("aim_assist", float(idx))
+    _refresh_buttons()
+
+
 func _refresh_buttons() -> void:
     _refresh_pad_buttons()
     var count: int = _settings.RETICLE_COLORS.size()
@@ -341,6 +351,8 @@ func _refresh_buttons() -> void:
     _color_button.add_theme_color_override("font_pressed_color", entry["color"])
     _hit_button.text = "HIT MARKERS: " + ("ON" if _settings.get_value("hit_markers") > 0.5 else "OFF")
     _damage_numbers_button.text = "DAMAGE NUMBERS: " + ("ON" if _settings.get_value("damage_numbers") > 0.5 else "OFF")
+    var aa: int = clampi(int(_settings.get_value("aim_assist")), 0, AIM_ASSIST_NAMES.size() - 1)
+    _aim_assist_button.text = "TOUCH AIM ASSIST: " + str(AIM_ASSIST_NAMES[aa])
     _outline_button.text = "RETICLE OUTLINE: " + ("ON" if _settings.get_value("outline") > 0.5 else "OFF")
     var oidx: int = clampi(int(_settings.get_value("outline_color")), 0, _settings.OUTLINE_COLORS.size() - 1)
     var oentry: Dictionary = _settings.OUTLINE_COLORS[oidx]
@@ -397,6 +409,7 @@ func _on_back() -> void:
 func _on_replay_tutorial() -> void:
     _settings.set_value("tutorial_seen", 0.0)
     _replay_button.text = "TUTORIAL SHOWS AT NEXT GAME"
+
 
 func _on_damage_numbers() -> void:
     var on: bool = _settings.get_value("damage_numbers") > 0.5
