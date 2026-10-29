@@ -4,11 +4,14 @@ extends Node
 ## zombie closest to the crosshair. It aims at the HEAD if your crosshair is
 ## already near the head, otherwise at the chest, so it never drags a
 ## headshot aim down. It backs off while you turn fast.
+## Strength comes from the TOUCH AIM ASSIST setting (OFF / LOW / MED / HIGH).
 ## Perk hook: if the player has a has_headshot_assist() function that returns
 ## true (future Deadshot-style perk), it always aims at the head with a wider
 ## cone, even when the setting is OFF.
 
-const DEFAULT_LEVEL: int = 2   # 0 OFF, 1 LOW, 2 MED, 3 HIGH (settings row comes next)
+const SETTINGS_PATH: String = "res://scripts/managers/game_settings.gd"
+const DEFAULT_LEVEL: int = 2   # 0 OFF, 1 LOW, 2 MED, 3 HIGH
+const SETTING_RECHECK: float = 1.0   # seconds between reads of the setting
 
 # Indexed by level (0 = off).
 const CONE_DEG: Array = [0.0, 3.5, 5.5, 8.0]        # how close to the crosshair a zombie must be
@@ -33,6 +36,8 @@ const MAX_LOS_TESTS: int = 3
 var _look_area: Control = null
 var _player: Node = null
 var _target: Node = null
+var _level_cached: int = DEFAULT_LEVEL
+var _level_timer: float = 0.0
 
 
 func setup(look_area: Control) -> void:
@@ -40,6 +45,11 @@ func setup(look_area: Control) -> void:
 
 
 func _physics_process(delta: float) -> void:
+    _level_timer -= delta
+    if _level_timer <= 0.0:
+        _level_timer = SETTING_RECHECK
+        _level_cached = _read_level()
+
     if _look_area == null or not is_instance_valid(_look_area):
         return
     if not _look_area.is_visible_in_tree():
@@ -65,7 +75,7 @@ func _physics_process(delta: float) -> void:
         return
 
     var perk: bool = _has_perk()
-    var level: int = _level()
+    var level: int = _level_cached
     if perk and level < 1:
         level = 1
     if level <= 0:
@@ -106,9 +116,13 @@ func _physics_process(delta: float) -> void:
     cam.rotation.x = clampf(cam.rotation.x + dpitch, deg_to_rad(-89.0), deg_to_rad(89.0))
 
 
-## Aim assist strength: 0 OFF, 1 LOW, 2 MED, 3 HIGH. Settings row comes later.
-func _level() -> int:
-    return DEFAULT_LEVEL
+## Aim assist strength from the settings file: 0 OFF, 1 LOW, 2 MED, 3 HIGH.
+func _read_level() -> int:
+    var script = load(SETTINGS_PATH)
+    if script == null:
+        return DEFAULT_LEVEL
+    var s = script.new()
+    return clampi(int(s.get_value("aim_assist")), 0, 3)
 
 
 func _has_perk() -> bool:
