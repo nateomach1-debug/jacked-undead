@@ -17,8 +17,8 @@ static func build_brnh() -> WeaponData:
     w.fire_mode = WeaponData.FireMode.WONDER
     w.damage = 2500.0
     w.fire_rate = 0.7
-    w.mag_size = 10
-    w.max_reserve_ammo = 30
+    w.mag_size = 2
+    w.max_reserve_ammo = 10
     w.reload_time = 2.5
     w.range = 100.0
     w.gains_per_hit = 20
@@ -37,8 +37,8 @@ static func build_frenemy() -> WeaponData:
     w.fire_mode = WeaponData.FireMode.WONDER
     w.damage = 1500.0
     w.fire_rate = 0.5
-    w.mag_size = 8
-    w.max_reserve_ammo = 32
+    w.mag_size = 4
+    w.max_reserve_ammo = 16
     w.reload_time = 2.0
     w.range = 80.0
     w.splash_radius = 5.0
