@@ -3,7 +3,7 @@ extends RefCounted
 ## Ammo refill price multiplier by PR level of the weapon.
 
 const ENABLED: bool = true
-const MULTIPLIERS: Array = [1.0, 1.5, 2.0, 2.5]  # PR 0, 1, 2, 3
+const MULTIPLIERS: Array = [1.0, 5.0, 10.0, 15.0]  # PR 0, 1, 2, 3
 
 
 static func multiplier(weapon) -> float:
