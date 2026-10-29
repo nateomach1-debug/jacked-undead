@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
+const AIM_ON_COLOR: Color = Color(1.0, 0.85, 0.3, 1.0)
 
 @onready var joystick: Control = $Joystick
 @onready var btn_jump: Button = $Cluster/Jump
@@ -11,6 +12,7 @@ const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
 
 var _player: Node
 var _sprint_on: bool = false
+var _aim_on: bool = false
 var _aim_btn: Button = null
 var _layout = null
 
@@ -29,6 +31,12 @@ func _ready() -> void:
     get_viewport().size_changed.connect(_on_viewport_resized)
 
 
+func _exit_tree() -> void:
+    # Never leave aim stuck on after leaving a match.
+    if _aim_on:
+        Input.action_release("aim")
+
+
 func _on_viewport_resized() -> void:
     call_deferred("_apply_layout")
 
@@ -42,11 +50,16 @@ func _on_sprint_pressed() -> void:
 
 
 func _on_switch_pressed() -> void:
+    _set_aim(false)
     if _player and _player.has_method("switch_weapon"):
         _player.switch_weapon(1)
 
 
 func _process(_delta: float) -> void:
+    # Aim turns off by itself when you sprint or reload.
+    if _aim_on and (Input.is_action_pressed("sprint") or Input.is_action_just_pressed("reload")):
+        _set_aim(false)
+
     if not _player:
         _player = get_tree().get_first_node_in_group("player")
         return
@@ -58,6 +71,7 @@ func _bind(button: Button, action: String) -> void:
     button.button_up.connect(func(): Input.action_release(action))
 
 
+## Aim button: tap to aim down sights, tap again to stop (CoD Zombies style).
 func _add_aim_button() -> void:
     if not InputMap.has_action("aim"):
         InputMap.add_action("aim", 0.5)
@@ -73,9 +87,25 @@ func _add_aim_button() -> void:
     aim.offset_top = -500.0
     aim.offset_right = -20.0
     aim.offset_bottom = -350.0
-    _bind(aim, "aim")
+    aim.pressed.connect(_on_aim_pressed)
     btn_use.get_parent().add_child(aim)
     _aim_btn = aim
+
+
+func _on_aim_pressed() -> void:
+    _set_aim(not _aim_on)
+
+
+func _set_aim(on: bool) -> void:
+    if on == _aim_on:
+        return
+    _aim_on = on
+    if on:
+        Input.action_press("aim")
+    else:
+        Input.action_release("aim")
+    if _aim_btn != null:
+        _aim_btn.self_modulate = AIM_ON_COLOR if on else Color(1.0, 1.0, 1.0, 1.0)
 
 
 ## Applies the saved HUD layout (Settings > HUD LAYOUT). With nothing saved
