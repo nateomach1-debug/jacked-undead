@@ -5,6 +5,11 @@ extends Node
 ## spawns zombies once that zone is unlocked. Untagged points are always on.
 ## Drop this node into the main level scene.
 ##
+## Zombie types: normal, Roid Rager (every Nth round), Sprinter (from round 3)
+## and Spitter (from round 5, at most max_spitters_alive at once). Sprinter and
+## Spitter scenes are loaded by path, so nothing needs setting in the Inspector.
+## Each special zombie replaces one normal one, so the round count is unchanged.
+##
 ## Leash: a zombie that stays far from every living player for a few seconds is
 ## moved to a spawn point near that player (same zombie, same health, and the
 ## round's zombie count is unchanged). Only real zombies are moved, not puppets,
@@ -21,6 +26,9 @@ signal zombies_changed(remaining: int, total: int)
 const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
 const BOSS_GROUP: String = "great_pumpkin"
 const BOSS_MIN_SPAWN_DISTANCE: float = 18.0  # boss spawns at least this far from the player if possible
+const SPRINTER_PATH: String = "res://scenes/zombies/sprinter.tscn"
+const SPITTER_PATH: String = "res://scenes/zombies/spitter.tscn"
+const SPITTER_GROUP: String = "spitters"
 
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
@@ -31,6 +39,12 @@ const BOSS_MIN_SPAWN_DISTANCE: float = 18.0  # boss spawns at least this far fro
 @export var time_between_spawns: float = 1.2
 @export var time_between_rounds: float = 8.0
 @export var roid_rager_every_n_rounds: int = 3
+@export var sprinter_start_round: int = 3     # Sprinters can spawn from this round
+@export var sprinter_chance_start: float = 0.20  # share of spawns at the start round
+@export var sprinter_chance_max: float = 0.35    # share of spawns at the highest
+@export var spitter_start_round: int = 5      # Spitters can spawn from this round
+@export var spitter_chance: float = 0.12
+@export var max_spitters_alive: int = 2
 @export var min_spawn_distance: float = 8.0  # don't spawn right on top of the player
 @export var nearest_spawn_pool: int = 3      # pick randomly among this many closest points
 @export var leash_distance: float = 45.0     # farther than this from every player = "too far"
@@ -45,6 +59,7 @@ var _last_boss_spawn_round: int = -999
 var _test_pumpkin_spawned: bool = false
 var _leash_timer: float = 1.0
 var _powerups = null
+var _extra_scenes: Dictionary = {}  # path -> PackedScene (or null if it could not be loaded)
 
 
 func _ready() -> void:
@@ -111,16 +126,63 @@ func _spawn_wave(count: int, spawn_boss: bool = false) -> void:
 
 
 func _spawn_one_zombie() -> void:
-    var scene_to_use: PackedScene = zombie_scene
-    var is_special_round := GameManager.round_number % roid_rager_every_n_rounds == 0
-    if is_special_round and roid_rager_scene and randf() < 0.25:
-        scene_to_use = roid_rager_scene
+    var scene_to_use: PackedScene = _pick_zombie_scene()
 
     var point: Marker3D = _pick_spawn_point()
     var zombie: Zombie = scene_to_use.instantiate()
     get_tree().current_scene.add_child(zombie)
     zombie.global_position = point.global_position
     zombie.died.connect(_on_zombie_died)
+
+
+## Which kind of zombie comes next: Roid Rager on special rounds, otherwise a
+## chance of Sprinter or Spitter, otherwise the normal zombie.
+func _pick_zombie_scene() -> PackedScene:
+    var round_num: int = GameManager.round_number
+    var is_special_round := round_num % roid_rager_every_n_rounds == 0
+    if is_special_round and roid_rager_scene and randf() < 0.25:
+        return roid_rager_scene
+
+    if round_num >= sprinter_start_round and randf() < _sprinter_chance(round_num):
+        var sprinter: PackedScene = _load_extra_scene(SPRINTER_PATH)
+        if sprinter != null:
+            return sprinter
+
+    if round_num >= spitter_start_round and randf() < spitter_chance:
+        if _count_alive_spitters() < max_spitters_alive:
+            var spitter: PackedScene = _load_extra_scene(SPITTER_PATH)
+            if spitter != null:
+                return spitter
+
+    return zombie_scene
+
+
+## Sprinter share of spawns: starts at sprinter_chance_start and grows 3% per
+## round up to sprinter_chance_max.
+func _sprinter_chance(round_num: int) -> float:
+    var rounds_in: int = maxi(round_num - sprinter_start_round, 0)
+    return minf(sprinter_chance_start + float(rounds_in) * 0.03, sprinter_chance_max)
+
+
+func _count_alive_spitters() -> int:
+    var n: int = 0
+    for z in get_tree().get_nodes_in_group(SPITTER_GROUP):
+        if is_instance_valid(z) and not z.is_queued_for_deletion():
+            n += 1
+    return n
+
+
+## Loads a zombie scene by path once. Null (with one warning) if it is missing.
+func _load_extra_scene(path: String) -> PackedScene:
+    if _extra_scenes.has(path):
+        return _extra_scenes[path] as PackedScene
+    var scene: PackedScene = null
+    if ResourceLoader.exists(path):
+        scene = load(path) as PackedScene
+    if scene == null:
+        push_warning("RoundManager: could not load " + path + "; that zombie type is skipped.")
+    _extra_scenes[path] = scene
+    return scene
 
 
 # ---------------------------------------------------------------- Great Pumpkin boss
@@ -279,8 +341,6 @@ func _find_pumpkin_ground_y(origin: Vector3) -> float:
             lowest_ground_y = hit_position.y
 
     return lowest_ground_y
-
-
 # ---------------------------------------------------------------- spawn points
 
 ## Only unlocked zones, not too close to the player, random among the nearest few.
