@@ -1,13 +1,22 @@
 extends Area3D
-## "Water Station" - the wall-buy equivalent. Refills reserve ammo for
-## the player's current weapon in exchange for Gains. Price rises with
-## the weapon's PR level (see ammo_scaling.gd).
+## "Water Station" - the wall-buy equivalent. Refills the player's current
+## weapon (magazine AND reserve) in exchange for Gains. Price rises with
+## the weapon's PR level (see ammo_scaling.gd). Wonder weapons have their
+## own fixed prices (WONDER_AMMO_PRICES); a PR-racked wonder gun costs
+## WONDER_PR_MULTIPLIER times that.
 ## The look is built in code (rounded cooler with a big water jug, gym
 ## band, taps, buttons, drip tray). The old Base/Jug/Spigot meshes from the
 ## scene are hidden; collision and the WATER label stay as they are.
 
 @export var cost: int = 500
+## No longer used: buying ammo now fully refills the magazine and reserve.
 @export var refill_amount: int = 60
+
+const WONDER_AMMO_PRICES: Dictionary = {
+    "Br-Nh": 5000,
+    "Frenemy": 2000,
+}
+const WONDER_PR_MULTIPLIER: float = 2.5
 
 static var _mat_cache: Dictionary = {}
 static var _mesh_cache: Dictionary = {}
@@ -18,17 +27,26 @@ func _ready() -> void:
 
 
 func _price(player: Node) -> int:
-    var AS = load("res://scripts/stations/ammo_scaling.gd")
-    if AS == null or player == null:
+    if player == null:
         return cost
-    return AS.scaled(cost, player.current_weapon)
+    var weapon = player.current_weapon
+    if weapon != null and weapon is WeaponData and (weapon as WeaponData).is_wonder:
+        var w: WeaponData = weapon
+        var base_price: int = int(WONDER_AMMO_PRICES.get(w.get_base_name(), cost))
+        if w.pr_level > 0:
+            return int(round(float(base_price) * WONDER_PR_MULTIPLIER))
+        return base_price
+    var AS = load("res://scripts/stations/ammo_scaling.gd")
+    if AS == null:
+        return cost
+    return AS.scaled(cost, weapon)
 
 
 func interact(player: Node) -> void:
     if not player.current_weapon:
         return
     if GameManager.try_spend_gains(_price(player)):
-        player.add_reserve_ammo(refill_amount)
+        player.refill_current_weapon_ammo()
 
 
 func get_prompt_text() -> String:
