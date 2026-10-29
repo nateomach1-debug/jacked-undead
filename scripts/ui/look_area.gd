@@ -5,6 +5,11 @@ extends Control
 
 const TOUCH_LOOK_SENSITIVITY: float = 0.006
 const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
+const AIM_ASSIST_PATH: String = "res://scripts/ui/aim_assist.gd"
+
+## How fast the look fingers are moving (screen px per second, smoothed).
+## The aim assist reads this and backs off while you turn quickly.
+var drag_speed: float = 0.0
 
 var _player: Node
 var _shoot_touch_index: int = -1
@@ -14,6 +19,7 @@ var _last_pos: Dictionary = {}
 var _zone: Rect2 = Rect2()
 var _zone_alpha: float = 1.0
 var _look_mult: float = 1.0
+var _drag_accum: float = 0.0
 
 
 func _ready() -> void:
@@ -22,6 +28,25 @@ func _ready() -> void:
     _player = get_tree().get_first_node_in_group("player")
     _update_zone()
     get_viewport().size_changed.connect(_update_zone)
+    _setup_aim_assist()
+
+
+func _process(delta: float) -> void:
+    var instant: float = _drag_accum / maxf(delta, 0.001)
+    _drag_accum = 0.0
+    drag_speed = lerpf(drag_speed, instant, clampf(delta * 12.0, 0.0, 1.0))
+
+
+## Adds the touch aim assist as a child. Skipped quietly if the script is missing.
+func _setup_aim_assist() -> void:
+    var script = load(AIM_ASSIST_PATH)
+    if script == null:
+        return
+    var node = script.new()
+    node.name = "AimAssist"
+    add_child(node)
+    if node.has_method("setup"):
+        node.setup(self)
 
 
 ## The fire button area: from the saved HUD layout, or the old default spot.
@@ -114,6 +139,7 @@ func _gui_input(event: InputEvent) -> void:
                 delta = (event.position - _last_pos[event.index]) * _screen_scale()
             _last_pos[event.index] = event.position
             if delta != Vector2.ZERO:
+                _drag_accum += delta.length()
                 _player.apply_look_delta(
                     delta,
                     TOUCH_LOOK_SENSITIVITY * _look_mult
