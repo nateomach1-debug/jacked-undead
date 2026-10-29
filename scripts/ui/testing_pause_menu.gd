@@ -1,9 +1,9 @@
-
 extends Node
 ## Testing-only pause menu. This node keeps processing while gameplay is paused.
 
 const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
 const LAYOUT_EDITOR_FILE := "hud_layout_editor.gd"
+const MAIN_MENU_PATH := "res://scenes/main_menu/main_menu.tscn"
 
 var _layer: CanvasLayer
 var _root: Control
@@ -72,6 +72,7 @@ func _on_layout_editor_closed() -> void:
     if _pause_button != null:
         _pause_button.visible = not get_tree().paused and not GameManager.is_game_over
 
+
 func _build_ui() -> void:
     _layer = CanvasLayer.new()
     _layer.layer = 100
@@ -94,7 +95,7 @@ func _build_ui() -> void:
     _root.add_child(center)
 
     _pause_panel = PanelContainer.new()
-    _pause_panel.custom_minimum_size = Vector2(340.0, 190.0)
+    _pause_panel.custom_minimum_size = Vector2(340.0, 260.0)
     _pause_panel.visible = false
     center.add_child(_pause_panel)
 
@@ -119,6 +120,12 @@ func _build_ui() -> void:
     resume_button.pressed.connect(_on_resume_pressed)
     layout.add_child(resume_button)
 
+    var exit_button := Button.new()
+    exit_button.text = "EXIT TO MAIN MENU"
+    exit_button.custom_minimum_size = Vector2(0.0, 58.0)
+    exit_button.pressed.connect(_on_exit_pressed)
+    layout.add_child(exit_button)
+
 
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_cancel") and not event.is_echo():
@@ -132,6 +139,14 @@ func _on_pause_pressed() -> void:
 
 func _on_resume_pressed() -> void:
     _set_paused(false)
+
+
+## Leaves the match (and any co-op session) and goes back to the main menu.
+func _on_exit_pressed() -> void:
+    NetManager.leave()
+    get_tree().paused = false
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+    get_tree().change_scene_to_file(MAIN_MENU_PATH)
 
 
 func _toggle_pause() -> void:
