@@ -7,6 +7,8 @@ extends Area3D
 ## loot lockers behind a dropped gun still work).
 ## Dropped guns spread out so they never sit on top of each other.
 ## Wonder weapons get a rainbow ring, beam and name.
+## Dropped guns always land on the real FLOOR (the level the player stands on),
+## never on tables, crates or other props.
 
 ## Rarity colors. A weapon's rarity is read from its "rarity" meta
 ## (weapon.set_meta("rarity", "rare")). No meta = common (white).
@@ -25,6 +27,14 @@ const RING_OUTER: float = 0.74
 ## Closest two dropped guns may be (center to center, meters). A bit more
 ## than the ring width (1.48) so the rings never overlap.
 const MIN_SPACING: float = 1.7
+
+## Floor search: surfaces more than FLOOR_TOP_TOLERANCE above the player's
+## floor are props, not floor. FLOOR_SEARCH_DOWN is how far below it we look.
+const FLOOR_TOP_TOLERANCE: float = 0.35
+const FLOOR_SEARCH_DOWN: float = 1.2
+## A prop top this far above the floor (up to COVER_MAX) means the spot is
+## under or inside a prop, so the gun moves out.
+const COVER_MAX: float = 1.8
 
 ## Names that count as wonder weapons (rainbow colors), on top of the
 ## is_wonder flag and the WONDER fire mode.
@@ -66,6 +76,7 @@ var _ring_shader_mat: ShaderMaterial
 var _beam_mat: StandardMaterial3D
 var _t: float = 0.0
 var _player: Node
+var _ref_y: float = INF
 
 
 func setup(w: WeaponData, mag: int, reserve: int) -> void:
@@ -185,20 +196,72 @@ func _build_ring(col: Color) -> void:
     beam.position = Vector3(0.0, 1.2, 0.0)
     beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     add_child(beam)
-
-
-## Straight down from above a point to find the floor (layer 1). Empty if none.
-func _floor_hit(at: Vector3) -> Dictionary:
+## Height of the floor the player is standing on (the reference level for
+## every drop). Falls back to this gun's own height if it can't be found.
+func _reference_floor_y() -> float:
+    var fallback: float = global_position.y - 0.1
+    if _player == null or not (_player is Node3D):
+        return fallback
+    var p: Vector3 = (_player as Node3D).global_position
     var space := get_world_3d().direct_space_state
-    var from: Vector3 = at + Vector3(0.0, 1.5, 0.0)
-    var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(0.0, -8.0, 0.0), 1)
-    return space.intersect_ray(query)
+    var query := PhysicsRayQueryParameters3D.create(
+        p + Vector3(0.0, 0.3, 0.0), p + Vector3(0.0, -4.0, 0.0), 1
+    )
+    if _player is CollisionObject3D:
+        query.exclude = [(_player as CollisionObject3D).get_rid()]
+    var hit: Dictionary = space.intersect_ray(query)
+    if hit.is_empty():
+        return fallback
+    return float(hit["position"].y)
+
+
+## The FLOOR below a point (not the top of a table or crate). Looks through
+## every surface from above the player's floor level down, keeps only
+## upward-facing ones that are not higher than the floor tolerance, and takes
+## the lowest. "covered" is true when a prop top sits above that spot (the
+## spot is under or inside a prop). Empty dictionary if there is no floor.
+func _floor_hit(at: Vector3) -> Dictionary:
+    if _ref_y == INF:
+        _ref_y = _reference_floor_y()
+    var space := get_world_3d().direct_space_state
+    var bottom_y: float = _ref_y - FLOOR_SEARCH_DOWN
+    var from: Vector3 = Vector3(at.x, _ref_y + 3.0, at.z)
+    var to_bottom: Vector3 = Vector3(at.x, bottom_y, at.z)
+    var best: Dictionary = {}
+    var tops: Array = []
+    for i in range(14):
+        if from.y <= bottom_y + 0.01:
+            break
+        var query := PhysicsRayQueryParameters3D.create(from, to_bottom, 1)
+        if _player is CollisionObject3D:
+            query.exclude = [(_player as CollisionObject3D).get_rid()]
+        var hit: Dictionary = space.intersect_ray(query)
+        if hit.is_empty():
+            break
+        var hp: Vector3 = hit["position"]
+        var n: Vector3 = hit["normal"]
+        if n.y >= 0.7:
+            if hp.y <= _ref_y + FLOOR_TOP_TOLERANCE:
+                best = hit
+            tops.append(hp.y)
+        from = Vector3(at.x, hp.y - 0.02, at.z)
+    if best.is_empty():
+        return {}
+    var floor_y: float = float(best["position"].y)
+    var covered: bool = false
+    for ty in tops:
+        if float(ty) > floor_y + FLOOR_TOP_TOLERANCE and float(ty) < floor_y + COVER_MAX:
+            covered = true
+            break
+    best["covered"] = covered
+    return best
 
 
 func _drop_to_floor() -> void:
     await get_tree().physics_frame
     if not is_inside_tree():
         return
+    _ref_y = _reference_floor_y()
     var hit: Dictionary = _floor_hit(global_position)
     if not hit.is_empty():
         global_position.y = hit["position"].y + 0.1
@@ -228,11 +291,20 @@ func _blocked_between(a: Vector3, b: Vector3) -> bool:
     return not space.intersect_ray(query).is_empty()
 
 
-## If this gun landed on top of another one, slide it to the nearest free
-## spot on the floor (widening circles around where it landed). First pass
-## avoids spots behind walls; if none is found, the second pass allows them.
+## True if this gun's current spot is under or inside a prop.
+func _is_covered_here() -> bool:
+    var hit: Dictionary = _floor_hit(global_position)
+    if hit.is_empty():
+        return false
+    return bool(hit.get("covered", false))
+
+
+## If this gun landed on top of another one, or under/inside a prop, slide it
+## to the nearest free spot on the floor (widening circles around where it
+## landed). First pass avoids spots behind walls; if none is found, the
+## second pass allows them.
 func _spread_from_others() -> void:
-    if not _is_crowded(global_position):
+    if not _is_crowded(global_position) and not _is_covered_here():
         return
     var origin: Vector3 = global_position
     for check_walls in [true, false]:
@@ -244,6 +316,8 @@ func _spread_from_others() -> void:
                 var cand: Vector3 = origin + Vector3(cos(a) * dist, 0.0, sin(a) * dist)
                 var hit: Dictionary = _floor_hit(cand)
                 if hit.is_empty():
+                    continue
+                if bool(hit.get("covered", false)):
                     continue
                 var fy: float = float(hit["position"].y) + 0.1
                 # Same floor level only (not up on a ledge or down a drop).
