@@ -2,8 +2,8 @@ extends Area3D
 ## "Water Station" - the wall-buy equivalent. Refills the player's current
 ## weapon (magazine AND reserve) in exchange for Gains. Price rises with
 ## the weapon's PR level (see ammo_scaling.gd). Wonder weapons have their
-## own fixed prices (WONDER_AMMO_PRICES); a PR-racked wonder gun costs
-## WONDER_PR_MULTIPLIER times that.
+## own fixed prices per PR level (WONDER_AMMO_PRICES: index 0 = not PR racked,
+## then PR level 1, 2, 3).
 ## The look is built in code (rounded cooler with a big water jug, gym
 ## band, taps, buttons, drip tray). The old Base/Jug/Spigot meshes from the
 ## scene are hidden; collision and the WATER label stay as they are.
@@ -13,10 +13,9 @@ extends Area3D
 @export var refill_amount: int = 60
 
 const WONDER_AMMO_PRICES: Dictionary = {
-    "Br-Nh": 5000,
-    "Frenemy": 2000,
+    "Br-Nh": [5000],
+    "Frenemy": [2000, 5000, 10000, 25000],
 }
-const WONDER_PR_MULTIPLIER: float = 2.5
 
 static var _mat_cache: Dictionary = {}
 static var _mesh_cache: Dictionary = {}
@@ -32,10 +31,10 @@ func _price(player: Node) -> int:
     var weapon = player.current_weapon
     if weapon != null and weapon is WeaponData and (weapon as WeaponData).is_wonder:
         var w: WeaponData = weapon
-        var base_price: int = int(WONDER_AMMO_PRICES.get(w.get_base_name(), cost))
-        if w.pr_level > 0:
-            return int(round(float(base_price) * WONDER_PR_MULTIPLIER))
-        return base_price
+        var prices: Array = WONDER_AMMO_PRICES.get(w.get_base_name(), [])
+        if prices.is_empty():
+            return cost
+        return int(prices[clampi(w.pr_level, 0, prices.size() - 1)])
     var AS = load("res://scripts/stations/ammo_scaling.gd")
     if AS == null:
         return cost
