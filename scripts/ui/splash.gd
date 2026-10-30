@@ -35,6 +35,7 @@ func _ready() -> void:
     center.add_child(box)
 
     _bar = _make_barbell()
+    _bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     box.add_child(_bar)
 
     _title = Label.new()
