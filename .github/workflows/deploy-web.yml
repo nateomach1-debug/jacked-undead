@@ -94,6 +94,32 @@ jobs:
           godot --headless --path . \
             --export-release "Web" build/index.html
 
+      - name: Hide Godot loading screen
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("build/index.html")
+          text = path.read_text()
+
+          style = (
+              "<style>"
+              "#status-splash{display:none !important;}"
+              "#status-progress{display:none !important;}"
+              "#status-notice{display:none !important;}"
+              "body{background:#000 !important;}"
+              "</style>"
+          )
+
+          if "</head>" in text:
+              text = text.replace("</head>", style + "</head>", 1)
+          else:
+              text = style + text
+
+          path.write_text(text)
+          PY
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
