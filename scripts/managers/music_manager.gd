@@ -164,6 +164,13 @@ func _play_random_track() -> void:
     _last_index = index
     _player.stream = _tracks[index]
     _player.stream_paused = false
+    print(
+        "MusicManager DEBUG: Starting track: ",
+        _track_paths[index],
+        " | Actual player volume: ",
+        _player.volume_db,
+        " dB"
+    )
     _player.play()
     _refresh_ui()
 
@@ -190,6 +197,14 @@ func set_music_volume(value: float) -> void:
     if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
+    print(
+        "MusicManager DEBUG: set_music_volume | Input: ",
+        volume,
+        " | Reduction: ",
+        MASTER_MUSIC_REDUCTION,
+        " | Applied dB: ",
+        _player.volume_db
+    )
         _player.volume_db = linear_to_db(adjusted_volume)
 
     var settings_script = load(SETTINGS_PATH)
@@ -211,6 +226,14 @@ func _load_saved_volume() -> void:
     if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
+    print(
+        "MusicManager DEBUG: _load_saved_volume | Saved: ",
+        volume,
+        " | Reduction: ",
+        MASTER_MUSIC_REDUCTION,
+        " | Applied dB: ",
+        _player.volume_db
+    )
         _player.volume_db = linear_to_db(adjusted_volume)
 
 
