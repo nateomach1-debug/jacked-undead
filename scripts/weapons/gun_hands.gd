@@ -22,10 +22,14 @@ const GRIP_BACK_LONG: float = 0.3
 const BLEND_FROM: float = 0.3
 const BLEND_TO: float = 0.7
 
-# Per-gun grip nudges in meters, in camera-aligned space
-# (x right, y up, z back). Key = the gun's base name.
-# Example: "Rifle": Vector3(0.0, 0.02, 0.03)  = hand 2 cm higher, 3 cm further back
+# Per-gun grip nudges in meters (0.01 = 1 cm), in camera-aligned space.
+# Key = the gun's base name (the name without "- 1RM").
+#   x: + = hand to the right, - = to the left
+#   y: + = hand up, - = down
+#   z: + = hand toward you (back), - = toward the barrel (forward)
+# Example: "Rifle": Vector3(0.0, 0.02, -0.03),
 const GRIP_OFFSETS: Dictionary = {
+    "SMG": Vector3(0.0, 0.04, -0.04),
 }
 
 
