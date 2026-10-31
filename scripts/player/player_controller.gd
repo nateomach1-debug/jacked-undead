@@ -655,6 +655,7 @@ func _physics_process(delta: float) -> void:
     _update_ads(delta)
     _update_reticle()
     _handle_movement(delta)
+    _track_standing_still(delta)
     _handle_shooting(delta)
     _handle_regen(delta)
     _track_fall(delta)
@@ -732,6 +733,31 @@ func _count_jump() -> void:
     if fx.start(get_tree()):
         NetManager.announce_zero_g()
 
+const PROTEIN_RAIN_SECONDS: float = 60.0
+const PROTEIN_RAIN_RADIUS: float = 1.5
+const PROTEIN_RAIN_PATH: String = "res://scripts/effects/protein_rain.gd"
+var _still_anchor: Vector3 = Vector3.ZERO
+var _still_time: float = 0.0
+var _protein_rain_done: bool = false
+
+
+## Easter egg: standing within 1.5 m of one spot for 60 seconds starts Protein
+## Rain. Looking around, shooting and jumping do not reset it; walking away does.
+func _track_standing_still(delta: float) -> void:
+    if _protein_rain_done or is_dead or is_downed:
+        return
+    var flat := Vector3(global_position.x, 0.0, global_position.z)
+    if flat.distance_to(_still_anchor) > PROTEIN_RAIN_RADIUS:
+        _still_anchor = flat
+        _still_time = 0.0
+        return
+    _still_time += delta
+    if _still_time < PROTEIN_RAIN_SECONDS:
+        return
+    _protein_rain_done = true
+    var fx = load(PROTEIN_RAIN_PATH)
+    if fx != null:
+        fx.start(get_tree(), self)
 ## True only if something ahead would stop us AND it is not a walkable slope.
 func _blocked_by_steep(motion: Vector3) -> bool:
     var params := PhysicsTestMotionParameters3D.new()
