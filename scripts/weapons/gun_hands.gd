@@ -9,8 +9,21 @@ const GRIP_R: float = 0.04
 # fingers look wrong from behind.
 const GRIP_YAW_DEG: float = 0.0
 
-# Per-gun grip nudges, in camera-aligned space (x right, y up, z back).
-# Example: "Revolver": Vector3(0.0, 0.01, 0.02)
+# Grip height as a fraction of the gun's height, measured up from the
+# bottom of the gun (magazine included). Raise = hand higher on every gun.
+const GRIP_Y_FRAC: float = 0.28
+
+# How far forward of the back of the gun the grip sits, as a fraction of
+# the gun's length. Short guns use SHORT, long guns use LONG, and guns in
+# between blend smoothly (BLEND_FROM / BLEND_TO are lengths in meters).
+const GRIP_BACK_SHORT: float = 0.28
+const GRIP_BACK_LONG: float = 0.2
+const BLEND_FROM: float = 0.3
+const BLEND_TO: float = 0.7
+
+# Per-gun grip nudges in meters, in camera-aligned space
+# (x right, y up, z back). Key = the gun's base name.
+# Example: "Rifle": Vector3(0.0, 0.02, 0.03)  = hand 2 cm higher, 3 cm further back
 const GRIP_OFFSETS: Dictionary = {
 }
 
@@ -40,13 +53,15 @@ static func build(model: Node3D, camera: Node3D, kind: String) -> Node3D:
     var bounds: AABB = box[0]
 
     # Guess where the grip is: centred, near the back, low on the model.
+    # Everything is relative to the gun's final (resized) bounds.
     var mn: Vector3 = bounds.position
     var mx: Vector3 = bounds.end
     var length: float = mx.z - mn.z
-    var back_frac: float = 0.28 if length < 0.45 else 0.2
+    var blend: float = clampf(inverse_lerp(BLEND_FROM, BLEND_TO, length), 0.0, 1.0)
+    var back_frac: float = lerpf(GRIP_BACK_SHORT, GRIP_BACK_LONG, blend)
     var grip_pos := Vector3(
         (mn.x + mx.x) * 0.5,
-        mn.y + minf(bounds.size.y * 0.28, 0.09),
+        mn.y + bounds.size.y * GRIP_Y_FRAC,
         mx.z - length * back_frac
     )
     var offset: Vector3 = GRIP_OFFSETS.get(kind, Vector3.ZERO)
