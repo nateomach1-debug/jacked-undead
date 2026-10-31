@@ -2,7 +2,8 @@ extends RefCounted
 ## Wonder weapons: special guns in their own category. They are NOT in the
 ## Loot Locker pool (locker_weapons.gd); the Loot Locker rolls them separately
 ## (see random_wonder). No attachments, no rarity. PR upgrades are blocked
-## unless WeaponData.wonder_pr_upgradable is set (Frenemy -> Bombie).
+## unless WeaponData.wonder_pr_upgradable is set (Frenemy -> Bombie, and the
+## Locker Launcher).
 ##
 ## The Locker Launcher is an EASTER EGG gun: it is deliberately NOT in
 ## build_all() or random_wonder(), so the Loot Locker rolls, the 30th-pull
@@ -54,16 +55,18 @@ static func build_frenemy() -> WeaponData:
 ## Locker Launcher (easter egg): a Loot Locker you hold like a gun. Every shot
 ## is a random Loot Locker gun that tumbles through the air and hits ONE zombie
 ## (no splash / explosion damage). Deliberately not overpowered: normal-gun
-## strength, unlike the other wonder weapons.
+## strength, unlike the other wonder weapons. Can be upgraded at the PR Rack
+## (no attachments, no rarity).
 static func build_locker_launcher() -> WeaponData:
     var w := WeaponData.new()
     w.weapon_name = LAUNCHER_NAME
     w.is_wonder = true
+    w.wonder_pr_upgradable = true
     w.fire_mode = WeaponData.FireMode.WONDER
     w.damage = 90.0
     w.fire_rate = 0.5
-    w.mag_size = 12
-    w.max_reserve_ammo = 148
+    w.mag_size = 6
+    w.max_reserve_ammo = 36
     w.reload_time = 2.4
     w.range = 70.0
     w.splash_radius = 0.0
@@ -88,7 +91,7 @@ static func is_wonder_weapon(w) -> bool:
 
 
 ## Which wonder gun this is ("Br-Nh", "Frenemy" or "Locker Launcher"). PR-upgraded
-## copies (Bombie) report their base gun's name.
+## copies (Bombie, Locker Launcher - 1RM) report their base gun's name.
 static func kind_of(w) -> String:
     if w == null or not (w is WeaponData):
         return ""
@@ -189,6 +192,8 @@ static func _build_frenemy_model() -> Node3D:
 ## the door faces the ceiling and the top of the locker points forward (-Z).
 ## No barrel or gun parts. Its size in the hand comes from LENGTH_FACTOR in
 ## weapon_data.gd (the locker's long side is the gun length).
+## No two faces may share the exact same plane (that makes them flicker):
+## the base plate sticks out past the body, and the top cap overlaps into it.
 static func _build_launcher_model() -> Node3D:
     var root := Node3D.new()
     # The locker is built upright below (door toward +Z), then laid down:
@@ -212,9 +217,9 @@ static func _build_launcher_model() -> Node3D:
     _box(body, Vector3(1.0, 2.0, 0.8), Vector3(0, 0, 0), paint, 0.0, none, 0.6, 0.0)
     for cx in [-0.5, 0.5]:
         for cz in [-0.4, 0.4]:
-            _cyl_up(body, 0.035, 2.0, Vector3(cx, 0, cz), paint_dark)
-    _box(body, Vector3(1.06, 0.06, 0.86), Vector3(0, 1.03, 0), paint_dark, 0.0, none, 0.45, 0.3)
-    _box(body, Vector3(1.06, 0.12, 0.86), Vector3(0, -0.94, 0), dark, 0.0, none, 0.8, 0.0)
+            _cyl_up(body, 0.035, 1.98, Vector3(cx, 0, cz), paint_dark)
+    _box(body, Vector3(1.06, 0.07, 0.86), Vector3(0, 1.025, 0), paint_dark, 0.0, none, 0.45, 0.3)
+    _box(body, Vector3(1.06, 0.14, 0.86), Vector3(0, -0.95, 0), dark, 0.0, none, 0.8, 0.0)
     for sx in [-0.506, 0.506]:
         for sz in [-0.2, 0.2]:
             _box(body, Vector3(0.012, 1.8, 0.04), Vector3(sx, 0, sz), paint_dark, 0.0, none, 0.6, 0.0)
