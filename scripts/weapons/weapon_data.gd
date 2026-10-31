@@ -92,6 +92,7 @@ const LENGTH_FACTOR: Dictionary = {
     # Wonder weapons
     "Frenemy": 1.2,
     "Br-Nh": 1.5,
+    "Locker Launcher": 0.7,
 }
 
 # Length of the starter pistol model (measured once, then remembered).
