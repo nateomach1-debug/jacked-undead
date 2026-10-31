@@ -727,8 +727,10 @@ func _count_jump() -> void:
         return
     _zero_g_jumps = 0
     var fx = load(ZERO_G_PATH)
-    if fx != null:
-        fx.start(get_tree())
+    if fx == null:
+        return
+    if fx.start(get_tree()):
+        NetManager.announce_zero_g()
 
 ## True only if something ahead would stop us AND it is not a walkable slope.
 func _blocked_by_steep(motion: Vector3) -> bool:
