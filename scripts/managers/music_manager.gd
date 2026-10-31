@@ -207,7 +207,6 @@ func set_music_volume(value: float) -> void:
         " | Applied dB: ",
         _player.volume_db
     )
-        _player.volume_db = linear_to_db(adjusted_volume)
 
     var settings_script = load(SETTINGS_PATH)
     if settings_script != null:
@@ -238,7 +237,6 @@ func _load_saved_volume() -> void:
         " | Applied dB: ",
         _player.volume_db
     )
-        _player.volume_db = linear_to_db(adjusted_volume)
 
 
 ## One thin row: full song name, play/pause icon, next icon.
