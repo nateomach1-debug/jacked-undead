@@ -65,8 +65,8 @@ static func build_locker_launcher() -> WeaponData:
     w.fire_mode = WeaponData.FireMode.WONDER
     w.damage = 90.0
     w.fire_rate = 0.5
-    w.mag_size = 6
-    w.max_reserve_ammo = 36
+    w.mag_size = 12
+    w.max_reserve_ammo = 144
     w.reload_time = 2.4
     w.range = 70.0
     w.splash_radius = 0.0
