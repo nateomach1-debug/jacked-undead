@@ -319,6 +319,19 @@ func _door_opened(door_path: String) -> void:
         door.remote_open()
 
 
+## Easter egg: BIG HEAD MODE started on this phone, so every other phone starts it too.
+func announce_big_head() -> void:
+    if is_online:
+        _big_head_started.rpc()
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _big_head_started() -> void:
+    var fx = load("res://scripts/effects/big_head.gd")
+    if fx != null:
+        fx.start(get_tree())
+
+
 const COOP_SYNC_PATH: String = "res://scripts/managers/coop_sync.gd"
 const ROUND_MANAGER_SCRIPT: String = "res://scripts/managers/round_manager.gd"
 const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
