@@ -815,6 +815,11 @@ func _try_trigger() -> void:
         _reload()
 
 
+const BIG_HEAD_STREAK: int = 30
+const BIG_HEAD_PATH: String = "res://scripts/effects/big_head.gd"
+var _head_streak: int = 0
+
+
 func _fire_shot() -> void:
     _track_weapon()
     _badge_flash()
@@ -882,12 +887,28 @@ func _fire_shot() -> void:
         var is_head: bool = int(victim_info["head_hits"]) * 2 >= int(victim_info["hits"])
         victim.take_damage(float(victim_info["damage"]), self, is_head)
         if victim.is_in_group("zombies"):
+            _count_head_streak(is_head)
             GameManager.add_gains(current_weapon.gains_per_hit)
             if show_markers:
                 _spawn_hit_marker(victim_info["point"], is_head)
             if current_weapon.burn_damage_per_second > 0.0 and is_instance_valid(victim):
                 _apply_burn(victim)
 
+
+## Easter egg: 30 headshots in a row (misses do not break it, a body shot does).
+func _count_head_streak(is_head: bool) -> void:
+    if not is_head:
+        _head_streak = 0
+        return
+    _head_streak += 1
+    if _head_streak < BIG_HEAD_STREAK:
+        return
+    _head_streak = 0
+    var fx = load(BIG_HEAD_PATH)
+    if fx == null:
+        return
+    if fx.start(get_tree()):
+        NetManager.announce_big_head()
 
 ## Walks up from a shot's collider (up to 4 parents) looking for something with
 ## easter_hit(), which is the Loot Locker. Returns null if it isn't one.
