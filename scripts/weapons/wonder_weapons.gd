@@ -62,8 +62,8 @@ static func build_locker_launcher() -> WeaponData:
     w.fire_mode = WeaponData.FireMode.WONDER
     w.damage = 90.0
     w.fire_rate = 0.5
-    w.mag_size = 6
-    w.max_reserve_ammo = 36
+    w.mag_size = 12
+    w.max_reserve_ammo = 148
     w.reload_time = 2.4
     w.range = 70.0
     w.splash_radius = 0.0
@@ -185,11 +185,19 @@ static func _build_frenemy_model() -> Node3D:
 
 
 ## Locker Launcher: the Loot Locker itself (same colors, door, vents, number
-## plate, latch, handle, hinges, sticker, scuffs and blood), centered on the
-## origin with the closed door facing the player (+Z). No barrel or gun parts.
-## Its size in the hand comes from LENGTH_FACTOR in weapon_data.gd.
+## plate, latch, handle, hinges, sticker, scuffs and blood), lying on its back:
+## the door faces the ceiling and the top of the locker points forward (-Z).
+## No barrel or gun parts. Its size in the hand comes from LENGTH_FACTOR in
+## weapon_data.gd (the locker's long side is the gun length).
 static func _build_launcher_model() -> Node3D:
     var root := Node3D.new()
+    # The locker is built upright below (door toward +Z), then laid down:
+    # turning it -90 degrees around X puts the door on top and the locker's
+    # top end toward the front.
+    var body := Node3D.new()
+    body.rotation_degrees = Vector3(-90, 0, 0)
+    root.add_child(body)
+
     var paint := Color(0.16, 0.30, 0.55)
     var paint_dark := Color(0.10, 0.19, 0.36)
     var door_col := Color(0.24, 0.42, 0.72)
@@ -201,26 +209,26 @@ static func _build_launcher_model() -> Node3D:
     var none := Vector3.ZERO
 
     # Body shell, corner posts, top cap and base plinth
-    _box(root, Vector3(1.0, 2.0, 0.8), Vector3(0, 0, 0), paint, 0.0, none, 0.6, 0.0)
+    _box(body, Vector3(1.0, 2.0, 0.8), Vector3(0, 0, 0), paint, 0.0, none, 0.6, 0.0)
     for cx in [-0.5, 0.5]:
         for cz in [-0.4, 0.4]:
-            _cyl_up(root, 0.035, 2.0, Vector3(cx, 0, cz), paint_dark)
-    _box(root, Vector3(1.06, 0.06, 0.86), Vector3(0, 1.03, 0), paint_dark, 0.0, none, 0.45, 0.3)
-    _box(root, Vector3(1.06, 0.12, 0.86), Vector3(0, -0.94, 0), dark, 0.0, none, 0.8, 0.0)
+            _cyl_up(body, 0.035, 2.0, Vector3(cx, 0, cz), paint_dark)
+    _box(body, Vector3(1.06, 0.06, 0.86), Vector3(0, 1.03, 0), paint_dark, 0.0, none, 0.45, 0.3)
+    _box(body, Vector3(1.06, 0.12, 0.86), Vector3(0, -0.94, 0), dark, 0.0, none, 0.8, 0.0)
     for sx in [-0.506, 0.506]:
         for sz in [-0.2, 0.2]:
-            _box(root, Vector3(0.012, 1.8, 0.04), Vector3(sx, 0, sz), paint_dark, 0.0, none, 0.6, 0.0)
+            _box(body, Vector3(0.012, 1.8, 0.04), Vector3(sx, 0, sz), paint_dark, 0.0, none, 0.6, 0.0)
 
     # Closed door and inner panel
-    _box(root, Vector3(0.94, 1.86, 0.05), Vector3(0, 0, 0.42), door_col, 0.0, none, 0.5, 0.2)
-    _box(root, Vector3(0.80, 1.70, 0.012), Vector3(0, 0, 0.45), door_light, 0.0, none, 0.55, 0.2)
+    _box(body, Vector3(0.94, 1.86, 0.05), Vector3(0, 0, 0.42), door_col, 0.0, none, 0.5, 0.2)
+    _box(body, Vector3(0.80, 1.70, 0.012), Vector3(0, 0, 0.45), door_light, 0.0, none, 0.55, 0.2)
 
     # Vent slots (top and bottom)
     for vy in [0.74, 0.66, 0.58, -0.72, -0.80, -0.88]:
-        _box(root, Vector3(0.5, 0.025, 0.012), Vector3(0, vy, 0.456), dark, 0.0, none, 0.9, 0.0)
+        _box(body, Vector3(0.5, 0.025, 0.012), Vector3(0, vy, 0.456), dark, 0.0, none, 0.9, 0.0)
 
     # Number plate
-    _box(root, Vector3(0.16, 0.09, 0.01), Vector3(0, 0.42, 0.458), yellow, 0.0, none, 0.5, 0.0)
+    _box(body, Vector3(0.16, 0.09, 0.01), Vector3(0, 0.42, 0.458), yellow, 0.0, none, 0.5, 0.0)
     var num := Label3D.new()
     num.text = "07"
     num.font_size = 24
@@ -228,18 +236,18 @@ static func _build_launcher_model() -> Node3D:
     num.modulate = dark
     num.outline_size = 0
     num.position = Vector3(0, 0.42, 0.466)
-    root.add_child(num)
+    body.add_child(num)
 
     # Latch and handle
-    _box(root, Vector3(0.07, 0.32, 0.02), Vector3(0.35, 0, 0.462), chrome, 0.0, none, 0.3, 0.8)
-    _box(root, Vector3(0.03, 0.22, 0.03), Vector3(0.35, 0, 0.486), chrome, 0.0, none, 0.25, 0.9)
+    _box(body, Vector3(0.07, 0.32, 0.02), Vector3(0.35, 0, 0.462), chrome, 0.0, none, 0.3, 0.8)
+    _box(body, Vector3(0.03, 0.22, 0.03), Vector3(0.35, 0, 0.486), chrome, 0.0, none, 0.25, 0.9)
 
     # Hinges on the left edge
     for hy in [0.7, 0.0, -0.7]:
-        _cyl_up(root, 0.018, 0.14, Vector3(-0.47, hy, 0.42), chrome)
+        _cyl_up(body, 0.018, 0.14, Vector3(-0.47, hy, 0.42), chrome)
 
     # Gym sticker, scuffs, rust and blood
-    _box(root, Vector3(0.22, 0.12, 0.006), Vector3(-0.17, 0.12, 0.457), Color(0.8, 0.08, 0.08), 0.0, Vector3(0, 0, 0.15), 0.6, 0.0)
+    _box(body, Vector3(0.22, 0.12, 0.006), Vector3(-0.17, 0.12, 0.457), Color(0.8, 0.08, 0.08), 0.0, Vector3(0, 0, 0.15), 0.6, 0.0)
     var sticker := Label3D.new()
     sticker.text = "NO PAIN"
     sticker.font_size = 14
@@ -247,12 +255,12 @@ static func _build_launcher_model() -> Node3D:
     sticker.outline_size = 0
     sticker.position = Vector3(-0.17, 0.12, 0.462)
     sticker.rotation.z = 0.15
-    root.add_child(sticker)
-    _box(root, Vector3(0.18, 0.05, 0.006), Vector3(0.15, -0.25, 0.457), paint_dark, 0.0, Vector3(0, 0, -0.4), 0.8, 0.0)
-    _box(root, Vector3(0.34, 0.04, 0.006), Vector3(-0.07, -0.9, 0.457), Color(0.35, 0.2, 0.08), 0.0, none, 0.9, 0.0)
-    _box(root, Vector3(0.05, 0.2, 0.006), Vector3(-0.27, -0.38, 0.457), blood, 0.0, Vector3(0, 0, 0.1), 0.4, 0.0)
-    _box(root, Vector3(0.02, 0.14, 0.006), Vector3(-0.35, -0.55, 0.457), blood, 0.0, none, 0.4, 0.0)
-    _box(root, Vector3(0.02, 0.09, 0.006), Vector3(-0.2, -0.5, 0.457), blood, 0.0, none, 0.4, 0.0)
+    body.add_child(sticker)
+    _box(body, Vector3(0.18, 0.05, 0.006), Vector3(0.15, -0.25, 0.457), paint_dark, 0.0, Vector3(0, 0, -0.4), 0.8, 0.0)
+    _box(body, Vector3(0.34, 0.04, 0.006), Vector3(-0.07, -0.9, 0.457), Color(0.35, 0.2, 0.08), 0.0, none, 0.9, 0.0)
+    _box(body, Vector3(0.05, 0.2, 0.006), Vector3(-0.27, -0.38, 0.457), blood, 0.0, Vector3(0, 0, 0.1), 0.4, 0.0)
+    _box(body, Vector3(0.02, 0.14, 0.006), Vector3(-0.35, -0.55, 0.457), blood, 0.0, none, 0.4, 0.0)
+    _box(body, Vector3(0.02, 0.09, 0.006), Vector3(-0.2, -0.5, 0.457), blood, 0.0, none, 0.4, 0.0)
     return root
 
 
