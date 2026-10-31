@@ -14,10 +14,11 @@ const GRIP_YAW_DEG: float = 0.0
 const GRIP_Y_FRAC: float = 0.28
 
 # How far forward of the back of the gun the grip sits, as a fraction of
-# the gun's length. Short guns use SHORT, long guns use LONG, and guns in
-# between blend smoothly (BLEND_FROM / BLEND_TO are lengths in meters).
-const GRIP_BACK_SHORT: float = 0.28
-const GRIP_BACK_LONG: float = 0.2
+# the gun's length. Raise = hand further forward on the gun.
+# Short guns use SHORT, long guns use LONG, and guns in between blend
+# smoothly (BLEND_FROM / BLEND_TO are lengths in meters).
+const GRIP_BACK_SHORT: float = 0.38
+const GRIP_BACK_LONG: float = 0.3
 const BLEND_FROM: float = 0.3
 const BLEND_TO: float = 0.7
 
