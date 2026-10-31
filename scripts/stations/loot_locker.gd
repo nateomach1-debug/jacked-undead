@@ -16,6 +16,12 @@ extends Area3D
 ##
 ## Custom game mode: Loot Locker off = the locker is hidden and unusable;
 ## weapon rarity off = every gun it gives is common.
+##
+## EASTER EGG: shoot the locker EASTER_HITS times (total per run, counted by
+## player_controller._fire_shot -> easter_hit) and it opens by itself and offers
+## the Locker Launcher (wonder_weapons.build_locker_launcher). Free, tap USE to
+## grab it. This is the ONLY way to get that gun. Once grabbed it never repeats
+## in the same run; if you miss the take window the next hit offers it again.
 
 ## TEST MODE for the rarity swap. Set to true to test, back to false when done.
 ## On: every pull gives the SAME gun, with the rarity stepping through TEST_TIERS
@@ -31,6 +37,7 @@ const LABEL_HOME: Vector3 = Vector3(0, 2.6, 0)   # where the name sits when no g
 const WONDER_PATH: String = "res://scripts/weapons/wonder_weapons.gd"
 const WONDER_CHANCE: float = 0.02        # chance per pull to roll a wonder weapon
 const WONDER_GUARANTEE_USE: int = 30     # the 30th pull of a run always gives one (once)
+const EASTER_HITS: int = 25              # shots on the locker that unlock the Locker Launcher
 
 enum State { IDLE, ROLLING, READY, LOCKED }
 
@@ -53,6 +60,8 @@ var _rarity = null
 var _timer: float = 0.0
 var _cycle_timer: float = 0.0
 var _is_wonder: bool = false
+var _is_easter: bool = false
+var _rattle_tween: Tween = null
 
 var _visual_root: Node3D
 var _door_pivot: Node3D
@@ -325,8 +334,6 @@ func _net_request() -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func _net_active(idx: int) -> void:
     _apply_active(idx)
-
-
 # ------------------------------------------------------------- using it
 
 func _process(delta: float) -> void:
@@ -376,6 +383,8 @@ func interact(player: Node) -> void:
     elif _state == State.READY:
         if _rolled and player.has_method("grant_weapon"):
             player.grant_weapon(_rolled)
+            if _is_easter:
+                player.set_meta("locker_launcher_given", true)
         _close_locker()
 
 
@@ -391,9 +400,61 @@ func get_prompt_text() -> String:
     return ""
 
 
+## Easter egg: called by player_controller for every shot that lands on this
+## locker. Counts hits for the whole run; at EASTER_HITS the locker opens by
+## itself and offers the Locker Launcher.
+func easter_hit(player: Node) -> void:
+    if _disabled or not _is_active or player == null:
+        return
+    if bool(player.get_meta("locker_launcher_given", false)):
+        return
+    var hits: int = int(player.get_meta("locker_hits", 0)) + 1
+    player.set_meta("locker_hits", hits)
+    _rattle()
+    if hits >= EASTER_HITS and _state == State.IDLE:
+        _start_easter_roll()
+
+
+## The locker shakes for a moment when it is shot.
+func _rattle() -> void:
+    if _visual_root == null or _state != State.IDLE:
+        return
+    if _rattle_tween != null and _rattle_tween.is_valid():
+        _rattle_tween.kill()
+    _visual_root.position = Vector3.ZERO
+    _rattle_tween = create_tween()
+    for i in range(4):
+        var shake := Vector3(randf_range(-0.04, 0.04), 0.0, randf_range(-0.04, 0.04))
+        _rattle_tween.tween_property(_visual_root, "position", shake, 0.03)
+    _rattle_tween.tween_property(_visual_root, "position", Vector3.ZERO, 0.03)
+
+
+## Free forced roll that ends on the Locker Launcher.
+func _start_easter_roll() -> void:
+    var script = load(WONDER_PATH)
+    if script == null:
+        return
+    var launcher: WeaponData = script.build_locker_launcher()
+    if launcher == null:
+        return
+    if _rattle_tween != null and _rattle_tween.is_valid():
+        _rattle_tween.kill()
+    _tier = "common"
+    _is_wonder = true
+    _is_easter = true
+    _will_lock = false
+    _rolled = launcher
+    _state = State.ROLLING
+    _timer = roll_time
+    _cycle_timer = 0.0
+    _label.modulate = Color.WHITE
+    _label.text = "..."
+
+
 func _start_roll(player: Node = null) -> void:
     _tier = "common"
     _is_wonder = false
+    _is_easter = false
     var wonder: WeaponData = _roll_wonder(player)
     if wonder != null:
         # Wonder weapon: never locks up, no rarity.
@@ -472,7 +533,10 @@ func _finish_roll() -> void:
     _timer = take_window
     if _rolled:
         _label.text = "%s%s" % [_rarity_prefix(), _rolled.weapon_name]
-        if _is_wonder:
+        if _is_easter:
+            _label.text = "SECRET WEAPON\n%s" % _rolled.weapon_name
+            _label.modulate = Color(1.0, 0.85, 0.2)
+        elif _is_wonder:
             _label.text = "WONDER WEAPON\n%s" % _rolled.weapon_name
             _label.modulate = Color(0.75, 0.45, 1.0)
         elif _rarity != null:
@@ -499,6 +563,7 @@ func _close_locker() -> void:
     _rolled = null
     _tier = "common"
     _is_wonder = false
+    _is_easter = false
     _visual_root.position = Vector3.ZERO
     _clear_model()
     _set_door_open(false)
