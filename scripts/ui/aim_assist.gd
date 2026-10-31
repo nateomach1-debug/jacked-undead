@@ -14,13 +14,13 @@ const DEFAULT_LEVEL: int = 2   # 0 OFF, 1 LOW, 2 MED, 3 HIGH
 const SETTING_RECHECK: float = 1.0   # seconds between reads of the setting
 
 # Indexed by level (0 = off).
-const CONE_DEG: Array = [0.0, 3.5, 5.5, 8.0]        # how close to the crosshair a zombie must be
-const PULL_RATE: Array = [0.0, 2.0, 3.5, 5.5]       # pull strength per second
-const MAX_TURN_DEG: Array = [0.0, 25.0, 40.0, 60.0]  # cap on how fast it may turn
+const CONE_DEG: Array = [0.0, 2.5, 3.5, 4.5]        # how close to the crosshair a zombie must be
+const PULL_RATE: Array = [0.0, 0.8, 1.5, 2.5]       # pull strength per second
+const MAX_TURN_DEG: Array = [0.0, 8.0, 15.0, 25.0]  # cap on how fast it may turn
 
 const MAX_RANGE: float = 35.0
 const MIN_DIST: float = 0.6
-const HIP_FACTOR: float = 0.6          # weaker pull when firing without aiming
+const HIP_FACTOR: float = 0.5          # weaker pull when firing without aiming
 const AIMING_CONE_BONUS: float = 1.25  # wider cone while aiming
 const PERK_CONE_BONUS: float = 1.4     # wider cone with the headshot perk
 const HEAD_BIAS: float = 1.25          # favors the head when the crosshair is between head and chest
