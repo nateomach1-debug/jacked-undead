@@ -3,10 +3,13 @@ extends Control
 ## short code, name, seconds left) plus a centre banner on pickup.
 ## Reads time_left() from the "powerup_manager" node every frame, so each
 ## phone shows its own countdown. Rows blink during the last 5 seconds.
+## The Big Head easter egg is shown too: it reads time_left() from the
+## "big_head_fx" node instead of the manager.
 ## Built by hud.gd with load() + a null check, so a problem here can't break the HUD.
 
 const MGR_GROUP: String = "powerup_manager"
-const ORDER: Array = ["max_lift", "pre_workout", "full_rack", "pr_day", "hot_yoga", "ice_bath", "cardio_kick", "spotter"]
+const BIG_HEAD_GROUP: String = "big_head_fx"
+const ORDER: Array = ["max_lift", "pre_workout", "full_rack", "pr_day", "hot_yoga", "ice_bath", "cardio_kick", "spotter", "big_head"]
 const INFO: Dictionary = {
     "max_lift": {"name": "MAX LIFT", "short": "ML", "desc": "INSTA-KILL", "color": Color(1.0, 0.25, 0.2)},
     "pre_workout": {"name": "PRE-WORKOUT SURGE", "short": "PW", "desc": "DOUBLE GAINS", "color": Color(0.95, 0.75, 0.1)},
@@ -16,6 +19,7 @@ const INFO: Dictionary = {
     "ice_bath": {"name": "ICE BATH", "short": "IB", "desc": "ZOMBIES SLOWED", "color": Color(0.3, 0.8, 1.0)},
     "cardio_kick": {"name": "CARDIO KICK", "short": "CK", "desc": "FASTER + INFINITE SPRINT", "color": Color(0.3, 1.0, 0.45)},
     "spotter": {"name": "SPOTTER", "short": "SP", "desc": "HALF DAMAGE + INSTANT REVIVES", "color": Color(0.35, 0.55, 1.0)},
+    "big_head": {"name": "BIG HEAD", "short": "BH", "desc": "ZOMBIES HAVE BIG HEADS", "color": Color(1.0, 0.8, 0.3)},
 }
 const ROW_H: float = 48.0
 const ROW_GAP: float = 6.0
@@ -28,6 +32,7 @@ var _dur: Dictionary = {}       # id -> full duration of the current run
 var _rows: Array = []           # [id, seconds left] for every active power-up
 var _time: float = 0.0
 var _had_rows: bool = false
+var _bh_was_on: bool = false
 var _banner: Label = null
 var _banner_tween: Tween = null
 
@@ -57,17 +62,32 @@ func _process(delta: float) -> void:
         if _mgr != null and _mgr.has_signal("powerup_started"):
             _mgr.powerup_started.connect(_on_started)
     _rows.clear()
-    if _mgr != null:
-        for id in ORDER:
-            var left: float = float(_mgr.time_left(id))
-            if left > 0.0:
-                _dur[id] = maxf(float(_dur.get(id, 0.0)), left)
-                _rows.append([id, left])
-            else:
-                _dur.erase(id)
+    for id in ORDER:
+        var left: float = _time_left_for(str(id))
+        if left > 0.0:
+            _dur[id] = maxf(float(_dur.get(id, 0.0)), left)
+            _rows.append([id, left])
+        else:
+            _dur.erase(id)
+    # Big Head has no manager signal, so show its banner when its row first appears.
+    var bh_now: bool = _dur.has("big_head")
+    if bh_now and not _bh_was_on:
+        _show_banner("big_head")
+    _bh_was_on = bh_now
     if not _rows.is_empty() or _had_rows:
         queue_redraw()
     _had_rows = not _rows.is_empty()
+
+
+func _time_left_for(id: String) -> float:
+    if id == "big_head":
+        var fx = get_tree().get_first_node_in_group(BIG_HEAD_GROUP)
+        if fx != null and fx.has_method("time_left"):
+            return float(fx.time_left())
+        return 0.0
+    if _mgr == null or not is_instance_valid(_mgr):
+        return 0.0
+    return float(_mgr.time_left(id))
 
 
 func _on_started(id: String, duration: float) -> void:
