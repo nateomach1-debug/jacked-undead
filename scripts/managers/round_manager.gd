@@ -10,6 +10,12 @@ extends Node
 ## Spitter scenes are loaded by path, so nothing needs setting in the Inspector.
 ## Each special zombie replaces one normal one, so the round count is unchanged.
 ##
+## Round size: a trend of BASE_ZOMBIES + GROWTH per round, plus a random bonus
+## of 0 to RANDOM_BONUS_FRACTION of that trend, rolled fresh every round.
+## Spawn speed: the delay between spawns shrinks 5% every round down to a floor.
+## Alive cap: at most MAX_ZOMBIES_ALIVE zombies from the round at once; spawning
+## waits until some die.
+##
 ## Leash: a zombie that stays far from every living player for a few seconds is
 ## moved to a spawn point near that player (same zombie, same health, and the
 ## round's zombie count is unchanged). Only real zombies are moved, not puppets,
@@ -30,13 +36,18 @@ const SPRINTER_PATH: String = "res://scenes/zombies/sprinter.tscn"
 const SPITTER_PATH: String = "res://scenes/zombies/spitter.tscn"
 const SPITTER_GROUP: String = "spitters"
 
+const BASE_ZOMBIES: int = 8                  # round 1 trend
+const ZOMBIES_GROWTH: int = 4                # trend grows by this every round
+const RANDOM_BONUS_FRACTION: float = 0.25    # random bonus 0 to this share of the trend
+const START_SPAWN_DELAY: float = 1.2         # seconds between spawns in round 1
+const SPAWN_DELAY_DECAY: float = 0.95        # delay is multiplied by this every round
+const MIN_SPAWN_DELAY: float = 0.35          # the delay never goes below this
+const MAX_ZOMBIES_ALIVE: int = 40            # spawning waits while this many are alive
+
 @export var zombie_scene: PackedScene
 @export var roid_rager_scene: PackedScene
 @export var pumpkin_boss_scene: PackedScene
 @export var force_pumpkin_spawn_for_testing: bool = false  # set to false when done testing
-@export var base_zombies_per_round: int = 6
-@export var zombies_per_round_growth: int = 3
-@export var time_between_spawns: float = 1.2
 @export var time_between_rounds: float = 8.0
 @export var roid_rager_every_n_rounds: int = 3
 @export var sprinter_start_round: int = 3     # Sprinters can spawn from this round
@@ -55,6 +66,7 @@ var _spawn_points: Array = []
 var _round_active: bool = false
 var _round_total: int = 0
 var _round_killed: int = 0
+var _round_spawned: int = 0
 var _last_boss_spawn_round: int = -999
 var _test_pumpkin_spawned: bool = false
 var _leash_timer: float = 1.0
@@ -96,11 +108,30 @@ func get_zombies_remaining() -> int:
     return maxi(_round_total - _round_killed, 0)
 
 
+## Zombies in this round that were spawned and are still alive.
+func _alive_count() -> int:
+    return maxi(_round_spawned - _round_killed, 0)
+
+
+## Trend plus a random bonus, rolled once at the start of each round.
+func _roll_zombie_count(round_num: int) -> int:
+    var trend: int = BASE_ZOMBIES + (round_num - 1) * ZOMBIES_GROWTH
+    var bonus_max: int = int(floor(float(trend) * RANDOM_BONUS_FRACTION))
+    return trend + randi_range(0, bonus_max)
+
+
+## Seconds between spawns: shrinks 5% per round, never below the floor.
+func _spawn_delay(round_num: int) -> float:
+    var d: float = START_SPAWN_DELAY * pow(SPAWN_DELAY_DECAY, float(maxi(round_num - 1, 0)))
+    return maxf(d, MIN_SPAWN_DELAY)
+
+
 func _start_round() -> void:
     _round_active = true
     _round_killed = 0
+    _round_spawned = 0
 
-    var normal_count: int = base_zombies_per_round + (GameManager.round_number - 1) * zombies_per_round_growth
+    var normal_count: int = _roll_zombie_count(GameManager.round_number)
     var spawn_boss: bool = _should_spawn_pumpkin()
 
     _round_total = normal_count + (1 if spawn_boss else 0)
@@ -117,8 +148,16 @@ func _spawn_wave(count: int, spawn_boss: bool = false) -> void:
         push_warning("RoundManager: no spawn points or zombie_scene, nothing to spawn.")
         return
 
+    var delay: float = _spawn_delay(GameManager.round_number)
     for i in range(count):
-        await get_tree().create_timer(time_between_spawns).timeout
+        await get_tree().create_timer(delay).timeout
+        if not is_inside_tree():
+            return
+        # Alive cap: wait here until some zombies die.
+        while _alive_count() >= MAX_ZOMBIES_ALIVE:
+            await get_tree().create_timer(0.25).timeout
+            if not is_inside_tree():
+                return
         _spawn_one_zombie()
 
     if spawn_boss:
@@ -133,6 +172,7 @@ func _spawn_one_zombie() -> void:
     get_tree().current_scene.add_child(zombie)
     zombie.global_position = point.global_position
     zombie.died.connect(_on_zombie_died)
+    _round_spawned += 1
 
 
 ## Which kind of zombie comes next: Roid Rager on special rounds, otherwise a
@@ -183,8 +223,6 @@ func _load_extra_scene(path: String) -> PackedScene:
         push_warning("RoundManager: could not load " + path + "; that zombie type is skipped.")
     _extra_scenes[path] = scene
     return scene
-
-
 # ---------------------------------------------------------------- Great Pumpkin boss
 
 func _should_spawn_pumpkin() -> bool:
