@@ -26,7 +26,7 @@ const SETTINGS_PATH := "res://scripts/managers/game_settings.gd"
 const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
 const LAYOUT_EDITOR_FILE := "hud_layout_editor.gd"
 const ICON_COLOR := Color(0.93, 0.93, 0.88, 1.0)
-const MASTER_MUSIC_REDUCTION := 0.5
+const MASTER_MUSIC_REDUCTION := 0.1
 
 var _music_layer: CanvasLayer
 var _music_panel: PanelContainer
