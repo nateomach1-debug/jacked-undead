@@ -332,6 +332,19 @@ func _big_head_started() -> void:
         fx.start(get_tree())
 
 
+## Easter egg: ZERO-G started on this phone, so every other phone starts it too.
+func announce_zero_g() -> void:
+    if is_online:
+        _zero_g_started.rpc()
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _zero_g_started() -> void:
+    var fx = load("res://scripts/effects/zero_g.gd")
+    if fx != null:
+        fx.start(get_tree())
+
+
 const COOP_SYNC_PATH: String = "res://scripts/managers/coop_sync.gd"
 const ROUND_MANAGER_SCRIPT: String = "res://scripts/managers/round_manager.gd"
 const POWERUP_MANAGER_PATH: String = "res://scripts/powerups/powerup_manager.gd"
