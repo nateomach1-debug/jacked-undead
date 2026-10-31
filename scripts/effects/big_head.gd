@@ -41,6 +41,11 @@ func _ready() -> void:
         _apply(z)
 
 
+## Seconds left of the effect (the power ups display reads this).
+func time_left() -> float:
+    return maxf(_time_left, 0.0)
+
+
 func _on_node_added(n: Node) -> void:
     if n is Zombie:
         # Wait until the zombie has built its body in _ready().
