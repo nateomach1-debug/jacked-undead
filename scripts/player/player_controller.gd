@@ -673,6 +673,11 @@ func _physics_process(delta: float) -> void:
         _try_interact()
 
 
+const ZERO_G_JUMPS: int = 5
+const ZERO_G_PATH: String = "res://scripts/effects/zero_g.gd"
+var _zero_g_jumps: int = 0
+
+
 func _handle_movement(delta: float) -> void:
     # Bled out in co-op: no body movement, downed_state.gd carries us along.
     if is_dead:
@@ -683,6 +688,7 @@ func _handle_movement(delta: float) -> void:
         velocity.y -= GRAVITY * delta
     elif Input.is_action_just_pressed("jump") and not is_downed:
         velocity.y = JUMP_VELOCITY
+        _count_jump()
     else:
         velocity.y = 0.0
 
@@ -713,6 +719,16 @@ func _handle_movement(delta: float) -> void:
     _step_up_if_blocked(delta)
     move_and_slide()
 
+
+## Easter egg: 5 jumps in a row without shooting (any shot resets the count).
+func _count_jump() -> void:
+    _zero_g_jumps += 1
+    if _zero_g_jumps < ZERO_G_JUMPS:
+        return
+    _zero_g_jumps = 0
+    var fx = load(ZERO_G_PATH)
+    if fx != null:
+        fx.start(get_tree())
 
 ## True only if something ahead would stop us AND it is not a walkable slope.
 func _blocked_by_steep(motion: Vector3) -> bool:
@@ -821,6 +837,7 @@ var _head_streak: int = 0
 
 
 func _fire_shot() -> void:
+    _zero_g_jumps = 0
     _track_weapon()
     _badge_flash()
     current_mag_ammo -= 1
