@@ -51,22 +51,23 @@ static func build_frenemy() -> WeaponData:
     return w
 
 
-## Locker Launcher (easter egg): shoots guns out of a Loot Locker. Every shot
-## is a random Loot Locker gun that tumbles through the air and hits for
-## damage plus a small splash. damage = direct hit, splash_radius = blast radius.
+## Locker Launcher (easter egg): a Loot Locker you hold like a gun. Every shot
+## is a random Loot Locker gun that tumbles through the air and hits ONE zombie
+## (no splash / explosion damage). Deliberately not overpowered: normal-gun
+## strength, unlike the other wonder weapons.
 static func build_locker_launcher() -> WeaponData:
     var w := WeaponData.new()
     w.weapon_name = LAUNCHER_NAME
     w.is_wonder = true
     w.fire_mode = WeaponData.FireMode.WONDER
-    w.damage = 900.0
-    w.fire_rate = 0.35
-    w.mag_size = 8
-    w.max_reserve_ammo = 40
-    w.reload_time = 2.0
+    w.damage = 90.0
+    w.fire_rate = 0.5
+    w.mag_size = 6
+    w.max_reserve_ammo = 36
+    w.reload_time = 2.4
     w.range = 70.0
-    w.splash_radius = 2.5
-    w.gains_per_hit = 20
+    w.splash_radius = 0.0
+    w.gains_per_hit = 10
     return w
 
 
@@ -183,43 +184,83 @@ static func _build_frenemy_model() -> Node3D:
     return root
 
 
-## Locker Launcher: a little blue Loot Locker lying on its side with a chrome
-## barrel at the front, a locker door (handle and vents) on each side and a
-## glowing yellow strip on top.
+## Locker Launcher: the Loot Locker itself (same colors, door, vents, number
+## plate, latch, handle, hinges, sticker, scuffs and blood), centered on the
+## origin with the closed door facing the player (+Z). No barrel or gun parts.
+## Its size in the hand comes from LENGTH_FACTOR in weapon_data.gd.
 static func _build_launcher_model() -> Node3D:
     var root := Node3D.new()
     var paint := Color(0.16, 0.30, 0.55)
-    var door := Color(0.30, 0.50, 0.80)
+    var paint_dark := Color(0.10, 0.19, 0.36)
+    var door_col := Color(0.24, 0.42, 0.72)
+    var door_light := Color(0.30, 0.50, 0.80)
     var chrome := Color(0.78, 0.80, 0.84)
     var yellow := Color(1.0, 0.77, 0.0)
     var dark := Color(0.04, 0.04, 0.06)
+    var blood := Color(0.35, 0.02, 0.02)
+    var none := Vector3.ZERO
 
-    # Grip, body and top cap
-    _box(root, Vector3(0.09, 0.2, 0.1), Vector3(0, -0.17, 0.08), dark, 0.0)
-    _box(root, Vector3(0.16, 0.22, 0.5), Vector3(0, 0, -0.05), paint, 0.0)
-    _box(root, Vector3(0.17, 0.03, 0.51), Vector3(0, 0.12, -0.05), dark, 0.0)
+    # Body shell, corner posts, top cap and base plinth
+    _box(root, Vector3(1.0, 2.0, 0.8), Vector3(0, 0, 0), paint, 0.0, none, 0.6, 0.0)
+    for cx in [-0.5, 0.5]:
+        for cz in [-0.4, 0.4]:
+            _cyl_up(root, 0.035, 2.0, Vector3(cx, 0, cz), paint_dark)
+    _box(root, Vector3(1.06, 0.06, 0.86), Vector3(0, 1.03, 0), paint_dark, 0.0, none, 0.45, 0.3)
+    _box(root, Vector3(1.06, 0.12, 0.86), Vector3(0, -0.94, 0), dark, 0.0, none, 0.8, 0.0)
+    for sx in [-0.506, 0.506]:
+        for sz in [-0.2, 0.2]:
+            _box(root, Vector3(0.012, 1.8, 0.04), Vector3(sx, 0, sz), paint_dark, 0.0, none, 0.6, 0.0)
 
-    # Locker door on each side: handle and vent slots
-    for side in [-1.0, 1.0]:
-        _box(root, Vector3(0.012, 0.18, 0.4), Vector3(side * 0.086, 0, -0.05), door, 0.0)
-        _box(root, Vector3(0.016, 0.1, 0.03), Vector3(side * 0.09, 0, 0.1), chrome, 0.0)
-        for vz in [-0.2, -0.15, -0.1]:
-            _box(root, Vector3(0.016, 0.02, 0.04), Vector3(side * 0.088, 0.07, vz), dark, 0.0)
+    # Closed door and inner panel
+    _box(root, Vector3(0.94, 1.86, 0.05), Vector3(0, 0, 0.42), door_col, 0.0, none, 0.5, 0.2)
+    _box(root, Vector3(0.80, 1.70, 0.012), Vector3(0, 0, 0.45), door_light, 0.0, none, 0.55, 0.2)
 
-    # Glowing strip on top
-    _box(root, Vector3(0.1, 0.012, 0.3), Vector3(0, 0.137, -0.05), yellow, 1.5)
+    # Vent slots (top and bottom)
+    for vy in [0.74, 0.66, 0.58, -0.72, -0.80, -0.88]:
+        _box(root, Vector3(0.5, 0.025, 0.012), Vector3(0, vy, 0.456), dark, 0.0, none, 0.9, 0.0)
 
-    # Barrel and glowing muzzle ring
-    _cyl(root, 0.06, 0.32, Vector3(0, 0.0, -0.46), chrome, 0.0)
-    _cyl(root, 0.075, 0.05, Vector3(0, 0.0, -0.62), yellow, 1.5)
+    # Number plate
+    _box(root, Vector3(0.16, 0.09, 0.01), Vector3(0, 0.42, 0.458), yellow, 0.0, none, 0.5, 0.0)
+    var num := Label3D.new()
+    num.text = "07"
+    num.font_size = 24
+    num.pixel_size = 0.003
+    num.modulate = dark
+    num.outline_size = 0
+    num.position = Vector3(0, 0.42, 0.466)
+    root.add_child(num)
+
+    # Latch and handle
+    _box(root, Vector3(0.07, 0.32, 0.02), Vector3(0.35, 0, 0.462), chrome, 0.0, none, 0.3, 0.8)
+    _box(root, Vector3(0.03, 0.22, 0.03), Vector3(0.35, 0, 0.486), chrome, 0.0, none, 0.25, 0.9)
+
+    # Hinges on the left edge
+    for hy in [0.7, 0.0, -0.7]:
+        _cyl_up(root, 0.018, 0.14, Vector3(-0.47, hy, 0.42), chrome)
+
+    # Gym sticker, scuffs, rust and blood
+    _box(root, Vector3(0.22, 0.12, 0.006), Vector3(-0.17, 0.12, 0.457), Color(0.8, 0.08, 0.08), 0.0, Vector3(0, 0, 0.15), 0.6, 0.0)
+    var sticker := Label3D.new()
+    sticker.text = "NO PAIN"
+    sticker.font_size = 14
+    sticker.pixel_size = 0.003
+    sticker.outline_size = 0
+    sticker.position = Vector3(-0.17, 0.12, 0.462)
+    sticker.rotation.z = 0.15
+    root.add_child(sticker)
+    _box(root, Vector3(0.18, 0.05, 0.006), Vector3(0.15, -0.25, 0.457), paint_dark, 0.0, Vector3(0, 0, -0.4), 0.8, 0.0)
+    _box(root, Vector3(0.34, 0.04, 0.006), Vector3(-0.07, -0.9, 0.457), Color(0.35, 0.2, 0.08), 0.0, none, 0.9, 0.0)
+    _box(root, Vector3(0.05, 0.2, 0.006), Vector3(-0.27, -0.38, 0.457), blood, 0.0, Vector3(0, 0, 0.1), 0.4, 0.0)
+    _box(root, Vector3(0.02, 0.14, 0.006), Vector3(-0.35, -0.55, 0.457), blood, 0.0, none, 0.4, 0.0)
+    _box(root, Vector3(0.02, 0.09, 0.006), Vector3(-0.2, -0.5, 0.457), blood, 0.0, none, 0.4, 0.0)
     return root
 
 
-static func _mat(color: Color, glow: float) -> StandardMaterial3D:
+static func _mat(color: Color, glow: float, rough: float = 0.4, metal: float = 0.5) -> StandardMaterial3D:
     var m := StandardMaterial3D.new()
     m.albedo_color = color
-    m.roughness = 0.4
-    m.metallic = 0.5
+    m.roughness = rough
+    m.metallic = metal
     if glow > 0.0:
         m.emission_enabled = true
         m.emission = color
@@ -227,13 +268,14 @@ static func _mat(color: Color, glow: float) -> StandardMaterial3D:
     return m
 
 
-static func _box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, glow: float) -> void:
+static func _box(parent: Node3D, size: Vector3, pos: Vector3, color: Color, glow: float, rot: Vector3 = Vector3.ZERO, rough: float = 0.4, metal: float = 0.5) -> void:
     var mi := MeshInstance3D.new()
     var mesh := BoxMesh.new()
     mesh.size = size
     mi.mesh = mesh
-    mi.material_override = _mat(color, glow)
+    mi.material_override = _mat(color, glow, rough, metal)
     mi.position = pos
+    mi.rotation = rot
     parent.add_child(mi)
 
 
@@ -248,6 +290,21 @@ static func _cyl(parent: Node3D, radius: float, length: float, pos: Vector3, col
     mi.material_override = _mat(color, glow)
     mi.position = pos
     mi.rotation_degrees = Vector3(90, 0, 0)
+    parent.add_child(mi)
+
+
+## Upright cylinder (along the Y axis).
+static func _cyl_up(parent: Node3D, radius: float, height: float, pos: Vector3, color: Color) -> void:
+    var mi := MeshInstance3D.new()
+    var mesh := CylinderMesh.new()
+    mesh.top_radius = radius
+    mesh.bottom_radius = radius
+    mesh.height = height
+    mesh.radial_segments = 10
+    mesh.rings = 1
+    mi.mesh = mesh
+    mi.material_override = _mat(color, 0.0, 0.6, 0.0)
+    mi.position = pos
     parent.add_child(mi)
 
 
