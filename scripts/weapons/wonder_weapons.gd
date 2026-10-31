@@ -3,9 +3,14 @@ extends RefCounted
 ## Loot Locker pool (locker_weapons.gd); the Loot Locker rolls them separately
 ## (see random_wonder). No attachments, no rarity. PR upgrades are blocked
 ## unless WeaponData.wonder_pr_upgradable is set (Frenemy -> Bombie).
+##
+## The Locker Launcher is an EASTER EGG gun: it is deliberately NOT in
+## build_all() or random_wonder(), so the Loot Locker rolls, the 30th-pull
+## guarantee and the dev menu picker can never give it.
 
 const BRNH_NAME: String = "Br-Nh"
 const FRENEMY_NAME: String = "Frenemy"
+const LAUNCHER_NAME: String = "Locker Launcher"
 
 
 ## Br-Nh, the first wonder weapon (custom for Sev): fires homing rockets that
@@ -46,7 +51,27 @@ static func build_frenemy() -> WeaponData:
     return w
 
 
-## Every wonder weapon (the dev menu picker and the Loot Locker use this).
+## Locker Launcher (easter egg): shoots guns out of a Loot Locker. Every shot
+## is a random Loot Locker gun that tumbles through the air and hits for
+## damage plus a small splash. damage = direct hit, splash_radius = blast radius.
+static func build_locker_launcher() -> WeaponData:
+    var w := WeaponData.new()
+    w.weapon_name = LAUNCHER_NAME
+    w.is_wonder = true
+    w.fire_mode = WeaponData.FireMode.WONDER
+    w.damage = 900.0
+    w.fire_rate = 0.35
+    w.mag_size = 8
+    w.max_reserve_ammo = 40
+    w.reload_time = 2.0
+    w.range = 70.0
+    w.splash_radius = 2.5
+    w.gains_per_hit = 20
+    return w
+
+
+## Every wonder weapon the Loot Locker and the dev menu picker can give.
+## The Locker Launcher is NOT here on purpose (easter egg only).
 static func build_all() -> Array:
     return [build_brnh(), build_frenemy()]
 
@@ -61,8 +86,8 @@ static func is_wonder_weapon(w) -> bool:
     return w != null and w is WeaponData and (w as WeaponData).is_wonder
 
 
-## Which wonder gun this is ("Br-Nh" or "Frenemy"). PR-upgraded copies
-## (Bombie) report their base gun's name.
+## Which wonder gun this is ("Br-Nh", "Frenemy" or "Locker Launcher"). PR-upgraded
+## copies (Bombie) report their base gun's name.
 static func kind_of(w) -> String:
     if w == null or not (w is WeaponData):
         return ""
@@ -74,6 +99,8 @@ static func kind_of(w) -> String:
 static func build_model(kind: String = BRNH_NAME) -> Node3D:
     if kind == FRENEMY_NAME:
         return _build_frenemy_model()
+    if kind == LAUNCHER_NAME:
+        return _build_launcher_model()
     return _build_brnh_model()
 
 
@@ -153,6 +180,38 @@ static func _build_frenemy_model() -> Node3D:
     _cyl(root, 0.012, 0.45, Vector3(0, 0.11, -0.35), Color(0.7, 0.7, 0.7), 0.0)
     _sphere(root, 0.055, Vector3(0, 0.11, -0.62), orange, 2.5)
     _box(root, Vector3(0.02, 0.05, 0.02), Vector3(0, 0.17, -0.62), glow, 2.5)
+    return root
+
+
+## Locker Launcher: a little blue Loot Locker lying on its side with a chrome
+## barrel at the front, a locker door (handle and vents) on each side and a
+## glowing yellow strip on top.
+static func _build_launcher_model() -> Node3D:
+    var root := Node3D.new()
+    var paint := Color(0.16, 0.30, 0.55)
+    var door := Color(0.30, 0.50, 0.80)
+    var chrome := Color(0.78, 0.80, 0.84)
+    var yellow := Color(1.0, 0.77, 0.0)
+    var dark := Color(0.04, 0.04, 0.06)
+
+    # Grip, body and top cap
+    _box(root, Vector3(0.09, 0.2, 0.1), Vector3(0, -0.17, 0.08), dark, 0.0)
+    _box(root, Vector3(0.16, 0.22, 0.5), Vector3(0, 0, -0.05), paint, 0.0)
+    _box(root, Vector3(0.17, 0.03, 0.51), Vector3(0, 0.12, -0.05), dark, 0.0)
+
+    # Locker door on each side: handle and vent slots
+    for side in [-1.0, 1.0]:
+        _box(root, Vector3(0.012, 0.18, 0.4), Vector3(side * 0.086, 0, -0.05), door, 0.0)
+        _box(root, Vector3(0.016, 0.1, 0.03), Vector3(side * 0.09, 0, 0.1), chrome, 0.0)
+        for vz in [-0.2, -0.15, -0.1]:
+            _box(root, Vector3(0.016, 0.02, 0.04), Vector3(side * 0.088, 0.07, vz), dark, 0.0)
+
+    # Glowing strip on top
+    _box(root, Vector3(0.1, 0.012, 0.3), Vector3(0, 0.137, -0.05), yellow, 1.5)
+
+    # Barrel and glowing muzzle ring
+    _cyl(root, 0.06, 0.32, Vector3(0, 0.0, -0.46), chrome, 0.0)
+    _cyl(root, 0.075, 0.05, Vector3(0, 0.0, -0.62), yellow, 1.5)
     return root
 
 
