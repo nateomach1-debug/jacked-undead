@@ -197,6 +197,8 @@ func set_music_volume(value: float) -> void:
     if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
+        _player.volume_db = linear_to_db(adjusted_volume)
+
     print(
         "MusicManager DEBUG: set_music_volume | Input: ",
         volume,
@@ -226,6 +228,8 @@ func _load_saved_volume() -> void:
     if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
+        _player.volume_db = linear_to_db(adjusted_volume)
+
     print(
         "MusicManager DEBUG: _load_saved_volume | Saved: ",
         volume,
