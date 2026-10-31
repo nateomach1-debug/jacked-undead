@@ -26,6 +26,7 @@ const SETTINGS_PATH := "res://scripts/managers/game_settings.gd"
 const HUD_LAYOUT_PATH := "res://scripts/managers/hud_layout.gd"
 const LAYOUT_EDITOR_FILE := "hud_layout_editor.gd"
 const ICON_COLOR := Color(0.93, 0.93, 0.88, 1.0)
+const MASTER_MUSIC_REDUCTION := 0.5
 
 var _music_layer: CanvasLayer
 var _music_panel: PanelContainer
@@ -184,11 +185,12 @@ func toggle_playback() -> void:
 
 func set_music_volume(value: float) -> void:
     var volume := clampf(value, 0.0, 1.0)
+    var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
 
-    if volume <= 0.001:
+    if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
-        _player.volume_db = linear_to_db(volume)
+        _player.volume_db = linear_to_db(adjusted_volume)
 
     var settings_script = load(SETTINGS_PATH)
     if settings_script != null:
@@ -204,10 +206,12 @@ func _load_saved_volume() -> void:
         var settings = settings_script.new()
         volume = clampf(settings.get_value("music_volume"), 0.0, 1.0)
 
-    if volume <= 0.001:
-        _player.volume_db = -80.0
-    else:
-        _player.volume_db = linear_to_db(volume)
+    var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
+
+if adjusted_volume <= 0.001:
+    _player.volume_db = -80.0
+else:
+    _player.volume_db = linear_to_db(adjusted_volume)
 
 
 ## One thin row: full song name, play/pause icon, next icon.
