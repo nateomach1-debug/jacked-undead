@@ -838,13 +838,20 @@ func _fire_shot() -> void:
     # takes ONE take_damage() call per shot (no double-kill / double-pay).
     var base_damage: float = current_weapon.damage * damage_multiplier * _pr_day_factor()
     var hits: Dictionary = {}
+    var locker_hits: Dictionary = {}
     for i in range(maxi(current_weapon.pellets, 1)):
         var direction: Vector3 = _spread_direction(current_weapon.spread_degrees)
         var result: Dictionary = _cast_ray(direction, current_weapon.range)
         if result.is_empty():
             continue
         var target = result["collider"]
-        if target == null or not target.has_method("take_damage"):
+        if target == null:
+            continue
+        if not target.has_method("take_damage"):
+            # Easter egg: shots that land on a Loot Locker are counted (once per shot).
+            var hit_locker = _find_locker(target)
+            if hit_locker != null:
+                locker_hits[hit_locker] = true
             continue
         var point: Vector3 = result["position"]
         var pellet_head: bool = target.has_method("is_headshot") and target.is_headshot(point)
@@ -859,6 +866,10 @@ func _fire_shot() -> void:
         if pellet_head:
             info["head_hits"] = int(info["head_hits"]) + 1
             info["point"] = point
+
+    for locker in locker_hits.keys():
+        if is_instance_valid(locker):
+            locker.easter_hit(self)
 
     var show_markers: bool = current_weapon.fire_mode != WeaponData.FireMode.FLAME or _flame_marker_cooldown <= 0.0
     if show_markers and current_weapon.fire_mode == WeaponData.FireMode.FLAME:
@@ -877,6 +888,18 @@ func _fire_shot() -> void:
             if current_weapon.burn_damage_per_second > 0.0 and is_instance_valid(victim):
                 _apply_burn(victim)
 
+
+## Walks up from a shot's collider (up to 4 parents) looking for something with
+## easter_hit(), which is the Loot Locker. Returns null if it isn't one.
+func _find_locker(node: Node) -> Node:
+    var n: Node = node
+    for i in range(4):
+        if n == null:
+            return null
+        if n.has_method("easter_hit"):
+            return n
+        n = n.get_parent()
+    return null
 
 ## Random direction inside a cone around where the camera is looking.
 func _spread_direction(spread_deg: float) -> Vector3:
@@ -933,9 +956,14 @@ func _launch_projectile() -> void:
 
 func _launch_wonder() -> void:
     var wonder_script = load("res://scripts/weapons/wonder_weapons.gd")
-    if wonder_script != null and wonder_script.kind_of(current_weapon) == "Frenemy":
-        _launch_bombie_bolt()
-        return
+    if wonder_script != null:
+        var kind: String = wonder_script.kind_of(current_weapon)
+        if kind == "Frenemy":
+            _launch_bombie_bolt()
+            return
+        if kind == "Locker Launcher":
+            _launch_locker_shot()
+            return
     var rocket_script = load(WONDER_ROCKET_PATH)
     if rocket_script == null:
         return
@@ -948,6 +976,24 @@ func _launch_wonder() -> void:
         forward,
         current_weapon.damage * damage_multiplier * _pr_day_factor(),
         current_weapon.gains_per_hit
+    )
+
+
+## Locker Launcher (easter egg gun): shoots a random Loot Locker gun.
+func _launch_locker_shot() -> void:
+    var shot_script = load("res://scripts/weapons/locker_shot.gd")
+    if shot_script == null:
+        return
+    var forward: Vector3 = _spread_direction(1.5)
+    var shot = shot_script.new()
+    get_tree().current_scene.add_child(shot)
+    shot.global_position = camera.global_position + forward * 0.5
+    shot.launch(
+        self,
+        forward,
+        current_weapon.damage * damage_multiplier * _pr_day_factor(),
+        current_weapon.gains_per_hit,
+        current_weapon.splash_radius
     )
 
 
