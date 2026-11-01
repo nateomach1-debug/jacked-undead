@@ -94,3 +94,21 @@ static func _glow_mat(alpha: float, energy: float) -> StandardMaterial3D:
     m.emission = COLOR
     m.emission_energy_multiplier = energy
     return m
+
+
+## The rocket flying from where it was fired toward its target (look only).
+static func play_rocket(scene: Node, from: Vector3, to: Vector3, speed: float) -> void:
+    if scene == null:
+        return
+    var mi := MeshInstance3D.new()
+    var sphere := SphereMesh.new()
+    sphere.radius = 0.12
+    sphere.height = 0.24
+    mi.mesh = sphere
+    mi.material_override = _glow_mat(1.0, 3.0)
+    scene.add_child(mi)
+    mi.global_position = from
+    var time: float = maxf(from.distance_to(to) / maxf(speed, 1.0), 0.05)
+    var tween := mi.create_tween()
+    tween.tween_property(mi, "global_position", to, time)
+    tween.tween_callback(mi.queue_free)
