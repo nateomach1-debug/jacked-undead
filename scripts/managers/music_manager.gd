@@ -41,6 +41,9 @@ var _rng := RandomNumberGenerator.new()
 var _title_label: Label
 var _play_icon: Control
 var _show_pause := true
+var _debug_panel: PanelContainer
+var _debug_label: Label
+var _saved_music_volume := 0.7
 
 
 func _ready() -> void:
@@ -173,6 +176,7 @@ func _play_random_track() -> void:
     )
     _player.play()
     _refresh_ui()
+    _refresh_debug_ui()
 
 
 func next_track() -> void:
@@ -188,10 +192,12 @@ func toggle_playback() -> void:
         _play_random_track()
 
     _refresh_ui()
-
+    _refresh_debug_ui()
 
 func set_music_volume(value: float) -> void:
     var volume := clampf(value, 0.0, 1.0)
+    _saved_music_volume = volume
+    _refresh_debug_ui()
     var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
 
     if adjusted_volume <= 0.001:
@@ -213,6 +219,29 @@ func set_music_volume(value: float) -> void:
         var settings = settings_script.new()
         settings.set_value("music_volume", volume)
 
+func _refresh_debug_ui() -> void:
+    if _debug_label == null or _player == null:
+        return
+
+    var track_name := "None"
+    if _player.stream != null:
+        if _last_index >= 0 and _last_index < _track_paths.size():
+            track_name = _track_paths[_last_index].get_file()
+
+    var playback_status := "Playing"
+    if not _player.playing:
+        playback_status = "Stopped"
+    elif _player.stream_paused:
+        playback_status = "Paused"
+
+    _debug_label.text = (
+        "MUSIC DIAGNOSTICS\n"
+        + "Saved volume: " + str(roundi(_saved_music_volume * 100.0)) + "%\n"
+        + "Reduction: " + str(MASTER_MUSIC_REDUCTION) + "\n"
+        + "Actual volume: " + str(snappedf(_player.volume_db, 0.1)) + " dB\n"
+        + "Status: " + playback_status + "\n"
+        + "Track: " + track_name
+    )
 
 func _load_saved_volume() -> void:
     var settings_script = load(SETTINGS_PATH)
@@ -223,6 +252,7 @@ func _load_saved_volume() -> void:
         volume = clampf(settings.get_value("music_volume"), 0.0, 1.0)
 
     var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
+    _saved_music_volume = volume
 
     if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
@@ -236,8 +266,9 @@ func _load_saved_volume() -> void:
         MASTER_MUSIC_REDUCTION,
         " | Applied dB: ",
         _player.volume_db
+        _refresh_debug_ui()
     )
-
+    
 
 ## One thin row: full song name, play/pause icon, next icon.
 func _create_player_ui() -> void:
@@ -249,6 +280,17 @@ func _create_player_ui() -> void:
     _music_panel = PanelContainer.new()
     _music_panel.name = "MusicPanel"
     _music_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    _debug_panel = PanelContainer.new()
+    _debug_panel.name = "MusicDiagnostics"
+    _debug_panel.position = Vector2(12.0, 12.0)
+    _debug_panel.custom_minimum_size = Vector2(280.0, 100.0)
+    _music_layer.add_child(_debug_panel)
+
+    _debug_label = Label.new()
+    _debug_label.add_theme_font_size_override("font_size", 11)
+    _debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _debug_label.custom_minimum_size = Vector2(270.0, 90.0)
+    _debug_panel.add_child(_debug_label)
     _music_layer.add_child(_music_panel)
 
     var row := HBoxContainer.new()
