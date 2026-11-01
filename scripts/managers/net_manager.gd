@@ -719,3 +719,18 @@ func _pu_despawn(drop_id: int) -> void:
     var m: Node = _powerup_manager()
     if m != null and m.has_method("net_remove"):
         m.net_remove(drop_id)
+
+# ---------- wonder weapon visuals ----------
+
+## Br-Nh: a zombie just got ringed on this phone, so every other phone plays
+## the ring and spikes too (look only, the shooter's phone does the damage).
+func announce_wonder_ring(pos: Vector3, face: Vector3, radius: float) -> void:
+    if is_online:
+        _wonder_ring.rpc(pos, face, radius)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _wonder_ring(pos: Vector3, face: Vector3, radius: float) -> void:
+    var fx = load("res://scripts/weapons/wonder_fx_remote.gd")
+    if fx != null:
+        fx.play_ring(get_tree().current_scene, pos, face, radius)
