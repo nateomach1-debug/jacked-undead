@@ -251,10 +251,10 @@ func _load_saved_volume() -> void:
         var settings = settings_script.new()
         volume = clampf(settings.get_value("music_volume"), 0.0, 1.0)
 
-    var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
+        var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
     _saved_music_volume = volume
 
-        if adjusted_volume <= 0.001:
+    if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
         _player.volume_db = linear_to_db(adjusted_volume)
