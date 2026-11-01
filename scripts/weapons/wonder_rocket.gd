@@ -6,6 +6,8 @@ extends Node3D
 ## Built entirely in code. Spawned by player_controller.gd (_launch_wonder).
 ## Note: a zombie's origin is the MIDDLE of its capsule, so its position is
 ## already about waist height.
+## In co-op the other phones get a look-only copy (wonder_fx_remote.gd) through
+## NetManager.announce_wonder_rocket / announce_wonder_ring.
 
 const HIT_MASK: int = 1 | 4   # world + zombies
 const SPEED: float = 24.0
@@ -41,6 +43,7 @@ var _can_retarget: bool = false
 var _retarget_timer: float = 0.0
 var _age: float = 0.0
 var _timer: float = 0.0
+var _announced: bool = false
 var _fx: Node3D = null
 var _ring: MeshInstance3D = null
 var _spikes: Array = []
@@ -88,6 +91,9 @@ func _physics_process(delta: float) -> void:
 # ---------- flying ----------
 
 func _fly(delta: float) -> void:
+    if not _announced:
+        _announced = true
+        _announce_launch()
     _age += delta
     if _age > MAX_LIFETIME:
         _fizzle(global_position)
@@ -122,6 +128,14 @@ func _fly(delta: float) -> void:
             _fizzle(hit["position"])
         return
     global_position = to
+
+
+## Co-op: tells the other phones to show this rocket flying (look only).
+func _announce_launch() -> void:
+    var to: Vector3 = global_position + _velocity.normalized() * 30.0
+    if _target != null and _alive(_target):
+        to = _center(_target)
+    NetManager.announce_wonder_rocket(global_position, to)
 
 
 func _exclude_rids() -> Array[RID]:
@@ -221,6 +235,8 @@ func _engage(z) -> void:
     global_position = _victim_pos
     _timer = 0.0
     _build_fx()
+    # Co-op: the other phones play the same ring and spikes (look only).
+    NetManager.announce_wonder_ring(_victim_pos + Vector3(0, RING_OFFSET_Y, 0), _velocity, _ring_radius)
 
 
 ## Ring radius that covers the zombie from head to toe (from its collision capsule).
