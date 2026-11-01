@@ -197,13 +197,13 @@ func toggle_playback() -> void:
 func set_music_volume(value: float) -> void:
     var volume := clampf(value, 0.0, 1.0)
     _saved_music_volume = volume
-    _refresh_debug_ui()
     var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
 
     if adjusted_volume <= 0.001:
         _player.volume_db = -80.0
     else:
         _player.volume_db = linear_to_db(adjusted_volume)
+    _refresh_debug_ui()
 
     print(
         "MusicManager DEBUG: set_music_volume | Input: ",
@@ -259,15 +259,16 @@ func _load_saved_volume() -> void:
     else:
         _player.volume_db = linear_to_db(adjusted_volume)
 
-    print(
+        print(
         "MusicManager DEBUG: _load_saved_volume | Saved: ",
         volume,
         " | Reduction: ",
         MASTER_MUSIC_REDUCTION,
         " | Applied dB: ",
         _player.volume_db
-        _refresh_debug_ui()
     )
+
+    _refresh_debug_ui()
     
 
 ## One thin row: full song name, play/pause icon, next icon.
