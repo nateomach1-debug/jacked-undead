@@ -239,7 +239,6 @@ func _load_saved_volume() -> void:
         _player.volume_db
     )
 
-    _refresh_debug_ui()
     
 
 ## One thin row: full song name, play/pause icon, next icon.
