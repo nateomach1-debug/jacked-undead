@@ -1,4 +1,4 @@
-[gd_scene load_steps=42 format=3]
+[gd_scene load_steps=43 format=3]
 
 [ext_resource type="Script" path="res://scripts/managers/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/managers/round_manager.gd" id="2"]
@@ -31,6 +31,7 @@
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 [ext_resource type="PackedScene" path="res://scenes/stations/ending_station.tscn" id="30"]
 [ext_resource type="Script" path="res://scripts/managers/challenge_dresser.gd" id="31"]
+[ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="32"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(40, 1, 40)
@@ -740,3 +741,7 @@ cost = 950
 [node name="EndingStation" parent="Stations" instance=ExtResource("30")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 19.8)
 cost = 50000
+
+[node name="NavBaker" type="NavigationRegion3D" parent="."]
+script = ExtResource("32")
+source_path = NodePath("..")
