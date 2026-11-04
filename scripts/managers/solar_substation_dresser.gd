@@ -369,6 +369,8 @@ func _do_ramp() -> void:
                 _ribbon(yel, prev + Vector3(0.0, 0.55, 0.0), p + Vector3(0.0, 0.55, 0.0), 0.08, bx)
             prev = p
             has_prev = true
+            tt += 3.0
+
         var rail_start_t: float = t0 + 0.3
         var rail_length: float = t1 - rail_start_t
         var rail_center: Vector3 = c0 + bx * (sgf * 4.05) + up * (rail_start_t + rail_length * 0.5) + Vector3(0.0, 0.55, 0.0)
@@ -377,7 +379,7 @@ func _do_ramp() -> void:
             Basis(bx, up, by),
             Vector3(0.14, rail_length, 1.1)
         )
-            tt += 3.0
+
 
 func _rail_collision(center: Vector3, axes: Basis, size: Vector3) -> void:
     var body := StaticBody3D.new()
