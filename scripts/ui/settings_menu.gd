@@ -260,6 +260,12 @@ func _on_slider(v: float, key: String) -> void:
     _apply_audio_setting(key, v)
     _update_label(key)
 
+func _apply_audio_setting(key: String, value: float) -> void:
+    if key == "music_volume":
+        MusicManager.set_music_volume(value)
+    elif key == "sound_effects_volume":
+        MusicManager.set_sound_effects_volume(value)
+
 func _sync_slider(key: String) -> void:
     if _sliders.has(key):
         _sliders[key].set_value_silent(_settings.get_value(key))
