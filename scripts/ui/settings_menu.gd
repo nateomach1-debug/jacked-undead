@@ -16,6 +16,8 @@ const ROWS: Array = [
     {"key": "ads_sens", "title": "ADS sensitivity", "min": 25.0, "max": 150.0, "step": 5.0, "fmt": "%d%%"},
     {"key": "ads_zoom", "title": "ADS zoom", "min": 50.0, "max": 150.0, "step": 5.0, "fmt": "%d%%"},
     {"key": "reticle_size", "title": "Reticle size", "min": 50.0, "max": 200.0, "step": 5.0, "fmt": "%d%%"},
+    {"key": "music_volume", "title": "Music volume", "min": 0.0, "max": 1.0, "step": 0.05, "fmt": "volume"},
+    {"key": "sound_effects_volume", "title": "Sound effects volume", "min": 0.0, "max": 1.0, "step": 0.05, "fmt": "volume"},
 ]
 # A section header is drawn above the row with this key.
 const SECTIONS: Dictionary = {
@@ -23,6 +25,7 @@ const SECTIONS: Dictionary = {
     "pad_dz_look": "GAMEPAD STICKS",
     "fov": "VIEW",
     "ads_sens": "AIMING",
+    "music_volume": "AUDIO",
 }
 
 var _settings = null
@@ -247,15 +250,15 @@ func _on_step(key: String, dir: int) -> void:
     var v: float = _settings.get_value(key) + float(dir) * step
     v = snappedf(clampf(v, float(row["min"]), float(row["max"])), step / 10.0)
     _settings.set_value(key, v)
+    _apply_audio_setting(key, v)
     _update_label(key)
     _sync_slider(key)
-
 
 ## Dragging a slider changes the setting (it snaps to the same steps as - / +).
 func _on_slider(v: float, key: String) -> void:
     _settings.set_value(key, v)
+    _apply_audio_setting(key, v)
     _update_label(key)
-
 
 func _sync_slider(key: String) -> void:
     if _sliders.has(key):
@@ -266,11 +269,17 @@ func _update_label(key: String) -> void:
     var row: Dictionary = _row_for(key)
     if row.is_empty():
         return
+
     var v: float = _settings.get_value(key)
     var fmt: String = row["fmt"]
-    var shown: String = (fmt % v) if fmt.contains("%.") else (fmt % int(v))
-    (_labels[key] as Label).text = shown
+    var shown: String
 
+    if fmt == "volume":
+        shown = "%d%%" % int(round(v * 100.0))
+    else:
+        shown = (fmt % v) if fmt.contains("%.") else (fmt % int(v))
+
+    (_labels[key] as Label).text = shown
 
 ## Cycles the reticle color through the list.
 func _on_reticle_color() -> void:
@@ -365,11 +374,15 @@ func _refresh_buttons() -> void:
 
 func _on_reset() -> void:
     _settings.reset()
+
+    _apply_audio_setting("music_volume", _settings.get_value("music_volume"))
+    _apply_audio_setting("sound_effects_volume", _settings.get_value("sound_effects_volume"))
+
     for key in _labels.keys():
         _update_label(key)
         _sync_slider(key)
-    _refresh_buttons()
 
+    _refresh_buttons()
 
 func _on_controller() -> void:
     var script = load("res://scripts/ui/controller_remap.gd")
