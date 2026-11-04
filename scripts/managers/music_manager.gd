@@ -43,10 +43,12 @@ var _play_icon: Control
 var _show_pause := true
 
 func _ready() -> void:
+    _ensure_audio_buses()
     _rng.randomize()
 
     _player = AudioStreamPlayer.new()
     _player.name = "MusicStream"
+    _player.bus = "Music"
     add_child(_player)
     _player.finished.connect(_on_track_finished)
 
@@ -188,23 +190,46 @@ func toggle_playback() -> void:
 
     _refresh_ui()
 
+func _ensure_audio_buses() -> void:
+    var music_index := AudioServer.get_bus_index("Music")
+    if music_index == -1:
+        AudioServer.add_bus()
+        music_index = AudioServer.bus_count - 1
+        AudioServer.set_bus_name(music_index, "Music")
+        AudioServer.set_bus_send(music_index, "Master")
+
+    var sfx_index := AudioServer.get_bus_index("SFX")
+    if sfx_index == -1:
+        AudioServer.add_bus()
+        sfx_index = AudioServer.bus_count - 1
+        AudioServer.set_bus_name(sfx_index, "SFX")
+        AudioServer.set_bus_send(sfx_index, "Master")
+
+
+func _apply_bus_volume(bus_name: String, value: float) -> void:
+    var bus_index := AudioServer.get_bus_index(bus_name)
+    if bus_index == -1:
+        return
+
+    var volume := clampf(value, 0.0, 1.0)
+    AudioServer.set_bus_volume_db(
+        bus_index,
+        -80.0 if volume <= 0.001 else linear_to_db(volume)
+    )
+
+
+func set_sound_effects_volume(value: float) -> void:
+    var volume := clampf(value, 0.0, 1.0)
+    _apply_bus_volume("SFX", volume)
+
+    var settings_script = load(SETTINGS_PATH)
+    if settings_script != null:
+        var settings = settings_script.new()
+        settings.set_value("sound_effects_volume", volume)
+
 func set_music_volume(value: float) -> void:
     var volume := clampf(value, 0.0, 1.0)
-    var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
-
-    if adjusted_volume <= 0.001:
-        _player.volume_db = -80.0
-    else:
-        _player.volume_db = linear_to_db(adjusted_volume)
-    
-    print(
-        "MusicManager DEBUG: set_music_volume | Input: ",
-        volume,
-        " | Reduction: ",
-        MASTER_MUSIC_REDUCTION,
-        " | Applied dB: ",
-        _player.volume_db
-    )
+    _apply_bus_volume("Music", volume * MASTER_MUSIC_REDUCTION)
 
     var settings_script = load(SETTINGS_PATH)
     if settings_script != null:
@@ -212,33 +237,20 @@ func set_music_volume(value: float) -> void:
         settings.set_value("music_volume", volume)
 
 
-
 func _load_saved_volume() -> void:
     var settings_script = load(SETTINGS_PATH)
-    var volume := 0.7
+    var music_volume := 0.7
+    var sfx_volume := 1.0
 
     if settings_script != null:
         var settings = settings_script.new()
-        volume = clampf(settings.get_value("music_volume"), 0.0, 1.0)
+        music_volume = clampf(settings.get_value("music_volume"), 0.0, 1.0)
+        sfx_volume = clampf(settings.get_value("sound_effects_volume"), 0.0, 1.0)
 
-    var adjusted_volume := volume * MASTER_MUSIC_REDUCTION
-
-    if adjusted_volume <= 0.001:
-        _player.volume_db = -80.0
-    else:
-        _player.volume_db = linear_to_db(adjusted_volume)
-
-    print(
-        "MusicManager DEBUG: _load_saved_volume | Saved: ",
-        volume,
-        " | Reduction: ",
-        MASTER_MUSIC_REDUCTION,
-        " | Applied dB: ",
-        _player.volume_db
-    )
+    _apply_bus_volume("Music", music_volume * MASTER_MUSIC_REDUCTION)
+    _apply_bus_volume("SFX", sfx_volume)
 
     
-
 ## One thin row: full song name, play/pause icon, next icon.
 func _create_player_ui() -> void:
     _music_layer = CanvasLayer.new()
