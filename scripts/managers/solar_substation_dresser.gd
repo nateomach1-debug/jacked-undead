@@ -376,8 +376,8 @@ func _do_ramp() -> void:
         var rail_center: Vector3 = c0 + bx * (sgf * 4.05) + up * (rail_start_t + rail_length * 0.5) + Vector3(0.0, 0.55, 0.0)
         _rail_collision(
             rail_center,
-            Basis(bx, up, by),
-            Vector3(0.14, rail_length, 1.1)
+            Basis(bx, by, up),
+            Vector3(0.14, 1.1, rail_length)
         )
 
 
