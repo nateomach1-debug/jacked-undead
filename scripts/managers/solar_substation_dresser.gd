@@ -310,6 +310,11 @@ func _do_catwalk() -> void:
             _box(yel, Vector3(sg * px, 6.55, -20.4), Vector3(0.08, 1.1, 0.08))
             px += 3.0
         _box(yel, Vector3(sg * 29.8, 6.55, -20.4), Vector3(0.08, 1.1, 0.08))
+        _rail_collision(
+            Vector3(cxm, 6.55, -20.4),
+            Basis.IDENTITY,
+            Vector3(25.4, 1.1, 0.16)
+        )
     _quad(under, Vector3(-30, 4.98, -30), Vector3(30, 4.98, -30), Vector3(30, 4.98, -20), Vector3(-30, 4.98, -20), Vector3.DOWN)
     for pxx in [-27.0, -19.0, -11.0, 11.0, 19.0, 27.0]:
         var pf: float = pxx
@@ -364,8 +369,27 @@ func _do_ramp() -> void:
                 _ribbon(yel, prev + Vector3(0.0, 0.55, 0.0), p + Vector3(0.0, 0.55, 0.0), 0.08, bx)
             prev = p
             has_prev = true
+        var rail_start_t: float = t0 + 0.3
+        var rail_length: float = t1 - rail_start_t
+        var rail_center: Vector3 = c0 + bx * (sgf * 4.05) + up * (rail_start_t + rail_length * 0.5) + Vector3(0.0, 0.55, 0.0)
+        _rail_collision(
+            rail_center,
+            Basis(bx, up, by),
+            Vector3(0.14, rail_length, 1.1)
+        )
             tt += 3.0
 
+func _rail_collision(center: Vector3, axes: Basis, size: Vector3) -> void:
+    var body := StaticBody3D.new()
+    var collision := CollisionShape3D.new()
+    var shape := BoxShape3D.new()
+
+    shape.size = size
+    collision.shape = shape
+    body.add_child(collision)
+
+    body.transform = Transform3D(axes, center)
+    add_child(body)
 
 # ---------------------------------------------------------------- F station pads
 
