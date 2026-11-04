@@ -576,3 +576,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, -10)
 script = ExtResource("32")
 
 [node name="NavBaker" type="NavigationRegion3D" parent="."]
+script = ExtResource("31")
+source_path = NodePath("..")
