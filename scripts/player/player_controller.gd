@@ -579,6 +579,7 @@ var _pu_tiers_tried: bool = false
 func _ready() -> void:
     add_to_group("player")
     floor_snap_length = 0.4
+    fire_sound_player.bus = "SFX"
     var indicator_script = load(DAMAGE_INDICATOR_PATH)
     if indicator_script:
         _damage_indicator = indicator_script.new()
