@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
         _splat()
         return
 
-    global_position = to_pos
+        global_position = to_pos
     var near: Node3D = _find_victim()
     if near != null:
         _hurt(near)
@@ -90,11 +90,27 @@ func _find_victim() -> Node3D:
             var p := n as Node3D
             if p == null or not is_instance_valid(p) or _is_out(p):
                 continue
+
             var off: Vector3 = p.global_position - global_position
             var dy: float = absf(off.y)
             off.y = 0.0
-            if off.length() <= HIT_RADIUS and dy <= HIT_HEIGHT:
+            if off.length() > HIT_RADIUS or dy > HIT_HEIGHT:
+                continue
+
+            var from_pos: Vector3 = global_position
+            var to_pos: Vector3 = p.global_position + Vector3(0.0, 0.4, 0.0)
+            var query := PhysicsRayQueryParameters3D.create(from_pos, to_pos)
+            query.collision_mask = 1
+
+            var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+
+            if hit.is_empty():
                 return p
+
+            var blocker: Node = _victim_from_collider(hit.get("collider"))
+            if blocker == p:
+                return p
+
     return null
 
 
