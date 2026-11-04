@@ -1,29 +1,31 @@
+
 extends RefCounted
 ## Player settings saved on the phone (user://settings.cfg).
 ## Other scripts load this with load() + a null check, so a problem here can't break the game.
 
 const FILE: String = "user://settings.cfg"
 const DEFAULTS: Dictionary = {
-    "touch_look": 1.0,      # multiplier on touch look speed
-    "pad_look": 200.0,      # gamepad look speed, degrees per second
-    "fov": 80.0,            # field of view in degrees
-    "sprint_hold": 0.0,     # 0 = toggle, 1 = hold
-    "tutorial_seen": 0.0,   # 1 = the first-time tutorial has been shown
-    "ads_sens": 100.0,      # percent: look speed while aiming
-    "ads_zoom": 100.0,      # percent: how much each gun zooms when aiming
-    "reticle_size": 100.0,  # percent: size of the optic reticle
-    "reticle_color": 0.0,   # index into RETICLE_COLORS
-    "hit_markers": 1.0,     # 1 = show hit markers, 0 = hide them
-    "outline": 0.0,         # 1 = draw an outline around reticles
-    "outline_color": 0.0,   # index into OUTLINE_COLORS
-    "pad_dz_look": 20.0,    # percent: right stick deadzone
-    "pad_dz_move": 20.0,    # percent: left stick deadzone
-    "pad_curve": 0.0,       # 0 = linear, 1 = smooth, 2 = precise
-    "pad_invert_y": 0.0,    # 1 = invert gamepad look Y
-    "pad_vibration": 1.0,   # 1 = gamepad vibration on, 0 = off
-    "music_volume": 0.7,  # Music volume from 0.0 (muted) to 1.0 (full)
-    "damage_numbers": 1.0,  # 1 = show damage numbers, 0 = hide them
-    "aim_assist": 2.0,      # touch aim assist: 0 = off, 1 = low, 2 = medium, 3 = high
+    "touch_look": 1.0,
+    "pad_look": 200.0,
+    "fov": 80.0,
+    "sprint_hold": 0.0,
+    "tutorial_seen": 0.0,
+    "ads_sens": 100.0,
+    "ads_zoom": 100.0,
+    "reticle_size": 100.0,
+    "reticle_color": 0.0,
+    "hit_markers": 1.0,
+    "outline": 0.0,
+    "outline_color": 0.0,
+    "pad_dz_look": 20.0,
+    "pad_dz_move": 20.0,
+    "pad_curve": 0.0,
+    "pad_invert_y": 0.0,
+    "pad_vibration": 1.0,
+    "music_volume": 0.7,
+    "sound_effects_volume": 1.0,
+    "damage_numbers": 1.0,
+    "aim_assist": 2.0,
 }
 
 const RETICLE_COLORS: Array = [
@@ -36,8 +38,6 @@ const RETICLE_COLORS: Array = [
     {"name": "WHITE", "color": Color(1.0, 1.0, 1.0)},
 ]
 
-# Outline colors. "label" (optional) is the color the settings button text uses.
-# RAINBOW is special: the reticle code cycles its hue.
 const OUTLINE_COLORS: Array = [
     {"name": "BLACK", "color": Color(0.0, 0.0, 0.0), "label": Color(0.6, 0.6, 0.66)},
     {"name": "WHITE", "color": Color(1.0, 1.0, 1.0)},
@@ -77,21 +77,18 @@ func set_value(key: String, v: float) -> void:
     save()
 
 
-## The chosen reticle color.
 func reticle_color() -> Color:
     var idx: int = clampi(int(get_value("reticle_color")), 0, RETICLE_COLORS.size() - 1)
     var c: Color = RETICLE_COLORS[idx]["color"]
     return Color(c.r, c.g, c.b, 0.95)
 
 
-## The chosen outline color.
 func outline_color() -> Color:
     var idx: int = clampi(int(get_value("outline_color")), 0, OUTLINE_COLORS.size() - 1)
     var c: Color = OUTLINE_COLORS[idx]["color"]
     return Color(c.r, c.g, c.b, 0.95)
 
 
-## True when the chosen outline color is the cycling RAINBOW.
 func outline_is_rainbow() -> bool:
     var idx: int = clampi(int(get_value("outline_color")), 0, OUTLINE_COLORS.size() - 1)
     return bool(OUTLINE_COLORS[idx].get("rainbow", false))
