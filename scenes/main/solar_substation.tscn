@@ -30,6 +30,7 @@
 [ext_resource type="PackedScene" path="res://resources/models/weapons/Sniper_1.gltf" id="28"]
 [ext_resource type="PackedScene" path="res://scenes/stations/loot_locker.tscn" id="29"]
 [ext_resource type="Script" path="res://scripts/managers/solar_substation_dresser.gd" id="30"]
+[ext_resource type="Script" path="res://scripts/managers/nav_baker.gd" id="31"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_Sun"]
 sky_top_color = Color(0.2, 0.4, 0.6, 1)
@@ -343,3 +344,7 @@ roid_rager_scene = ExtResource("5")
 
 [node name="SolarSubstationDresser" type="Node3D" parent="."]
 script = ExtResource("30")
+
+[node name="NavBaker" type="NavigationRegion3D" parent="."]
+script = ExtResource("31")
+source_path = NodePath("../Geometry")
