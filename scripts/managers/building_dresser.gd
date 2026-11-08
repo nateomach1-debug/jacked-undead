@@ -4,12 +4,20 @@ extends "res://scripts/managers/compound_props.gd"
 # Zombie spawns: fixed upstairs spots (UPSTAIRS_SPAWNS) plus auto spawn points behind each
 # buyable door (made after the scan). All of them only spawn once their door is bought.
 
+const USE_GLOW := true          # Android only, web never gets glow
+const EXPOSURE := 1.1
+const CONTRAST := 1.08
+const SATURATION := 1.12
+const BG_COLOR := Color(0.03, 0.04, 0.07)   # what you see through any outside gap
 const AMBIENT_COLOR := Color(0.62, 0.65, 0.76)
-const AMBIENT_ENERGY := 1.2
+const AMBIENT_ENERGY := 1.3
 const MOON_COLOR := Color(0.72, 0.78, 1.0)
 const MOON_ENERGY := 0.9
-const LAMP_ENERGY := 1.9
-const FOG_DENSITY := 0.002
+const MOON_SHADOWS := true      # Android only
+const MOON_ON_WEB := false      # ceilings block it anyway, saves web cost
+const LAMP_ENERGY := 2.1
+const FOG_COLOR := Color(0.16, 0.17, 0.21)
+const FOG_DENSITY := 0.004
 const SHOW_BANDS := true
 const FRONT_IS_MINUS_Z := true
 const STEP_W := 2.5
@@ -110,30 +118,42 @@ func _make_upstairs_spawns() -> void:
         idx += 1
 
 
+# Indoor map (ceilings), so no sky or moon work: dark background, grading, fog, lamps.
 func _setup_env() -> void:
     var root: Node = get_parent()
+    var is_web: bool = OS.has_feature("web")
     var we := root.get_node_or_null("WorldEnvironment") as WorldEnvironment
     if we != null and we.environment != null:
         var e: Environment = we.environment
+        e.background_mode = Environment.BG_COLOR
+        e.background_color = BG_COLOR
         e.ssao_enabled = false
-        e.glow_enabled = false
+        e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        e.tonemap_exposure = EXPOSURE
+        e.adjustment_enabled = true
+        e.adjustment_contrast = CONTRAST
+        e.adjustment_saturation = SATURATION
+        if USE_GLOW and not is_web:
+            e.glow_enabled = true
+            e.glow_intensity = 0.8
+            e.glow_strength = 1.0
+            e.glow_bloom = 0.0
+            e.glow_hdr_threshold = 1.0
+            e.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+        else:
+            e.glow_enabled = false
         e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
         e.ambient_light_color = AMBIENT_COLOR
         e.ambient_light_energy = AMBIENT_ENERGY
         e.fog_enabled = true
-        e.fog_light_color = Color(0.28, 0.25, 0.32)
+        e.fog_light_color = FOG_COLOR
         e.fog_density = FOG_DENSITY
-        var sky: Sky = e.sky
-        if sky != null and sky.sky_material is ProceduralSkyMaterial:
-            var sm := sky.sky_material as ProceduralSkyMaterial
-            sm.sky_top_color = Color(0.07, 0.09, 0.2)
-            sm.sky_horizon_color = Color(0.5, 0.32, 0.3)
-            sm.ground_horizon_color = Color(0.5, 0.32, 0.3)
-            sm.ground_bottom_color = Color(0.05, 0.05, 0.07)
     var sun := root.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
     if sun != null:
         sun.light_color = MOON_COLOR
         sun.light_energy = MOON_ENERGY
+        sun.visible = MOON_ON_WEB or not is_web
+        sun.shadow_enabled = MOON_SHADOWS and not is_web
         sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
         sun.directional_shadow_max_distance = 50.0
 
@@ -250,8 +270,6 @@ func _collect_bottoms(n: Node, out: Array) -> void:
             if bx != null:
                 out.append(cs.global_position.y - bx.size.y * 0.5 * cs.global_transform.basis.y.length())
         _collect_bottoms(c, out)
-
-
 # ----------------------------------------------------------- scan sequence
 
 func _space() -> PhysicsDirectSpaceState3D:
