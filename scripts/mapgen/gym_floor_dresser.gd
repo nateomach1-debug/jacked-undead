@@ -1,15 +1,30 @@
 extends "res://scripts/mapgen/gym_floor_decor.gd"
-## Random Gym decor, part 2 of 2: dusk environment, blood, door tape and signs,
-## 6 real lights, station rings. Tuning knobs are the consts below.
+## Random Gym decor, part 2 of 2: random sky/fog/moon per map, blood, door tape
+## and signs, 6 real lights, station rings. Tuning knobs are the consts below.
 
-const AMBIENT_COLOR := Color(0.5, 0.55, 0.68)
+const USE_GLOW := true          # Android only, web never gets glow
+const EXPOSURE := 1.1
+const CONTRAST := 1.08
+const SATURATION := 1.12
 const AMBIENT_ENERGY := 1.2
-const MOON_COLOR := Color(0.65, 0.72, 1.0)
 const MOON_ENERGY := 1.0
-const MOON_SHADOWS := true
+const MOON_SHADOWS := true      # web never gets shadows
+const MOON_MIN_ELEV := 28.0     # degrees above the horizon
+const MOON_MAX_ELEV := 55.0
 const LAMP_ENERGY := 2.0
 const LAMP_RANGE := 20.0
-const FOG_DENSITY := 0.0035
+const FOG_DENSITY := 0.012
+const FOG_SKY_AFFECT := 0.35    # lower = clearer sky through the fog
+
+# One of these is picked per map seed.
+const SKY_THEMES: Array = [
+    {"name": "purple dusk", "top": Color(0.07, 0.09, 0.2), "horizon": Color(0.5, 0.32, 0.38), "ground": Color(0.05, 0.05, 0.07), "fog": Color(0.28, 0.25, 0.32), "moon": Color(0.65, 0.72, 1.0), "ambient": Color(0.5, 0.55, 0.68)},
+    {"name": "blood sunset", "top": Color(0.16, 0.05, 0.08), "horizon": Color(0.85, 0.28, 0.15), "ground": Color(0.08, 0.03, 0.03), "fog": Color(0.38, 0.18, 0.15), "moon": Color(1.0, 0.7, 0.55), "ambient": Color(0.7, 0.5, 0.45)},
+    {"name": "teal night", "top": Color(0.02, 0.08, 0.14), "horizon": Color(0.1, 0.45, 0.5), "ground": Color(0.02, 0.05, 0.07), "fog": Color(0.12, 0.28, 0.32), "moon": Color(0.7, 0.95, 1.0), "ambient": Color(0.45, 0.62, 0.68)},
+    {"name": "storm", "top": Color(0.1, 0.12, 0.16), "horizon": Color(0.42, 0.46, 0.52), "ground": Color(0.06, 0.07, 0.09), "fog": Color(0.3, 0.33, 0.38), "moon": Color(0.85, 0.9, 1.0), "ambient": Color(0.58, 0.62, 0.7)},
+    {"name": "toxic green", "top": Color(0.03, 0.1, 0.07), "horizon": Color(0.4, 0.6, 0.2), "ground": Color(0.03, 0.06, 0.03), "fog": Color(0.2, 0.32, 0.16), "moon": Color(0.85, 1.0, 0.6), "ambient": Color(0.5, 0.68, 0.5)},
+    {"name": "amber dusk", "top": Color(0.12, 0.1, 0.22), "horizon": Color(0.95, 0.6, 0.25), "ground": Color(0.08, 0.05, 0.04), "fog": Color(0.4, 0.3, 0.22), "moon": Color(1.0, 0.88, 0.65), "ambient": Color(0.7, 0.62, 0.55)},
+]
 
 
 func _ready() -> void:
@@ -34,29 +49,65 @@ func _ready() -> void:
 
 func _dress_env() -> void:
     var root: Node = get_parent()
+    var is_web: bool = OS.has_feature("web")
+    # Own RNG so the look changes with the map seed but the blood/props rolls stay the same.
+    var erng: RandomNumberGenerator = RandomNumberGenerator.new()
+    erng.seed = int(_gen.get("seed_used")) + 13
+    var th: Dictionary = SKY_THEMES[erng.randi() % SKY_THEMES.size()]
+    print("GymFloorDresser: sky theme = ", th["name"])
     var we: WorldEnvironment = root.get_node_or_null("WorldEnvironment") as WorldEnvironment
     if we != null and we.environment != null:
         var e: Environment = we.environment
+        e.background_mode = Environment.BG_SKY
         e.ssao_enabled = false
-        e.glow_enabled = false
+        e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        e.tonemap_exposure = EXPOSURE
+        e.adjustment_enabled = true
+        e.adjustment_contrast = CONTRAST
+        e.adjustment_saturation = SATURATION
+        if USE_GLOW and not is_web:
+            e.glow_enabled = true
+            e.glow_intensity = 0.8
+            e.glow_strength = 1.0
+            e.glow_bloom = 0.0
+            e.glow_hdr_threshold = 1.0
+            e.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+        else:
+            e.glow_enabled = false
         e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-        e.ambient_light_color = AMBIENT_COLOR
+        e.ambient_light_color = th["ambient"]
         e.ambient_light_energy = AMBIENT_ENERGY
         e.fog_enabled = true
-        e.fog_light_color = Color(0.28, 0.25, 0.32)
+        e.fog_light_color = th["fog"]
         e.fog_density = FOG_DENSITY
+        e.fog_sky_affect = FOG_SKY_AFFECT
         var sky: Sky = e.sky
-        if sky != null and sky.sky_material is ProceduralSkyMaterial:
-            var sm: ProceduralSkyMaterial = sky.sky_material as ProceduralSkyMaterial
-            sm.sky_top_color = Color(0.07, 0.09, 0.2)
-            sm.sky_horizon_color = Color(0.5, 0.32, 0.3)
-            sm.ground_horizon_color = Color(0.5, 0.32, 0.3)
-            sm.ground_bottom_color = Color(0.05, 0.05, 0.07)
+        if sky == null:
+            sky = Sky.new()
+            e.sky = sky
+        var sm: ProceduralSkyMaterial = sky.sky_material as ProceduralSkyMaterial
+        if sm == null:
+            sm = ProceduralSkyMaterial.new()
+            sky.sky_material = sm
+        sm.sky_top_color = th["top"]
+        sm.sky_horizon_color = th["horizon"]
+        sm.sky_curve = 0.25
+        sm.ground_horizon_color = th["horizon"]
+        sm.ground_bottom_color = th["ground"]
+        sm.ground_curve = 0.03
+        # Tight bright disc with a small glow, so it reads as a moon.
+        sm.sun_angle_max = 9.0
+        sm.sun_curve = 0.1
     var sun: DirectionalLight3D = root.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
     if sun != null:
-        sun.light_color = MOON_COLOR
+        # The sky draws the moon disc where the light comes from.
+        var elev: float = deg_to_rad(erng.randf_range(MOON_MIN_ELEV, MOON_MAX_ELEV))
+        var az: float = erng.randf_range(0.0, TAU)
+        var to_moon: Vector3 = Vector3(cos(elev) * sin(az), sin(elev), cos(elev) * cos(az))
+        sun.basis = Basis.looking_at(-to_moon, Vector3.UP)
+        sun.light_color = th["moon"]
         sun.light_energy = MOON_ENERGY
-        sun.shadow_enabled = MOON_SHADOWS
+        sun.shadow_enabled = MOON_SHADOWS and not is_web
         sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
         sun.directional_shadow_max_distance = 60.0
 
