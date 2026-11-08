@@ -5,13 +5,14 @@ extends Node3D
 
 const HALF := 20.0
 const CEIL_Y := 10.0
-const USE_GLOW := false
-const AMBIENT := 1.0
+const USE_GLOW := true
+const AMBIENT := 0.9
 const SUN := 0.9
+const EXPOSURE := 1.1
 
-const C_FLOOR := Color(0.14, 0.14, 0.16)
-const C_WALL := Color(0.15, 0.15, 0.17)
-const C_PANEL := Color(0.21, 0.21, 0.24)
+const C_FLOOR := Color(0.24, 0.24, 0.27)
+const C_WALL := Color(0.26, 0.26, 0.30)
+const C_PANEL := Color(0.34, 0.34, 0.39)
 const C_BLACK := Color(0.04, 0.04, 0.05)
 const C_YELLOW := Color(1.0, 0.77, 0.0)
 const C_RED := Color(0.75, 0.08, 0.08)
@@ -58,6 +59,7 @@ func _ready() -> void:
 # ---------------------------------------------------------------- environment
 
 func _setup_environment() -> void:
+    var web := OS.has_feature("web")
     var p := get_parent()
     var we := p.get_node_or_null("WorldEnvironment") as WorldEnvironment
     if we != null and we.environment != null:
@@ -68,7 +70,17 @@ func _setup_environment() -> void:
         env.ambient_light_color = Color(0.85, 0.86, 0.95)
         env.ambient_light_energy = AMBIENT
         env.ssao_enabled = false
-        env.glow_enabled = USE_GLOW
+        env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        env.tonemap_exposure = EXPOSURE
+        env.adjustment_enabled = true
+        env.adjustment_contrast = 1.08
+        env.adjustment_saturation = 1.12
+        env.glow_enabled = USE_GLOW and not web
+        env.glow_intensity = 0.8
+        env.glow_strength = 1.0
+        env.glow_bloom = 0.0
+        env.glow_hdr_threshold = 1.0
+        env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
         env.fog_enabled = true
         env.fog_light_color = Color(0.07, 0.07, 0.09)
         env.fog_density = 0.006
@@ -76,6 +88,7 @@ func _setup_environment() -> void:
     if sun != null:
         sun.light_color = Color(1.0, 0.95, 0.85)
         sun.light_energy = SUN
+        sun.shadow_enabled = not web
         sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
         sun.directional_shadow_max_distance = 45.0
 
@@ -233,7 +246,6 @@ func _solid(pos: Vector3, yaw: float, lc: Vector3, size: Vector3) -> void:
     body.rotation.y = yaw
     add_child(body)
 
-
 func _flush() -> void:
     for k in _batches:
         var bt: Dictionary = _batches[k]
@@ -266,7 +278,7 @@ func _flush() -> void:
 # ---------------------------------------------------------------- floor (A)
 
 func _build_floor() -> void:
-    var seam := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
+    var seam := _mk(Color(0.12, 0.12, 0.14), 0.0, false)
     for i in range(-3, 4):
         var s := float(i) * 5.0
         _floor_rect(seam, s, 0.0, 0.06, 40.0, 0.02)
@@ -348,6 +360,7 @@ func _label(text: String, pos: Vector3, yaw: float, ps: float, col: Color, ocol:
     l.outline_size = osize
     l.shaded = false
     l.double_sided = true
+    l.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
     l.position = pos
     l.rotation.y = yaw
     if billboard:
@@ -358,9 +371,9 @@ func _label(text: String, pos: Vector3, yaw: float, ps: float, col: Color, ocol:
 # ---------------------------------------------------------------- ceiling (C)
 
 func _build_ceiling() -> void:
-    var ceil_k := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
+    var ceil_k := _mk(Color(0.14, 0.14, 0.17), 0.0, false)
     _box(ceil_k, Vector3(0.0, CEIL_Y + 0.2, 0.0), Vector3(42.0, 0.4, 42.0))
-    var beam := _mk(Color(0.22, 0.23, 0.26), 0.0, false)
+    var beam := _mk(Color(0.30, 0.31, 0.35), 0.0, false)
     for z in [-16.0, -8.0, 0.0, 8.0, 16.0]:
         _box(beam, Vector3(0.0, 9.6, float(z)), Vector3(40.0, 0.5, 0.35))
     for x in [-12.0, 0.0, 12.0]:
