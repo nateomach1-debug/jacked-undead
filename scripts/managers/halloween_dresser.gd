@@ -6,12 +6,20 @@ extends Node3D
 ## Set any of the switches below to false/0 to drop that part.
 
 const LIGHTNING: bool = true      # rare flash of the ambient light
-const AMBIENT_BASE: float = 0.9   # must match ambient_light_energy in halloween_map.tscn
+const AMBIENT_BASE: float = 1.05  # the dresser sets this at runtime (overrides halloween_map.tscn)
+const FLASH_ENERGY: float = 2.4   # ambient energy during a lightning flash
 const STAR_COUNT: int = 90
 const STAR_RADIUS: float = 85.0
 const TUFT_COUNT: int = 260
 const CORN_COUNT: int = 56
 const BAT_COUNT: int = 8
+
+# ---- graphics tuning knobs (step 1)
+const USE_GLOW: bool = true
+const EXPOSURE: float = 1.1
+const CONTRAST: float = 1.08
+const SATURATION: float = 1.12
+const FOG_DENSITY: float = 0.012
 
 const STONE := Color(0.42, 0.42, 0.45)
 const IRON := Color(0.10, 0.09, 0.12)
@@ -50,6 +58,30 @@ func _ready() -> void:
     var we := get_parent().get_node_or_null("WorldEnvironment") as WorldEnvironment
     if we != null:
         _env = we.environment
+        _setup_env()
+
+
+## Filmic look on top of the purple night from the scene (colors and fog color stay).
+func _setup_env() -> void:
+    if _env == null:
+        return
+    _env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    _env.tonemap_exposure = EXPOSURE
+    _env.adjustment_enabled = true
+    _env.adjustment_contrast = CONTRAST
+    _env.adjustment_saturation = SATURATION
+    _env.ambient_light_energy = AMBIENT_BASE
+    _env.ssao_enabled = false
+    _env.fog_enabled = true
+    _env.fog_density = FOG_DENSITY
+    var want_glow: bool = USE_GLOW and not OS.has_feature("web")
+    _env.glow_enabled = want_glow
+    if want_glow:
+        _env.glow_intensity = 0.8
+        _env.glow_strength = 1.0
+        _env.glow_bloom = 0.0
+        _env.glow_hdr_threshold = 1.0
+        _env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 
 
 func _exit_tree() -> void:
@@ -184,7 +216,7 @@ func _update_lightning(delta: float) -> void:
     if _bolt_t >= 0.0:
         _bolt_t += delta
         var on: bool = _bolt_t < 0.07 or (_bolt_t >= 0.15 and _bolt_t < 0.27)
-        _env.ambient_light_energy = 2.2 if on else AMBIENT_BASE
+        _env.ambient_light_energy = FLASH_ENERGY if on else AMBIENT_BASE
         if _bolt_t > 0.4:
             _bolt_t = -1.0
             _env.ambient_light_energy = AMBIENT_BASE
@@ -298,7 +330,6 @@ func _update_fog() -> void:
         var ph: float = float(f["ph"])
         var node: Node3D = f["node"]
         node.position = base + Vector3(sin(_time * 0.12 + ph) * 1.8, 0.0, cos(_time * 0.1 + ph) * 1.2)
-
 
 # ---------------------------------------------------------------- plaza
 
