@@ -877,6 +877,10 @@ func _fire_shot() -> void:
         fire_sound_player.stream = current_weapon.fire_sound
         fire_sound_player.play()
 
+    var fx_on: bool = current_weapon.fire_mode != WeaponData.FireMode.FLAME
+    if fx_on:
+        _fx_muzzle()
+
     if current_weapon.fire_mode == WeaponData.FireMode.EXPLOSIVE:
         _launch_projectile()
         return
@@ -890,6 +894,7 @@ func _fire_shot() -> void:
     var base_damage: float = current_weapon.damage * damage_multiplier * _pr_day_factor()
     var hits: Dictionary = {}
     var locker_hits: Dictionary = {}
+    var sparks_left: int = 3
     for i in range(maxi(current_weapon.pellets, 1)):
         var direction: Vector3 = _spread_direction(current_weapon.spread_degrees)
         var result: Dictionary = _cast_ray(direction, current_weapon.range)
@@ -899,6 +904,9 @@ func _fire_shot() -> void:
         if target == null:
             continue
         if not target.has_method("take_damage"):
+            if fx_on and sparks_left > 0:
+                sparks_left -= 1
+                _fx_sparks(result["position"], result["normal"])
             # Easter egg: shots that land on a Loot Locker are counted (once per shot).
             var hit_locker = _find_locker(target)
             if hit_locker != null:
@@ -935,11 +943,12 @@ func _fire_shot() -> void:
         if victim.is_in_group("zombies"):
             _count_head_streak(is_head)
             GameManager.add_gains(current_weapon.gains_per_hit)
+            if fx_on:
+                _fx_blood(victim_info["point"], is_head)
             if show_markers:
                 _spawn_hit_marker(victim_info["point"], is_head)
             if current_weapon.burn_damage_per_second > 0.0 and is_instance_valid(victim):
                 _apply_burn(victim)
-
 
 ## Easter egg: 30 headshots in a row (misses do not break it, a body shot does).
 func _count_head_streak(is_head: bool) -> void:
@@ -1091,6 +1100,39 @@ func fire_once_if_ready() -> void:
     if is_dead or not current_weapon or _fire_cooldown > 0.0 or _reloading or _burst_left > 0:
         return
     _try_trigger()
+
+const FX_PATH: String = "res://scripts/effects/effects.gd"
+var _fx_script = null
+var _fx_tried: bool = false
+
+
+func _get_fx():
+    if not _fx_tried:
+        _fx_tried = true
+        _fx_script = load(FX_PATH)
+    return _fx_script
+
+
+func _fx_muzzle() -> void:
+    var fx = _get_fx()
+    if fx == null:
+        return
+    fx.muzzle_flash(weapon_mount, BADGE_FLASH_POS)
+
+
+func _fx_sparks(at: Vector3, normal: Vector3) -> void:
+    var fx = _get_fx()
+    if fx == null:
+        return
+    fx.sparks(self, at, normal)
+
+
+func _fx_blood(at: Vector3, headshot: bool) -> void:
+    var fx = _get_fx()
+    if fx == null:
+        return
+    var back: Vector3 = (camera.global_position - at).normalized()
+    fx.blood(self, at, back, headshot)
 
 
 func _spawn_hit_marker(at_position: Vector3, is_headshot: bool = false) -> void:
