@@ -2,13 +2,19 @@ extends "res://scripts/managers/compound_props.gd"
 # Gym Compound visual upgrade: dusk compound look, floors, walls, catwalk, ramps.
 # Tuning knobs are the consts below (raise AMBIENT_ENERGY / MOON_ENERGY if too dark).
 
+const USE_GLOW := true          # Android only, web never gets glow
+const EXPOSURE := 1.1
+const CONTRAST := 1.08
+const SATURATION := 1.12
 const AMBIENT_COLOR := Color(0.62, 0.65, 0.76)
 const AMBIENT_ENERGY := 1.45
 const MOON_COLOR := Color(0.72, 0.78, 1.0)
 const MOON_ENERGY := 1.1
-const MOON_SHADOWS := true
+const MOON_SHADOWS := true      # Android only, web never gets shadows
 const LAMP_ENERGY := 2.2
+const FOG_COLOR := Color(0.28, 0.25, 0.32)
 const FOG_DENSITY := 0.0025
+const FOG_SKY_AFFECT := 0.35    # lower = clearer sky through the fog
 
 
 func _ready() -> void:
@@ -33,29 +39,50 @@ func _ready() -> void:
 
 func _setup_env() -> void:
     var root: Node = get_parent()
+    var is_web: bool = OS.has_feature("web")
     var we := root.get_node_or_null("WorldEnvironment") as WorldEnvironment
     if we != null and we.environment != null:
         var e: Environment = we.environment
         e.ssao_enabled = false
-        e.glow_enabled = false
+        e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        e.tonemap_exposure = EXPOSURE
+        e.adjustment_enabled = true
+        e.adjustment_contrast = CONTRAST
+        e.adjustment_saturation = SATURATION
+        if USE_GLOW and not is_web:
+            e.glow_enabled = true
+            e.glow_intensity = 0.8
+            e.glow_strength = 1.0
+            e.glow_bloom = 0.0
+            e.glow_hdr_threshold = 1.0
+            e.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+        else:
+            e.glow_enabled = false
         e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
         e.ambient_light_color = AMBIENT_COLOR
         e.ambient_light_energy = AMBIENT_ENERGY
         e.fog_enabled = true
-        e.fog_light_color = Color(0.28, 0.25, 0.32)
+        e.fog_light_color = FOG_COLOR
         e.fog_density = FOG_DENSITY
+        e.fog_sky_affect = FOG_SKY_AFFECT
         var sky: Sky = e.sky
         if sky != null and sky.sky_material is ProceduralSkyMaterial:
+            e.background_mode = Environment.BG_SKY
             var sm := sky.sky_material as ProceduralSkyMaterial
             sm.sky_top_color = Color(0.07, 0.09, 0.2)
             sm.sky_horizon_color = Color(0.5, 0.32, 0.3)
+            sm.sky_curve = 0.25
             sm.ground_horizon_color = Color(0.5, 0.32, 0.3)
             sm.ground_bottom_color = Color(0.05, 0.05, 0.07)
+            sm.ground_curve = 0.03
+            # tight bright moon disc with a small glow
+            sm.sun_angle_max = 9.0
+            sm.sun_curve = 0.1
     var sun := root.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
     if sun != null:
         sun.light_color = MOON_COLOR
         sun.light_energy = MOON_ENERGY
-        sun.shadow_enabled = MOON_SHADOWS
+        sun.shadow_enabled = MOON_SHADOWS and not is_web
         sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
         sun.directional_shadow_max_distance = 50.0
 
@@ -68,11 +95,11 @@ func _paint(path: String, col: Color) -> void:
 
 func _paint_base() -> void:
     _paint("GroundFloor/MeshInstance3D", Color(0.34, 0.34, 0.37))
-    _paint("UpperCatwalk/MeshInstance3D", Color(0.17, 0.18, 0.2))
+    _paint("UpperCatwalk/MeshInstance3D", Color(0.22, 0.23, 0.25))
     for n in ["LedgeLeftMesh", "LedgeMidMesh", "LedgeRightMesh"]:
         _paint("UpperCatwalk/" + n, Color(0.3, 0.3, 0.34))
     for rn in ["WestRamp", "EastStairs"]:
-        _paint(rn + "/MeshInstance3D", Color(0.2, 0.2, 0.23))
+        _paint(rn + "/MeshInstance3D", Color(0.24, 0.24, 0.27))
         _paint(rn + "/LedgeLeftMesh", Color(0.3, 0.3, 0.34))
         _paint(rn + "/LedgeRightMesh", Color(0.3, 0.3, 0.34))
     for n in ["PerimeterNorth", "PerimeterSouth", "PerimeterWest", "PerimeterEast"]:
@@ -85,9 +112,9 @@ func _paint_base() -> void:
 
 func _floors() -> void:
     var y: float = 0.02
-    var seam := Color(0.09, 0.09, 0.1)
+    var seam := Color(0.12, 0.12, 0.13)
     # start yard: rubber mat, tape border, seams, rings
-    _fq(-30.0, -8.5, 30.0, 8.0, y, Color(0.16, 0.16, 0.18))
+    _fq(-30.0, -8.5, 30.0, 8.0, y, Color(0.2, 0.2, 0.22))
     _fq(-30.0, -8.5, 30.0, -8.35, 0.025, YELLOW)
     _fq(-30.0, 7.85, 30.0, 8.0, 0.025, YELLOW)
     _fq(-30.0, -8.5, -29.85, 8.0, 0.025, YELLOW)
@@ -150,7 +177,7 @@ func _run(r: Array) -> void:
 
 
 func _walls() -> void:
-    var per := Color(0.2, 0.2, 0.23)
+    var per := Color(0.25, 0.25, 0.28)
     var brick := Color(0.27, 0.11, 0.1)
     # x0, z0, x1, z1, nx, nz, y0, top, wainscot, accent
     var runs: Array = [
