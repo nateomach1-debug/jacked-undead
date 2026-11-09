@@ -18,6 +18,18 @@ extends CanvasLayer
 const EXTRA_PERKS_PATH: String = "res://scripts/ui/hud_extra_perks.gd"
 const LAYOUT_PATH: String = "res://scripts/managers/hud_layout.gd"
 const POWERUPS_PATH: String = "res://scripts/ui/hud_powerups.gd"
+
+# ---- HUD polish knobs (step 2) ----
+const SHOW_DEBUG_COORDS: bool = false
+const FONT_PATH: String = "res://assets/fonts/hud_font.ttf"
+const ACCENT := Color(1.0, 0.77, 0.0, 1.0)
+const PANEL_BG := Color(0.05, 0.05, 0.07, 0.55)
+const BAR_BACK := Color(0.06, 0.02, 0.02, 0.75)
+const HP_GOOD := Color(0.25, 0.85, 0.35, 1.0)
+const HP_MID := Color(1.0, 0.8, 0.1, 1.0)
+const HP_LOW := Color(0.9, 0.15, 0.12, 1.0)
+const GAINS_COLOR := Color(1.0, 0.82, 0.2, 1.0)
+
 var _player: Node
 var _perk_icons: Dictionary = {}
 var _blood_counter = null   # blood_counter.gd instance (untyped on purpose)
@@ -25,6 +37,12 @@ var _fallback_zombie_label: Label = null
 var _top_box: Control = null
 var _layout = null
 var _powerup_hud: Control = null
+var _hud_font: Font = null
+var _stats_stack: Control = null
+var _hp_bar: ProgressBar = null
+var _hp_fill: StyleBoxFlat = null
+var _hp_last: float = -1.0
+var _hp_tween: Tween = null
 
 
 func _ready() -> void:
@@ -36,6 +54,8 @@ func _ready() -> void:
     prompt_label.add_theme_constant_override("outline_size", 8)
     prompt_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
     coords_label.add_theme_font_size_override("font_size", 24)
+    coords_label.visible = SHOW_DEBUG_COORDS
+    _style_hud()
     call_deferred("_enlarge_world_labels")
     GameManager.gains_changed.connect(_on_gains_changed)
     GameManager.round_changed.connect(_on_round_changed)
@@ -54,6 +74,101 @@ func _ready() -> void:
     _build_powerups()
     call_deferred("_apply_layout")
     get_viewport().size_changed.connect(_on_viewport_resized)
+
+
+# ---------------------------------------------------------------- HUD polish (step 2)
+
+func _make_box(color: Color, radius: int) -> StyleBoxFlat:
+    var sb := StyleBoxFlat.new()
+    sb.bg_color = color
+    sb.set_corner_radius_all(radius)
+    return sb
+
+
+## Optional custom font: drop a .ttf at FONT_PATH and it is used everywhere on the HUD.
+func _apply_font(label: Label) -> void:
+    if _hud_font != null and label != null:
+        label.add_theme_font_override("font", _hud_font)
+
+
+func _style_hud() -> void:
+    if ResourceLoader.exists(FONT_PATH):
+        var f = load(FONT_PATH)
+        if f is Font:
+            _hud_font = f
+    for label in [health_label, ammo_label, weapon_label, gains_label, round_label, prompt_label, coords_label]:
+        _apply_font(label)
+    for label in [health_label, ammo_label, weapon_label, gains_label]:
+        label.add_theme_constant_override("outline_size", 6)
+        label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+    gains_label.add_theme_color_override("font_color", GAINS_COLOR)
+
+    # dark rounded panel behind the "Tap USE" prompt
+    var pb := _make_box(Color(0.05, 0.05, 0.07, 0.6), 12)
+    pb.content_margin_left = 20.0
+    pb.content_margin_right = 20.0
+    pb.content_margin_top = 6.0
+    pb.content_margin_bottom = 6.0
+    prompt_label.add_theme_stylebox_override("normal", pb)
+
+    # translucent panel with a yellow left edge, drawn behind the stats stack
+    _stats_stack = health_label.get_parent() as Control
+    if _stats_stack != null:
+        _stats_stack.draw.connect(_draw_stats_panel)
+        _stats_stack.queue_redraw()
+    _build_hp_bar()
+
+
+func _draw_stats_panel() -> void:
+    if _stats_stack == null:
+        return
+    var sb := _make_box(PANEL_BG, 12)
+    sb.border_width_left = 5
+    sb.border_color = ACCENT
+    sb.expand_margin_left = 14.0
+    sb.expand_margin_right = 14.0
+    sb.expand_margin_top = 10.0
+    sb.expand_margin_bottom = 10.0
+    _stats_stack.draw_style_box(sb, Rect2(Vector2.ZERO, _stats_stack.size))
+
+
+func _build_hp_bar() -> void:
+    if _hp_bar != null or _stats_stack == null:
+        return
+    _hp_bar = ProgressBar.new()
+    _hp_bar.custom_minimum_size = Vector2(280, 26)
+    _hp_bar.show_percentage = false
+    _hp_bar.min_value = 0.0
+    _hp_bar.max_value = 100.0
+    _hp_bar.value = 100.0
+    _hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    _hp_fill = _make_box(HP_GOOD, 6)
+    _hp_bar.add_theme_stylebox_override("fill", _hp_fill)
+    _hp_bar.add_theme_stylebox_override("background", _make_box(BAR_BACK, 6))
+    _stats_stack.add_child(_hp_bar)
+    _stats_stack.move_child(_hp_bar, health_label.get_index() + 1)
+    _hp_bar.pivot_offset = Vector2(140, 13)
+
+
+func _update_hp_bar(current: float, max_hp: float) -> void:
+    if _hp_bar == null:
+        return
+    _hp_bar.max_value = maxf(max_hp, 1.0)
+    _hp_bar.value = current
+    var frac: float = current / maxf(max_hp, 1.0)
+    if frac > 0.6:
+        _hp_fill.bg_color = HP_GOOD
+    elif frac > 0.3:
+        _hp_fill.bg_color = HP_MID
+    else:
+        _hp_fill.bg_color = HP_LOW
+    if _hp_last >= 0.0 and current < _hp_last - 0.01:
+        if _hp_tween != null:
+            _hp_tween.kill()
+        _hp_bar.modulate = Color(1.6, 1.6, 1.6, 1.0)
+        _hp_tween = create_tween()
+        _hp_tween.tween_property(_hp_bar, "modulate", Color(1, 1, 1, 1), 0.3)
+    _hp_last = current
 
 
 ## Power-up timers (top right, under the music player) and the pickup banner.
@@ -185,8 +300,9 @@ func bind_round_manager(round_manager: Node) -> void:
 func _process(_delta: float) -> void:
     _refresh_prompt_style()
     if _player:
-        var pos: Vector3 = _player.global_position
-        coords_label.text = "X: %.1f  Y: %.1f  Z: %.1f" % [pos.x, pos.y, pos.z]
+        if SHOW_DEBUG_COORDS:
+            var pos: Vector3 = _player.global_position
+            coords_label.text = "X: %.1f  Y: %.1f  Z: %.1f" % [pos.x, pos.y, pos.z]
         _update_prompt_color()
 
 
@@ -211,9 +327,11 @@ func _enlarge_world_labels() -> void:
         var label3d := node as Label3D
         if label3d:
             label3d.pixel_size *= grow
+
+
 func _on_health_changed(current: float, max_hp: float) -> void:
     health_label.text = "HP: %d / %d" % [int(current), int(max_hp)]
-
+    _update_hp_bar(current, max_hp)
 
 
 func _on_ammo_changed(current_mag: int, reserve: int) -> void:
@@ -231,6 +349,7 @@ func _apply_wonder_rainbow() -> void:
     if script == null:
         return
     script.apply(weapon_label, _player.current_weapon.is_wonder)
+
 
 func _on_gains_changed(amount: int) -> void:
     gains_label.text = "Gains: %d" % amount
@@ -272,12 +391,8 @@ func _build_stamina_bar() -> void:
     _stamina_bar.min_value = 0.0
     _stamina_bar.max_value = 100.0
     _stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    var fill := StyleBoxFlat.new()
-    fill.bg_color = Color(0.93, 0.93, 0.88, 1.0)
-    var back := StyleBoxFlat.new()
-    back.bg_color = Color(0.06, 0.02, 0.02, 0.7)
-    _stamina_bar.add_theme_stylebox_override("fill", fill)
-    _stamina_bar.add_theme_stylebox_override("background", back)
+    _stamina_bar.add_theme_stylebox_override("fill", _make_box(Color(0.93, 0.93, 0.88, 1.0), 6))
+    _stamina_bar.add_theme_stylebox_override("background", _make_box(BAR_BACK, 6))
     health_label.get_parent().add_child(_stamina_bar)
     _stamina_bar.visible = false
 
@@ -342,12 +457,8 @@ func _setup_weapon_level() -> void:
     _xp_bar.max_value = 1.0
     _xp_bar.step = 0.001
     _xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    var fill := StyleBoxFlat.new()
-    fill.bg_color = Color(1.0, 0.77, 0.0, 1.0)
-    var back := StyleBoxFlat.new()
-    back.bg_color = Color(0.06, 0.02, 0.02, 0.7)
-    _xp_bar.add_theme_stylebox_override("fill", fill)
-    _xp_bar.add_theme_stylebox_override("background", back)
+    _xp_bar.add_theme_stylebox_override("fill", _make_box(ACCENT, 4))
+    _xp_bar.add_theme_stylebox_override("background", _make_box(BAR_BACK, 4))
     var stack: Node = health_label.get_parent()
     stack.add_child(_xp_bar)
     stack.move_child(_xp_bar, weapon_label.get_index() + 1)
@@ -356,9 +467,10 @@ func _setup_weapon_level() -> void:
     _lv_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _lv_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _lv_banner.add_theme_font_size_override("font_size", 40)
-    _lv_banner.add_theme_color_override("font_color", Color(1.0, 0.77, 0.0, 1.0))
+    _lv_banner.add_theme_color_override("font_color", ACCENT)
     _lv_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
     _lv_banner.add_theme_constant_override("outline_size", 8)
+    _apply_font(_lv_banner)
     _lv_banner.visible = false
     add_child(_lv_banner)
     _lv_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 200)
