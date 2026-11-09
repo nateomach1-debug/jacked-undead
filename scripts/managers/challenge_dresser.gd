@@ -2,7 +2,18 @@ extends "res://scripts/managers/map_dress_base.gd"
 ## Challenge map visual dresser (cosmetic). No navmesh on this map.
 ## Also repairs the duplicated light fixtures at runtime (14 shadowed lights -> 8 plain).
 
-const LIGHT_ENERGY: float = 3.2
+# ---- graphics tuning knobs (step 1) ----
+const USE_GLOW: bool = true
+const EXPOSURE: float = 1.1
+const CONTRAST: float = 1.08
+const SATURATION: float = 1.12
+const AMBIENT_COLOR := Color(0.55, 0.56, 0.62)
+const AMBIENT_ENERGY: float = 0.9
+const LIGHT_ENERGY: float = 3.4
+const FIXTURE_EMISSION: float = 2.0
+const FOG_DENSITY: float = 0.003
+const SUN_SHADOWS_WEB: bool = false
+
 const RED := Color(0.85, 0.22, 0.15)
 const GOLD := Color(1.0, 0.82, 0.2)
 
@@ -43,15 +54,37 @@ func _make_frames() -> void:
 # ---------------------------------------------------------------- C/H lights, env
 
 func _setup_gym_env() -> void:
-    var we := get_parent().get_node_or_null("WorldEnvironment") as WorldEnvironment
-    if we == null or we.environment == null:
-        return
-    var env: Environment = we.environment
-    env.ssao_enabled = false
-    env.glow_enabled = false
-    env.fog_enabled = true
-    env.fog_light_color = Color(0.40, 0.41, 0.46)
-    env.fog_density = 0.003
+    var is_web: bool = OS.has_feature("web")
+    var parent := get_parent()
+    var we := parent.get_node_or_null("WorldEnvironment") as WorldEnvironment
+    if we != null and we.environment != null:
+        var env: Environment = we.environment
+        env.ssao_enabled = false
+        env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        env.tonemap_exposure = EXPOSURE
+        env.adjustment_enabled = true
+        env.adjustment_contrast = CONTRAST
+        env.adjustment_saturation = SATURATION
+        env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+        env.ambient_light_color = AMBIENT_COLOR
+        env.ambient_light_energy = AMBIENT_ENERGY
+        if USE_GLOW and not is_web:
+            env.glow_enabled = true
+            env.glow_intensity = 0.8
+            env.glow_strength = 1.0
+            env.glow_bloom = 0.0
+            env.glow_hdr_threshold = 1.0
+            env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+        else:
+            env.glow_enabled = false
+        env.fog_enabled = true
+        env.fog_light_color = Color(0.40, 0.41, 0.46)
+        env.fog_density = FOG_DENSITY
+    if is_web and not SUN_SHADOWS_WEB:
+        for n in parent.get_children():
+            if n is DirectionalLight3D:
+                var dl: DirectionalLight3D = n
+                dl.shadow_enabled = false
 
 
 func _fix_lights() -> void:
@@ -59,6 +92,7 @@ func _fix_lights() -> void:
     if holder == null:
         return
     var seen: Dictionary = {}
+    var mats: Dictionary = {}
     for c in holder.get_children():
         var fx := c as Node3D
         if fx == null:
@@ -73,18 +107,24 @@ func _fix_lights() -> void:
                 var ol: OmniLight3D = l
                 ol.shadow_enabled = false
                 ol.light_energy = LIGHT_ENERGY
+            elif l is MeshInstance3D:
+                var mi: MeshInstance3D = l
+                var m := mi.get_active_material(0) as StandardMaterial3D
+                if m != null and m.emission_enabled and not mats.has(m.get_instance_id()):
+                    mats[m.get_instance_id()] = true
+                    m.emission_energy_multiplier = maxf(m.emission_energy_multiplier, FIXTURE_EMISSION)
 
 
 # ---------------------------------------------------------------- A floor
 
 func _do_floor() -> void:
-    var grid := _mk(Color(0.09, 0.09, 0.10), 0.0, false)
-    var wood := _mk(Color(0.45, 0.30, 0.15), 0.0, false, 0.0, 0.7)
-    var rub := _mk(Color(0.05, 0.05, 0.06), 0.0, false)
+    var grid := _mk(Color(0.13, 0.13, 0.15), 0.0, false)
+    var wood := _mk(Color(0.52, 0.35, 0.18), 0.0, false, 0.0, 0.7)
+    var rub := _mk(Color(0.08, 0.08, 0.09), 0.0, false)
     var yel := _mk(C_YELLOW, 0.0, false)
     var red := _mk(RED, 0.0, false)
     var blk := _mk(C_BLACK, 0.0, false)
-    var gold := _mk(GOLD, 0.8, false)
+    var gold := _mk(GOLD, 1.2, false)
     for i in 7:
         var c: float = -15.0 + 5.0 * float(i)
         _floor_rect(grid, c, 0.0, 0.06, 40.0, 0.02)
@@ -159,9 +199,9 @@ func _do_columns() -> void:
 # ---------------------------------------------------------------- C ceiling
 
 func _do_ceiling() -> void:
-    var line := _mk(Color(0.09, 0.09, 0.11), 0.0, false)
-    var duct := _mk(Color(0.36, 0.37, 0.41), 0.0, true, 0.4, 0.5)
-    var band := _mk(Color(0.18, 0.18, 0.20), 0.0, true, 0.4, 0.5)
+    var line := _mk(Color(0.13, 0.13, 0.16), 0.0, false)
+    var duct := _mk(Color(0.44, 0.45, 0.50), 0.0, true, 0.4, 0.5)
+    var band := _mk(Color(0.24, 0.24, 0.27), 0.0, true, 0.4, 0.5)
     for i in 21:
         var c: float = -20.0 + 2.0 * float(i)
         _quad(line, Vector3(c - 0.03, 6.09, -20.0), Vector3(c + 0.03, 6.09, -20.0), Vector3(c + 0.03, 6.09, 20.0), Vector3(c - 0.03, 6.09, 20.0), Vector3.DOWN)
@@ -176,10 +216,10 @@ func _do_ceiling() -> void:
 # ---------------------------------------------------------------- F station pads
 
 func _do_stations() -> void:
-    var pad := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
-    var glow := _mk(C_YELLOW, 1.0, false)
-    var wglow := _mk(C_BLUE, 1.0, false)
-    var gold := _mk(GOLD, 1.2, false)
+    var pad := _mk(Color(0.10, 0.10, 0.12), 0.0, false)
+    var glow := _mk(C_YELLOW, 1.6, false)
+    var wglow := _mk(C_BLUE, 1.6, false)
+    var gold := _mk(GOLD, 1.8, false)
     for z in [-12.0, -7.0, -2.0, 3.0, 8.0, 13.0]:
         var zf: float = z
         _pad(pad, glow, 18.5, zf, 2.4, 3.6, 0.0)
