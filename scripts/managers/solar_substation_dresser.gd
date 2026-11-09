@@ -7,9 +7,21 @@ const WALL: float = 30.0
 const WALL_H: float = 15.0
 const CONCRETE := Color(0.36, 0.35, 0.34)
 const SEAM := Color(0.10, 0.10, 0.11)
-const PV_BLUE := Color(0.05, 0.15, 0.40)
+const PV_BLUE := Color(0.08, 0.20, 0.50)
 const PV_LINE := Color(0.50, 0.62, 0.85)
-const RAMP_DARK := Color(0.16, 0.16, 0.18)
+const RAMP_DARK := Color(0.22, 0.22, 0.25)
+
+# ---- graphics tuning knobs (step 1)
+const USE_GLOW: bool = true
+const EXPOSURE: float = 1.1
+const CONTRAST: float = 1.08
+const SATURATION: float = 1.12
+const AMBIENT_ENERGY: float = 0.6
+const SUN_ENERGY: float = 1.1
+const SUN_SHADOWS_WEB: bool = false
+const FOG_DENSITY: float = 0.004
+const GLOW_EMIT: float = 1.5
+const LED_EMIT: float = 1.8
 
 var _rng := RandomNumberGenerator.new()
 var _geo: Node
@@ -52,15 +64,28 @@ func _make_frames() -> void:
 
 func _setup_outdoor() -> void:
     var p := get_parent()
+    var is_web: bool = OS.has_feature("web")
     var we := p.get_node_or_null("WorldEnvironment") as WorldEnvironment
     if we != null and we.environment != null:
         var env: Environment = we.environment
         env.ssao_enabled = false
-        env.glow_enabled = false
-        env.ambient_light_energy = 0.55
+        env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        env.tonemap_exposure = EXPOSURE
+        env.adjustment_enabled = true
+        env.adjustment_contrast = CONTRAST
+        env.adjustment_saturation = SATURATION
+        var want_glow: bool = USE_GLOW and not is_web
+        env.glow_enabled = want_glow
+        if want_glow:
+            env.glow_intensity = 0.8
+            env.glow_strength = 1.0
+            env.glow_bloom = 0.0
+            env.glow_hdr_threshold = 1.0
+            env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+        env.ambient_light_energy = AMBIENT_ENERGY
         env.fog_enabled = true
         env.fog_light_color = Color(0.80, 0.60, 0.46)
-        env.fog_density = 0.004
+        env.fog_density = FOG_DENSITY
         env.fog_sky_affect = 0.35
         if env.sky != null:
             var sm := env.sky.sky_material as ProceduralSkyMaterial
@@ -72,8 +97,10 @@ func _setup_outdoor() -> void:
     var sun := p.get_node_or_null("DirectionalLight3D") as DirectionalLight3D
     if sun != null:
         sun.light_color = Color(1.0, 0.80, 0.58)
-        sun.light_energy = 1.1
+        sun.light_energy = SUN_ENERGY
         sun.directional_shadow_max_distance = 90.0
+        if is_web:
+            sun.shadow_enabled = SUN_SHADOWS_WEB
 
 
 # ---------------------------------------------------------------- A floor
@@ -91,10 +118,10 @@ func _crack(k: String, x: float, z: float) -> void:
 
 
 func _do_floor() -> void:
-    var joint := _mk(Color(0.16, 0.16, 0.18), 0.0, false)
+    var joint := _mk(Color(0.20, 0.20, 0.22), 0.0, false)
     var patch := _mk(Color(0.37, 0.37, 0.39), 0.0, false)
-    var stain := _mk(Color(0.20, 0.20, 0.22), 0.0, false)
-    var crack := _mk(Color(0.12, 0.12, 0.14), 0.0, false)
+    var stain := _mk(Color(0.24, 0.24, 0.26), 0.0, false)
+    var crack := _mk(Color(0.15, 0.15, 0.17), 0.0, false)
     var yel := _mk(C_YELLOW, 0.0, false)
     for i in 9:
         var c: float = -24.0 + 6.0 * float(i)
@@ -158,7 +185,6 @@ func _do_walls() -> void:
         else:
             _box(blk, wc, Vector3(0.03, 0.03, 48.0))
 
-
 func _pv_wall(f: Array, u: float, y: float, w: float, h: float) -> void:
     var frame := _mk(C_STEEL, 0.0, false, 0.3, 0.5)
     var cell := _mk(PV_BLUE, 0.0, false, 0.3, 0.25)
@@ -189,8 +215,8 @@ func _do_pv() -> void:
 func _do_banks() -> void:
     var vent := _mk(Color(0.04, 0.04, 0.05), 0.0, false)
     var slat := _mk(Color(0.24, 0.25, 0.28), 0.0, false, 0.3, 0.5)
-    var led_g := _mk(C_GREEN, 1.6, false)
-    var led_r := _mk(C_RED, 1.6, false)
+    var led_g := _mk(C_GREEN, LED_EMIT, false)
+    var led_r := _mk(C_RED, LED_EMIT, false)
     var yel := _mk(C_YELLOW, 0.0, false)
     var blk := _mk(C_BLACK, 0.0, false)
     var plate := _mk(Color(0.30, 0.31, 0.35), 0.0, false, 0.3, 0.5)
@@ -250,7 +276,7 @@ func _do_canopy() -> void:
         return
     var frame := _mk(C_STEEL, 0.0, false, 0.4, 0.4)
     var line := _mk(PV_LINE, 0.0, false)
-    var under := _mk(Color(0.08, 0.08, 0.10), 0.0, false)
+    var under := _mk(Color(0.12, 0.12, 0.15), 0.0, false)
     var leg := _mk(C_STEEL, 0.0, true, 0.4, 0.5)
     var c: Vector3 = tr.origin + by * 0.12
     _surf(frame, c, bx, bz, by, -5.0, 5.0, -5.0, -4.8)
@@ -271,17 +297,16 @@ func _do_canopy() -> void:
                 _cyl(leg, Vector3(q.x, q.y * 0.5, q.z), 0.12, q.y, 1, 6)
                 _box(leg, Vector3(q.x, 0.05, q.z), Vector3(0.5, 0.1, 0.5))
 
-
 # ---------------------------------------------------------------- F catwalk, ramp
 
 func _do_catwalk() -> void:
-    var grate := _mk(Color(0.13, 0.13, 0.15), 0.0, false, 0.4, 0.5)
+    var grate := _mk(Color(0.19, 0.19, 0.22), 0.0, false, 0.4, 0.5)
     var gl := _mk(Color(0.30, 0.31, 0.34), 0.0, false, 0.4, 0.5)
     var yel := _mk(C_YELLOW, 0.0, false)
     var blk := _mk(C_BLACK, 0.0, false)
     var steel := _mk(C_STEEL, 0.0, true, 0.4, 0.5)
-    var under := _mk(Color(0.08, 0.08, 0.09), 0.0, false)
-    var strip := _mk(Color(1.0, 0.92, 0.7), 1.6, false)
+    var under := _mk(Color(0.12, 0.12, 0.14), 0.0, false)
+    var strip := _mk(Color(1.0, 0.92, 0.7), LED_EMIT, false)
     var ff: Array = _fr(Vector3(0.0, 0.0, -20.0), Vector3(0.0, 0.0, 1.0))
     _floor_rect(grate, 0.0, -25.0, 60.0, 10.0, 6.02)
     for i in 30:
@@ -393,12 +418,13 @@ func _rail_collision(center: Vector3, axes: Basis, size: Vector3) -> void:
     body.transform = Transform3D(axes, center)
     add_child(body)
 
+
 # ---------------------------------------------------------------- F station pads
 
 func _do_stations() -> void:
     var pad := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
-    var glow := _mk(C_YELLOW, 1.0, false)
-    var wglow := _mk(C_BLUE, 1.0, false)
+    var glow := _mk(C_YELLOW, GLOW_EMIT, false)
+    var wglow := _mk(C_BLUE, GLOW_EMIT, false)
     for z in [-15.0, -5.0, 5.0]:
         var zf: float = z
         _pad(pad, glow, -28.0, zf, 2.6, 2.6, 0.0)
