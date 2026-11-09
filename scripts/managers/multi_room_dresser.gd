@@ -2,6 +2,17 @@ extends "res://scripts/managers/map_dress_base.gd"
 ## Visual dressing for the Multi-Room map. Cosmetic only.
 ## Rooms: lobby (yellow), west wing (red), east wing (blue), upstairs loft (green).
 
+# ---- graphics tuning knobs (step 1) ----
+const USE_GLOW: bool = true
+const EXPOSURE: float = 1.1
+const CONTRAST: float = 1.08
+const SATURATION: float = 1.12
+const AMBIENT_BOOST: float = 1.1
+const LAMP_BOOST: float = 1.15
+const SHADOWS_WEB: bool = false
+const STRIP_EMISSION: float = 3.4
+const ACCENT_EMISSION: float = 1.4
+
 const ACC_LOBBY := Color(1.0, 0.77, 0.0)
 const ACC_WEST := Color(0.85, 0.12, 0.12)
 const ACC_EAST := Color(0.22, 0.5, 0.95)
@@ -13,6 +24,7 @@ var _f := {}
 
 func _ready() -> void:
     _setup_environment(0.005, 1.0, 0.9)
+    _setup_env()
     _restyle_base()
     _init_props()
     _make_frames()
@@ -26,6 +38,45 @@ func _ready() -> void:
     _build_blood()
     _build_rails()
     _flush()
+
+
+func _setup_env() -> void:
+    var is_web: bool = OS.has_feature("web")
+    var p := get_parent()
+    for n in p.find_children("*", "WorldEnvironment", true, false):
+        var we := n as WorldEnvironment
+        if we == null or we.environment == null:
+            continue
+        var env: Environment = we.environment
+        env.ssao_enabled = false
+        env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+        env.tonemap_exposure = EXPOSURE
+        env.adjustment_enabled = true
+        env.adjustment_contrast = CONTRAST
+        env.adjustment_saturation = SATURATION
+        env.ambient_light_energy = env.ambient_light_energy * AMBIENT_BOOST
+        if USE_GLOW and not is_web:
+            env.glow_enabled = true
+            env.glow_intensity = 0.8
+            env.glow_strength = 1.0
+            env.glow_bloom = 0.0
+            env.glow_hdr_threshold = 1.0
+            env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+        else:
+            env.glow_enabled = false
+        break
+    for n in p.find_children("*", "OmniLight3D", true, false):
+        var ol := n as OmniLight3D
+        if ol == null:
+            continue
+        ol.light_energy = ol.light_energy * LAMP_BOOST
+        if is_web and not SHADOWS_WEB:
+            ol.shadow_enabled = false
+    if is_web and not SHADOWS_WEB:
+        for n in p.find_children("*", "DirectionalLight3D", true, false):
+            var dl := n as DirectionalLight3D
+            if dl != null:
+                dl.shadow_enabled = false
 
 
 func _restyle_base() -> void:
@@ -77,20 +128,20 @@ func _make_frames() -> void:
 # ---------------------------------------------------------------- floors
 
 func _build_floors() -> void:
-    _floor_rect(_mk(Color(0.14, 0.14, 0.16), 0.0, false), 0.0, 12.25, 19.0, 33.5, 0.012)
-    _floor_rect(_mk(Color(0.17, 0.11, 0.11), 0.0, false), -19.75, 12.25, 18.5, 33.5, 0.012)
-    _floor_rect(_mk(Color(0.10, 0.12, 0.18), 0.0, false), 19.75, 12.25, 18.5, 33.5, 0.012)
-    _floor_rect(_mk(Color(0.11, 0.15, 0.12), 0.0, false), 0.0, -17.0, 58.0, 24.0, CATWALK_Y + 0.012)
-    var seam := _mk(Color(0.05, 0.05, 0.06), 0.0, false)
+    _floor_rect(_mk(Color(0.18, 0.18, 0.20), 0.0, false), 0.0, 12.25, 19.0, 33.5, 0.012)
+    _floor_rect(_mk(Color(0.22, 0.14, 0.14), 0.0, false), -19.75, 12.25, 18.5, 33.5, 0.012)
+    _floor_rect(_mk(Color(0.13, 0.16, 0.24), 0.0, false), 19.75, 12.25, 18.5, 33.5, 0.012)
+    _floor_rect(_mk(Color(0.14, 0.19, 0.15), 0.0, false), 0.0, -17.0, 58.0, 24.0, CATWALK_Y + 0.012)
+    var seam := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
     for i in range(-5, 6):
         _floor_rect(seam, float(i) * 5.0, 12.25, 0.06, 33.5, 0.02)
     for i in range(0, 6):
         _floor_rect(seam, 0.0, float(i) * 5.0, 58.0, 0.06, 0.02)
-    _floor_outline(_mk(ACC_LOBBY, 0.0, false), 0.0, 12.25, 17.6, 32.1, 0.028, 0.28)
-    _floor_outline(_mk(ACC_WEST, 0.0, false), -19.75, 12.25, 17.1, 32.1, 0.028, 0.28)
-    _floor_outline(_mk(ACC_EAST, 0.0, false), 19.75, 12.25, 17.1, 32.1, 0.028, 0.28)
-    _floor_outline(_mk(ACC_UP, 0.0, false), 0.0, -17.05, 56.4, 22.3, CATWALK_Y + 0.028, 0.28)
-    var grate := _mk(Color(0.07, 0.08, 0.09), 0.0, false)
+    _floor_outline(_mk(ACC_LOBBY, ACCENT_EMISSION, false), 0.0, 12.25, 17.6, 32.1, 0.028, 0.28)
+    _floor_outline(_mk(ACC_WEST, ACCENT_EMISSION, false), -19.75, 12.25, 17.1, 32.1, 0.028, 0.28)
+    _floor_outline(_mk(ACC_EAST, ACCENT_EMISSION, false), 19.75, 12.25, 17.1, 32.1, 0.028, 0.28)
+    _floor_outline(_mk(ACC_UP, ACCENT_EMISSION, false), 0.0, -17.05, 56.4, 22.3, CATWALK_Y + 0.028, 0.28)
+    var grate := _mk(Color(0.09, 0.10, 0.11), 0.0, false)
     var gy := CATWALK_Y + 0.02
     var gx := -28.0
     while gx <= 28.0:
@@ -111,7 +162,7 @@ func _ramp_rect(k: String, top: Vector3, xd: Vector3, zd: Vector3, yd: Vector3, 
 
 func _build_ramps() -> void:
     var yel := _mk(C_YELLOW, 0.0, false)
-    var grip := _mk(Color(0.05, 0.05, 0.06), 0.0, false)
+    var grip := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
     var xd := Vector3(-1.0, 0.0, 0.0)
     var yd := Vector3(0.0, 0.894427, 0.447214)
     var zd := Vector3(0.0, 0.447214, -0.894427)
@@ -185,14 +236,14 @@ func _build_walls() -> void:
 # No upward-facing surfaces up here, so the navmesh bake ignores all of it.
 
 func _build_ceiling() -> void:
-    var ceil_k := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
+    var ceil_k := _mk(Color(0.10, 0.10, 0.12), 0.0, false)
     _quad(ceil_k, Vector3(-29, 10, -29), Vector3(29, 10, -29), Vector3(29, 10, 29), Vector3(-29, 10, 29), Vector3.DOWN)
-    var beam := _mk(Color(0.22, 0.23, 0.26), 0.0, false)
+    var beam := _mk(Color(0.27, 0.28, 0.31), 0.0, false)
     for z in [-24.0, -14.0, 0.0, 10.0, 20.0]:
         _box(beam, Vector3(0.0, 9.6, float(z)), Vector3(58.0, 0.5, 0.35), 0.0, true)
     for x in [-19.75, 0.0, 19.75]:
         _box(beam, Vector3(float(x), 9.75, 0.0), Vector3(0.35, 0.3, 58.0), 0.0, true)
-    var strip := _mk(Color(1.0, 0.96, 0.82), 2.5, false)
+    var strip := _mk(Color(1.0, 0.96, 0.82), STRIP_EMISSION, false)
     for z in [0.0, 10.0, 20.0]:
         for x in [-19.75, 0.0, 19.75]:
             _box(strip, Vector3(float(x), 9.22, float(z)), Vector3(3.2, 0.1, 0.28), 0.0, true)
@@ -266,12 +317,12 @@ func _build_props() -> void:
 # ---------------------------------------------------------------- doors
 
 func _build_doors() -> void:
-    var lintel := _mk(Color(0.10, 0.10, 0.12), 0.0, true)
+    var lintel := _mk(Color(0.12, 0.12, 0.14), 0.0, true)
     for s in [[-10.0, "WEST WING", ACC_WEST], [10.0, "EAST WING", ACC_EAST]]:
         var x := float(s[0])
         var col: Color = s[2]
         _box(lintel, Vector3(x, 8.9, 17.5), Vector3(0.9, 2.2, 5.2), 0.0, true)
-        _box(_mk(col, 0.0, true), Vector3(x, 7.85, 17.5), Vector3(0.95, 0.1, 5.25), 0.0, true)
+        _box(_mk(col, ACCENT_EMISSION, true), Vector3(x, 7.85, 17.5), Vector3(0.95, 0.1, 5.25), 0.0, true)
         _label(String(s[1]), Vector3(x + 0.47, 8.9, 17.5), PI * 0.5, 0.0105, C_WHITE, C_WHITE, 6, false)
         _label(String(s[1]), Vector3(x - 0.47, 8.9, 17.5), -PI * 0.5, 0.0105, C_WHITE, C_WHITE, 6, false)
     # caution tape + CLOSED on the debris doors; these are children of the door
