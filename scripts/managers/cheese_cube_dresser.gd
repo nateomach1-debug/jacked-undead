@@ -9,10 +9,27 @@ const FACE: float = 15.95
 const LSIZE: Array = [8.0, 4.0, 4.0, 4.0, 4.0, 8.0, 4.0, 4.0, 8.0]
 const CORNERS: Array = [Vector2(-1, 1), Vector2(1, 1), Vector2(1, -1), Vector2(-1, -1)]
 const TRIM: Array = [Vector2(-11.9, 15.9), Vector2(-15.9, 15.9), Vector2(-15.9, 15.9), Vector2(-15.9, 11.9)]
-const WALL_DARK := Color(0.20, 0.19, 0.17)
+const WALL_DARK := Color(0.30, 0.28, 0.25)
 const CHEESE := Color(0.96, 0.78, 0.22)
 const RIM := Color(0.50, 0.40, 0.08)
-const RAMP_DARK := Color(0.30, 0.22, 0.05)
+const RAMP_DARK := Color(0.38, 0.28, 0.07)
+const TILE_COL := Color(0.24, 0.24, 0.28)
+const FLOOR_COL := Color(0.18, 0.18, 0.21)
+const CEIL_COL := Color(0.13, 0.13, 0.15)
+const BEAM_COL := Color(0.20, 0.20, 0.23)
+
+# ---- graphics tuning knobs (step 1)
+const USE_GLOW: bool = true
+const EXPOSURE: float = 1.1
+const CONTRAST: float = 1.08
+const SATURATION: float = 1.12
+const AMBIENT_ENERGY: float = 1.3
+const LAMP_ENERGY: float = 2.1
+const FOG_DENSITY: float = 0.003
+const BG_COLOR := Color(0.055, 0.055, 0.07)
+const FOG_COLOR := Color(0.14, 0.14, 0.17)
+const GLOW_EMIT: float = 1.6
+const STRIP_EMIT: float = 2.0
 
 var _bld: Node
 var _rng := RandomNumberGenerator.new()
@@ -33,6 +50,7 @@ func _ready() -> void:
         return
     _init_props()
     _setup_environment(0.006, 0.55, 0.0)
+    _setup_env()
     _tint_lights()
     _make_frames()
     _do_floor()
@@ -46,12 +64,46 @@ func _ready() -> void:
     _door_tape()
 
 
+## Overrides what the shared base set: filmic look, glow on Android only.
+func _setup_env() -> void:
+    var we := get_parent().get_node_or_null("WorldEnvironment") as WorldEnvironment
+    if we == null or we.environment == null:
+        push_warning("CheeseCubeDresser: WorldEnvironment not found")
+        return
+    var env: Environment = we.environment
+    env.background_mode = Environment.BG_COLOR
+    env.background_color = BG_COLOR
+    env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+    env.ambient_light_color = Color(0.88, 0.90, 1.0)
+    env.ambient_light_energy = AMBIENT_ENERGY
+    env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    env.tonemap_exposure = EXPOSURE
+    env.adjustment_enabled = true
+    env.adjustment_contrast = CONTRAST
+    env.adjustment_saturation = SATURATION
+    env.ssao_enabled = false
+    env.fog_enabled = true
+    env.fog_light_color = FOG_COLOR
+    env.fog_density = FOG_DENSITY
+    var want_glow: bool = USE_GLOW and not OS.has_feature("web")
+    env.glow_enabled = want_glow
+    if want_glow:
+        env.glow_intensity = 0.8
+        env.glow_strength = 1.0
+        env.glow_bloom = 0.0
+        env.glow_hdr_threshold = 1.0
+        env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+
+
 func _tint_lights() -> void:
+    var is_web: bool = OS.has_feature("web")
     for c in _bld.get_children():
         if c is OmniLight3D:
             var l: OmniLight3D = c
             l.light_color = Color(1.0, 0.9, 0.7)
-            l.light_energy = 1.4
+            l.light_energy = LAMP_ENERGY
+            if is_web:
+                l.shadow_enabled = false
 
 
 func _make_frames() -> void:
@@ -116,12 +168,12 @@ func _floor_label(text: String, x: float, y: float, z: float, ps: float, col: Co
 # ---------------------------------------------------------------- A floor
 
 func _do_floor() -> void:
-    var base := _mk(C_FLOOR, 0.0, false, 0.0, 0.85)
-    var tile := _mk(Color(0.17, 0.17, 0.20), 0.0, false, 0.0, 0.8)
+    var base := _mk(FLOOR_COL, 0.0, false, 0.0, 0.85)
+    var tile := _mk(TILE_COL, 0.0, false, 0.0, 0.8)
     var yel := _mk(C_YELLOW, 0.0, false)
     var blk := _mk(C_BLACK, 0.0, false)
     var chz := _mk(CHEESE, 0.0, false)
-    var glow := _mk(C_YELLOW, 1.0, false)
+    var glow := _mk(C_YELLOW, GLOW_EMIT, false)
     _floor_rect(base, 0.0, 0.0, 40.0, 40.0, 0.02)
     for i in 10:
         for j in 10:
@@ -179,9 +231,9 @@ func _do_walls() -> void:
 # ---------------------------------------------------------------- C ceiling
 
 func _do_ceiling() -> void:
-    var dark := _mk(Color(0.07, 0.07, 0.08), 0.0, false)
-    var beam := _mk(Color(0.12, 0.12, 0.14), 0.0, false)
-    var strip := _mk(Color(1.0, 0.92, 0.7), 1.6, false)
+    var dark := _mk(CEIL_COL, 0.0, false)
+    var beam := _mk(BEAM_COL, 0.0, false)
+    var strip := _mk(Color(1.0, 0.92, 0.7), STRIP_EMIT, false)
     _quad(dark, Vector3(-20, 31.97, -20), Vector3(20, 31.97, -20), Vector3(20, 31.97, 20), Vector3(-20, 31.97, 20), Vector3.DOWN)
     for x in [-12.0, 0.0, 12.0]:
         var xf: float = x
@@ -190,8 +242,6 @@ func _do_ceiling() -> void:
     for z in [-12.0, 12.0]:
         var zf: float = z
         _box(beam, Vector3(0.0, 31.7, zf), Vector3(40.0, 0.5, 0.8), 0.0, true)
-
-
 # ---------------------------------------------------------------- D stairs
 
 func _do_stairs() -> void:
@@ -201,7 +251,7 @@ func _do_stairs() -> void:
     var dark := _mk(RAMP_DARK, 0.0, false)
     var yel := _mk(C_YELLOW, 0.0, false)
     var blk := _mk(C_BLACK, 0.0, false)
-    var under := _mk(Color(0.12, 0.10, 0.05), 0.0, false)
+    var under := _mk(Color(0.18, 0.14, 0.07), 0.0, false)
     for k in 8:
         var s: Vector3 = starts[k]
         var e: Vector3 = ends[k]
