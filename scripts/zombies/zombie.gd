@@ -219,6 +219,20 @@ static func _box_mesh(size: Vector3) -> BoxMesh:
     return bm
 
 
+const TOON_PATH: String = "res://scripts/zombies/zombie_toon.gd"
+static var _toon_script: Script = null
+static var _toon_tried: bool = false
+
+
+static func _toon() -> Script:
+    if not _toon_tried:
+        _toon_tried = true
+        _toon_script = load(TOON_PATH) as Script
+        if _toon_script == null:
+            push_warning("zombie_toon.gd is missing or broken; zombies keep the plain material.")
+    return _toon_script
+
+
 func _make_mat(color: Color, rough: float = 0.85, flash: bool = true) -> StandardMaterial3D:
     var m := StandardMaterial3D.new()
     m.albedo_color = color
@@ -228,6 +242,9 @@ func _make_mat(color: Color, rough: float = 0.85, flash: bool = true) -> Standar
         m.emission = Color(1.0, 0.1, 0.05)
         m.emission_energy_multiplier = 0.0
         _flash_mats.append(m)
+    var toon: Script = _toon()
+    if toon != null:
+        toon.apply(m, flash)
     return m
 
 
